@@ -1,0 +1,6 @@
+admission_number,first_name,full_name,email,classNumber,section
+001,Alice,Alice Smith,alice@example.test,3,A
+001,Alice,Alice Smith,alice@example.test,3,A
+002,Bob,Bob Jones,bob@example.test,4,B
+003,Carol,Carol Lee,carol@example.test,5,C
+004,Dave,Dave Kim,dave@example.test,6,A

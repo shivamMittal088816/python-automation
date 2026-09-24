@@ -1,0 +1,30 @@
+import { test, expect } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+test('mapping dropdown edits make no requests and only a run saves the columns', async ({ page }) => {
+  const requests = [];
+  page.on('request', request => { if (request.url().includes('/api/v1/')) requests.push(request); });
+  await page.goto('/admission_file_page');
+  await page.getByLabel('Add school file').setInputFiles(fileURLToPath(new URL('./fixtures/school.csv', import.meta.url)));
+  await page.getByLabel('Fetch from SQL', { exact: true }).check();
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();
+  const column = page.getByLabel('First name column in school file', { exact: true });
+  await expect(column).toHaveValue('first_name');
+  const before = requests.length;
+  await column.selectOption('full_name');
+  await expect(column).toHaveValue('full_name');
+  expect(requests.length).toBe(before);
+  await page.reload();
+  await expect(column).toHaveValue('first_name');
+  await column.selectOption('full_name');
+  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /Pass 1: Admission/ })).toContainText('Last run: admission_number + full_name');
+  await page.reload();
+  await expect(column).toHaveValue('full_name');
+  await column.selectOption('first_name');
+  await expect(page.getByRole('heading', { name: /Pass 1: Admission/ })).toContainText('Last run: admission_number + full_name');
+  expect(requests.filter(request => request.url().endsWith('/settings'))).toHaveLength(0);
+  const mapping = requests.find(request => request.url().endsWith('/admission-mapping/run'));
+  expect(mapping.postDataJSON().school_name_col).toBe('full_name');
+});

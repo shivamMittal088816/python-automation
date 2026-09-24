@@ -1,0 +1,6 @@
+{
+  "watch": ["vite.config.js", "package.json", ".env", ".env.*"],
+  "ext": "*",
+  "ignore": ["node_modules/**", "dist/**", "test-results/**", "playwright-report/**"],
+  "delay": 500
+}

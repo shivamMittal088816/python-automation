@@ -1,0 +1,5 @@
+admission_number,user_firstname,user_lastname,fullname,user_name,user_id,user_email,generated_col,user_edu_class,user_edu_major,user_edu_school
+001,Alice,Smith,Alice Smith,alice,0001,alice@example.test,alicesmith3,2,A,914
+999,Bob,Jones,Bob Jones,bob,0002,bob@example.test,bobjones4,3,B,914
+888,Carol,Lee,Carol Lee,carol,0003,carol@example.test,carollee5,4,C,914
+777,Dave,Kim,Dave Kim,dave,0004,dave@example.test,davekim6,5,A,914

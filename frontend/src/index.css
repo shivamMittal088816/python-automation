@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* CSS-only startup shimmer: no timers, assets, or animation dependencies. */
+.workspace-placeholder { position: relative; overflow: hidden; }
+.workspace-placeholder::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, #ffffff80, transparent);
+  transform: translateX(-100%);
+  animation: workspace-shimmer 1.8s ease-in-out infinite;
+}
+@keyframes workspace-shimmer { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .workspace-placeholder::after { animation: none; display: none; }
+}
+
+@layer base {
+  body { @apply m-0 bg-slate-50 font-sans text-slate-900 antialiased; }
+  button, select, summary { @apply cursor-pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible { @apply outline-2 outline-offset-2 outline-blue-600; }
+  summary:focus-visible { @apply rounded outline-2 outline-offset-2 outline-blue-600; }
+  input[type='radio'], input[type='checkbox'] { @apply size-4 shrink-0 accent-blue-700 align-middle; }
+  summary { @apply leading-6 text-slate-700; }
+}
+@layer components {
+  .input { @apply min-h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 shadow-xs transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500; }
+  .input[type='number'] { @apply max-w-28; }
+  .page-title { @apply mb-2 text-2xl font-semibold tracking-tight; }
+  .caption { @apply break-words text-sm leading-6 text-slate-500; }
+  .page-stack { @apply space-y-4; }
+}
+
+/* Lightweight shared presentation: system fonts, static surfaces, no animation assets. */
+@layer base {
+  body { background-color: #f4f7fb; }
+  ::selection { background: #dbeafe; color: #1e3a8a; }
+}
+@layer components {
+  .page-title { @apply text-slate-950; }
+  .caption { @apply leading-5; }
+  .input { @apply border-slate-200 shadow-none; }
+}
+main > div > div > header {
+  padding: 0 0 16px 16px;
+  border-left: 3px solid #2563eb;
+}
+main header h2 { font-size: clamp(1.25rem, 2vw, 1.65rem); }
+main section {
+  border-color: #dfe7f1;
+  box-shadow: 0 2px 5px -3px #33415520;
+}
+aside nav a[aria-current='page'] {
+  background: #eff6ff;
+  box-shadow: inset 3px 0 #2563eb;
+}
+aside > div:first-child > span {
+  background: linear-gradient(140deg, #2563eb, #4338ca);
+}
+aside nav summary { color: #475569; }
+main [role='tablist'] { border: 1px solid #e2e8f0; }
+main label:has(> input[type='file']) { padding-block: 20px; }
+main label:has(> input[type='file']) > span:last-of-type {
+  border-radius: 5px;
+  background: #eaf0f8;
+  padding: 3px 8px;
+  color: #526580;
+}
+label:has(input:focus-visible) { outline: 2px solid #2563eb; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+/* Keep column selection compact while retaining a stacked mobile layout. */
+@layer components {
+  .mapping-settings { @apply p-4 sm:p-4; }
+  .mapping-settings > :first-child { @apply mb-3; }
+  .mapping-settings .flex-col { @apply gap-1; }
+  .mapping-settings select.input { @apply min-h-8 py-1; }
+  .mapping-settings .caption { @apply my-2 text-xs leading-5; }
+  .mapping-settings > .caption:last-child { @apply mb-0; }
+}
+
+/* Glossy student dump panel, scoped to the admission form. */
+.dump-panel {
+  border-color: #c7d9f5;
+  background: linear-gradient(125deg, #fff 15%, #f0f6ff 75%, #eef2ff);
+  box-shadow: inset 0 1px 0 #fff, 0 8px 24px -16px #315aa0;
+}
+.dump-panel > :first-child { margin-bottom: 1rem; }
+.dump-panel fieldset label {
+  background: linear-gradient(180deg, #ffffffeb, #f8faffcc);
+  box-shadow: inset 0 1px 0 #fff;
+}
+.dump-panel fieldset label:has(input:checked) {
+  border-color: #8caff5;
+  background: linear-gradient(180deg, #f0f6ff, #e1ecff);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 6px #2563eb0d;
+}
+.dump-fetch > div { flex: 1 1 150px; }
+.dump-fetch .input { border-color: #b9ccec; box-shadow: inset 0 2px 4px #1e3a8a06, 0 1px 0 #fff; }
+.dump-fetch-button {
+  background: linear-gradient(180deg, #3979ff, #1d4ed8);
+  border-color: #245bdb;
+  box-shadow: inset 0 1px 0 #ffffff60, 0 4px 10px #2563eb26;
+}
+.dump-fetch-button:hover:not(:disabled) { background: linear-gradient(180deg, #2866eb, #1e40af); }
+.dump-loaded > div {
+  padding: 10px 12px;
+  border-color: #9bd9c3;
+  color: #065f46;
+  background: linear-gradient(110deg, #ecfdf5, #f6fffb);
+  box-shadow: inset 0 1px 0 #fff;
+}
+.dump-school {
+  padding: 14px;
+  border: 1px solid #d2e0f5;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ffffffed, #ffffff99);
+  box-shadow: inset 0 1px 0 #fff, 0 3px 12px #1e40af06;
+}
+.dump-actions { display: flex; flex-wrap: wrap; align-items: start; gap: 10px 16px; margin-top: 0; }
+.dump-actions > a { min-height: 34px; padding: 6px 10px; color: #1d4ed8; border-color: #c6d7f4; background: linear-gradient(#fff, #f1f6ff); box-shadow: inset 0 1px 0 #fff; }
+.dump-actions > details { min-width: 0; max-width: 100%; padding-top: 5px; }
+.dump-actions summary { color: #334c73; }
+
+.school-identity {
+  background: linear-gradient(115deg, #ccfbf1 0%, #f0fdfa 55%, #ecfeff 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 5px 16px -12px #0f766e;
+  border-left: 4px solid #0d9488;
+}
+
+@layer components {
+  .concat-passes { @apply p-4 sm:p-4; }
+  .concat-passes select.input { @apply min-h-8 py-1; }
+  .concat-passes .grid > .flex-col { @apply gap-1; }
+}
+
+@layer components {
+  .mapping-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px 12px; align-items: end; }
+  .mapping-fields label { @apply text-xs leading-4; }
+}

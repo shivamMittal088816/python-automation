@@ -1,0 +1,74 @@
+import { test, expect } from '@playwright/test';
+
+test('sorted-character second round retries only first-round misses and persists results', async ({ page }) => {
+  const errors = [];
+  const rounds = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    if (request.method() === 'POST' && request.url().endsWith('/full-name-class-mapping/run')) rounds.push(request.postDataJSON().round || 1);
+  });
+  const school = 'admission_number,first_name,full_name,classNumber\n101,Alice,Alice Smith,3\n102,Mary,Mary Ann,4\n103,John,John Doe,5\n';
+  const dump = 'admission_number,user_firstname,fullname,user_name,user_id,generated_col,user_edu_class,actual_class\n901,Alice,Alice Smith,alice,0001,alicesmith3,3,3\n902,Myra,Myra Nan,mary,0002,myranan4,4,4\n903,John,Doe John,john,0003,doejohn6,6,6\n';
+  await page.goto('/admission_file_page');
+  await page.getByLabel('Add school file').setInputFiles({ name: 'rounds-school.csv', mimeType: 'text/csv', buffer: Buffer.from(school) });
+  await expect(page.getByText('Loaded: rounds-school.csv', { exact: true })).toBeVisible();
+  await page.getByLabel('Add dump file').setInputFiles({ name: 'rounds-dump.csv', mimeType: 'text/csv', buffer: Buffer.from(dump) });
+  await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeDisabled();
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Save school index', exact: true }).click();
+  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview not matched', exact: true })).toBeVisible();
+  await page.goto('/full_name_class_mapping_page');
+  await expect(page.getByLabel('Full name', { exact: true })).toHaveValue('full_name');
+  await expect(page.getByRole('button', { name: 'Run pass 2', exact: true })).toBeDisabled();
+  const previewRequests = [], previewFailures = [];
+  const isResult = request => new URL(request.url()).pathname.includes('/result-previews/full_name_class/');
+  page.on('request', request => { if (isResult(request)) previewRequests.push(request); });
+  page.on('requestfailed', request => { if (isResult(request)) previewFailures.push(request.failure()?.errorText); });
+  // Keep the result request pending while the post-run metadata refresh completes.
+  await page.route('**/result-previews/full_name_class/**', async route => {
+    await new Promise(resolve => setTimeout(resolve, 700));
+    await route.continue();
+  });
+  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await expect(page.getByLabel('Result group', { exact: true }).locator('option:checked')).toHaveText('Matched (1)');
+  await expect(page.getByRole('cell', { name: 'Alice Smith', exact: true })).toBeVisible();
+  expect(previewRequests).toHaveLength(1);
+  expect(previewFailures).toEqual([]);
+  await expect(page.getByLabel('School full name', { exact: true })).toHaveValue('full_name');
+  await expect(page.getByLabel('Dump full name', { exact: true })).toHaveCount(0);
+  await page.getByLabel('School Class Number', { exact: true }).selectOption('classNumber');
+  await expect(page.getByText(/sort name characters, and compare class numbers/)).toBeVisible();
+  await page.getByRole('button', { name: 'Run pass 2', exact: true }).click();
+  await expect(page.getByLabel('Result group', { exact: true }).locator('option:checked')).toHaveText('Matched (2)');
+  await expect(page.getByRole('cell', { name: 'Mary Ann', exact: true })).toBeVisible();
+  expect(previewRequests).toHaveLength(2);
+  expect(previewFailures).toEqual([]);
+  await page.unroute('**/result-previews/full_name_class/**');
+  await expect(page.getByRole('cell', { name: '0002', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Alice Smith', exact: true })).toBeVisible();
+  await page.getByLabel('Result group', { exact: true }).selectOption('full_name_class_not_matched.xlsx');
+  await expect(page.getByRole('cell', { name: 'John Doe', exact: true })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download CSV', exact: true }).click();
+  const stream = await (await download).createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  expect(Buffer.concat(chunks).toString('utf8')).toContain('John Doe');
+  await page.reload();
+  await expect(page.getByLabel('School Class Number', { exact: true })).toHaveValue('classNumber');
+  await expect(page.getByRole('cell', { name: 'John Doe', exact: true })).toBeVisible();
+  expect(rounds).toEqual([1, 2]);
+  // Rerunning must not append duplicates.
+  await page.getByRole('button', { name: 'Run pass 2', exact: true }).click();
+  await page.getByLabel('Result group', { exact: true }).selectOption('full_name_class_matched.xlsx');
+  await expect(page.getByLabel('Result group', { exact: true }).locator('option:checked')).toHaveText('Matched (2)');
+  await expect(page.getByRole('cell', { name: 'Mary Ann', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: test.info().outputPath('second-round-mobile.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await expect(page.getByLabel('Result group', { exact: true }).locator('option:checked')).toHaveText('Matched (1)');
+  expect(rounds).toEqual([1, 2, 2, 1]);
+  expect(errors).toEqual([]);
+});

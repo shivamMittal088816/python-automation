@@ -1,0 +1,84 @@
+# Local configuration and credentials (publish templates only)
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service-account*.json
+.envrc
+.npmrc
+.pypirc
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+
+# Python environments and generated files
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyc.*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+
+# Private input files, student records, saved workspaces and exports
+/storage/
+storage/
+.tmp/
+tmp/
+backups/
+*.bin
+*.zip
+*.7z
+*.tar
+*.gz
+*.docx
+*.pdf
+*.ods
+*.xlsm
+*.parquet
+*.jsonl
+*.xlsx
+*.xls
+*.csv
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+# Synthetic fixtures are required by tests and the cloning guide
+!frontend/e2e/fixtures/dump.csv
+!frontend/e2e/fixtures/school.csv
+
+# Runtime output may contain filenames, student data or diagnostics
+/logs/
+logs/
+*.log
+
+# Frontend dependencies, builds and browser-test artifacts
+node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+coverage/
+
+# Local editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+.codex/
+.agents/
+*.bak
+*.tmp
