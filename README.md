@@ -1,237 +1,202 @@
-﻿# Student Mapping
+# Student Mapping
 
-Terminology: **Review students** means students who need checking; **Preview screen**
-means the screen used to view any result group. The app?s exact status value remains
-`Review`; API paths, filenames and code identifiers retain their original names.
+A React and FastAPI application for matching school records with existing student
+accounts. It supports admission-number, email, and full-name/class workflows,
+provides paginated previews, and exports mapping results as CSV or Excel files.
 
+## What it does
 
-A React + FastAPI application for matching school CSV/XLSX records with existing
-student accounts using admission numbers, email, or full name and class number.
-Use the Preview screen to view Matched, Review students, and Not matched results and download Excel/CSV exports.
+- Loads school and dump data from CSV/XLSX files or fetches a dump from MySQL.
+- Maps students by admission number, email, or full name plus class.
+- Separates results into **Matched**, **Review**, and **Not matched** groups.
+- Provides searchable, paginated source and result previews.
+- Preserves workflow state while users move between mapping pages.
+- Stores source and result bytes as content-addressed `.bin` snapshots.
+- Expires inactive workflow sessions after 24 hours.
 
-Node.js runs React's Vite tooling; the backend remains Python. Streamlit is not required.
+Mapping is read-only with respect to the main SQL database: classifications are
+not written back automatically.
+
+## Technology
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19, React Router, Vite |
+| Backend | Python 3.12, FastAPI, SQLAlchemy, pandas |
+| Database | MySQL |
+| Files | CSV and XLSX |
+| Testing | Python `unittest` and Playwright |
 
 ## Project structure
 
 ```text
-student-mapping/
-|-- Backend/
-|   |-- routes/         # FastAPI endpoint definitions
-|   |-- api/            # HTTP workspace, file and serialization support
-|   |-- services/       # Mapping algorithms and account checks
-|   |-- repositories/   # SQL lookups and persistence queries
-|   |-- models/         # SQLAlchemy models
-|   |-- config/         # Settings, database engine and request sessions
-|   |-- schemas/        # Pydantic request/response definitions
-|   |-- utils/          # File snapshots, logging and shared helpers
-|   |-- scripts/        # Python CLI and administration tools
-|   |-- tests/          # Backend tests and browser fixture API
-|   `-- main.py         # FastAPI app and factory
-|-- frontend/
-|   |-- src/            # React pages, components, hooks and API client
-|   |-- e2e/            # Playwright tests and synthetic CSV fixtures
-|   |-- docs/           # Frontend UI implementation notes
-|   `-- package.json    # Vite scripts and frontend dependencies
-|-- docs/               # Architecture, workflow and migration documentation
-|-- storage/            # Private runtime files and saved workspaces (ignored)
-|-- logs/               # Runtime logs (ignored)
-|-- .env.example        # Safe backend configuration template
-|-- .gitignore
-|-- pyproject.toml
-|-- uv.lock
-|-- cloning.md          # Complete setup guide
-`-- README.md
+python-api/
+├── Backend/
+│   ├── api/             # Session, snapshot and response infrastructure
+│   ├── config/          # Environment and database configuration
+│   ├── repositories/    # SQL data access
+│   ├── routes/          # FastAPI endpoints
+│   ├── services/        # Mapping logic
+│   ├── tests/           # Backend and API tests
+│   └── main.py          # FastAPI application
+├── frontend/
+│   ├── src/             # React application
+│   └── e2e/             # Playwright scenarios and synthetic fixtures
+├── docs/                # Architecture and workflow documentation
+├── storage/             # Private runtime sessions; ignored by Git
+├── .env.example         # Backend configuration template
+├── pyproject.toml
+└── uv.lock
 ```
-
-Generated dependencies, builds, Python environments and local `.env` files are
-ignored. Runtime files remain outside source folders.
-
-## Mapping API routes
-
-Python route filenames use descriptive `snake_case`; API paths use lowercase
-`kebab-case`. The default API prefix is `/api/v1`. Session-specific endpoints
-follow `/api/v1/mapping/sessions/{session_id}/{resource}`, with an action suffix
-for operations such as `run`, `fetch`, and `reconcile`.
-
-`Backend/routes/file_workflows.py` assembles the routers below from
-`Backend/routes/file_workflow_routes/`. Paths in this table are relative to
-`/api/v1/mapping/sessions/{session_id}`.
-
-| File | Method and path | Purpose |
-| --- | --- | --- |
-| `mapping_sessions.py` | `GET` base path; `PUT /settings` | Read session and update settings |
-| `duplicate_accounts.py` | `POST /duplicate-accounts/reconcile` | Identify Review students with duplicate accounts across mapping stages |
-| `file_inputs.py` | `POST /files/{kind}`; `POST /files/{kind}/path` | Upload or load input files |
-| `file_inputs.py` | `POST /student-dump/fetch`; `PATCH /school` | Fetch the SQL dump and update school details |
-| `admission_mapping.py` | `POST /admission-mapping/run` | Run admission mapping |
-| `admission_mapping.py` | `POST /admission-mapping/move` | Disabled student-move operation (403) |
-| `email_mapping.py` | `POST /email-mapping/run` | Run email mapping |
-| `full_name_class_mapping.py` | `POST /full-name-class-mapping/run` | Run full name + class mapping |
-| `mapping_previews.py` | `GET /table-previews/{kind}`; `GET /result-previews/{stage}/{filename}` | Show inputs and mapping results on the Preview screen |
-| `file_downloads.py` | `GET /downloads/{kind}` | Download input files or mapping results |
-
-Create a session with `POST /api/v1/mapping/sessions` (`mapping_sessions.py`).
-Health and student browsing remain at `/api/v1/mapping/health` and
-`/api/v1/mapping/students` (`student_mapping.py`).
-
-Shared configuration, validation, file-reading, and response helpers live in
-`Backend/api/file_workflow_route_helpers.py`. The frontend uses these renamed
-endpoints; external clients using the former `/file-workflows` URLs must update.
 
 ## Requirements
 
-- Python **3.12** and uv.
-- Node.js **22.12 or newer**, with npm.
-- Existing compatible MySQL data and credentials for SQL fetching and email lookup.
-- Microsoft Edge for the checked-in Windows Playwright configuration.
+- Python `3.12`
+- [uv](https://docs.astral.sh/uv/)
+- Node.js `22.12` or newer
+- npm
+- MySQL access for SQL dump fetching and database-backed email lookup
 
-See [cloning.md](cloning.md) for installation, sample files, platform notes,
-environment settings, and troubleshooting.
-
-## Setup
+## Local setup
 
 From the repository root in PowerShell:
 
 ```powershell
 uv sync --frozen
 Copy-Item .env.example .env
-cd frontend
+
+Set-Location frontend
 npm.cmd ci
 Copy-Item .env.example .env
-cd ..
+Set-Location ..
 ```
 
-Copy templates only for a new checkout; preserve existing configured `.env` files.
-Fill in root `.env` with your database settings. All five `DB_*` fields are required
-at startup, even for file-only work. Uploaded-file admission mapping can run without
-a live SQL connection; SQL fetching and normal email mapping need the real database.
+Fill the root `.env` with your database connection values. Never place database
+credentials in `frontend/.env` or commit a populated environment file.
 
-`frontend/.env` defaults to `VITE_API_BASE_URL=http://127.0.0.1:8000` and
-`VITE_API_PREFIX=/api/v1`. Database credentials belong only in the backend environment.
+For local HTTP development, use:
 
-## Run
+```dotenv
+SESSION_COOKIE_SECURE=false
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
 
-Backend terminal, from the repository root:
+Production must use HTTPS and `SESSION_COOKIE_SECURE=true`.
+
+## Run locally
+
+Start the backend from the repository root:
 
 ```powershell
-cd D:\python-api
 .\.venv\Scripts\python.exe -m uvicorn Backend.main:app --reload --reload-dir Backend
 ```
 
-Frontend terminal, from the repository root:
+Start the frontend in another terminal:
 
 ```powershell
-cd D:\python-api\frontend
+Set-Location frontend
 npm.cmd run dev
 ```
 
-Frontend commands (run either one from `frontend/`):
-
-- `npm run start`: starts Vite directly.
-- `npm run dev`: starts Vite through nodemon, which restarts it when frontend
-  configuration or environment files change.
-
-React and CSS edits update automatically through Vite's hot module replacement in
-both modes; no manual browser refresh is normally needed. Nodemon does not restart
-the entire server for every React edit, allowing React Fast Refresh to preserve
-component state where supported. The Python backend still runs in its own terminal.
-
-| Address | Purpose |
+| URL | Purpose |
 | --- | --- |
-| http://127.0.0.1:5173 | React application |
-| http://127.0.0.1:8000/docs | API documentation |
-| http://127.0.0.1:8000/api/v1/mapping/health | API health; does not check MySQL |
+| `http://127.0.0.1:5173` | React application |
+| `http://127.0.0.1:8000/` | API health check |
+| `http://127.0.0.1:8000/docs` | Interactive API documentation |
 
-Keep both terminals running. Stop each with `Ctrl+C`. Backend settings load from
-root `.env`, so start Python from the repository root.
-
-Startup checks MySQL with a read-only `SELECT 1` and logs **Database connected
-successfully** only when it succeeds. If the connection fails, a warning appears
-and file-only workflows remain available. Uvicorn reports the listening host and
-port; with `--reload`, its reloader may print that address before the worker's
-database check. These messages appear in the backend terminal.
-
-If SQL fetching reports MySQL error `2003` with Windows error `10061`, the
-configured database host/port refused the connection. For local XAMPP, start
-**MySQL** in the XAMPP Control Panel before using **Fetch dump data**. Check that
-its port matches `DB_PORT` in the private root `.env`. Once MySQL is running,
-retry the fetch; restart the backend if you changed `.env` values. This error
-occurs before authentication or the admission query executes.
-
-`StatReload detected changes` is expected when editing Python source with
-`--reload`. The command above restricts watching to `Backend`, avoiding reloads
-caused by changes inside `.venv`. It still reloads for Backend test-file edits.
+If the database is unavailable, the API still starts and file-only workflows
+remain usable. SQL-dependent features report a database error until connectivity
+is restored.
 
 ## Workflow
 
-1. Load the school file and upload a student dump or fetch one by school index.
-   SQL fetches select students (`user_type = '0'`) for the entered school and use a
-   `LEFT JOIN` to attach paid-table admission numbers. Students without paid records
-   remain with blank admissions. Exact normalized duplicates are removed; distinct
-   admissions can still produce multiple rows per student. See
-   [SQL dump selection and counts](docs/MAPPING_WORKFLOW.md#sql-dump-selection-and-counts).
-   An invalid index or
-   database error leaves the currently loaded dump and results unchanged.
-2. Choose the input columns and click **Start admission mapping**.
-3. Open the Preview screen for result groups and download CSV/Excel workbooks.
-4. For admission misses, choose the email and first-name columns and run Email
-   Pass 1. It compares the selected first name with dump `user_firstname`;
-   matching one-character names are sent to Review. Email Pass 2 uses a separately
-   selected full-name column and compares sorted full-name characters.
-5. Optionally use **1st round mapping** for full-name/class concatenation on either
-   remaining Not matched source, then **2nd round mapping** to retry its misses
-   using sorted full-name characters and the selected dump class column.
+```text
+School file + student dump
+            ↓
+   Admission-number mapping
+            ↓
+ Matched / Review / Not matched
+            ↓
+ Email or full-name/class follow-up
+            ↓
+     Preview and download
+```
 
-Opening pages does not start mapping. Saved results and workspace selections remain
-available across navigation. Preview screens are read-only; manual transfers and standalone
-Jobs/Review students pages are unavailable. Mapping does not write classifications back to
-SQL. See the [detailed workflow](docs/MAPPING_WORKFLOW.md).
+1. Load a school file.
+2. Upload a dump or fetch it using the school index.
+3. Select the relevant columns and run admission mapping.
+4. Review and download the generated result groups.
+5. Optionally process remaining records through email or full-name/class mapping.
+
+Students without admission numbers cannot participate in admission-number matching
+and are classified for follow-up rather than silently removed. A failed SQL fetch
+does not replace the currently loaded dump or its existing results.
+
+See [Mapping workflow](docs/MAPPING_WORKFLOW.md) for matching rules and data flow.
+
+## Sessions and stored files
+
+The browser receives an HTTP-only session cookie; the session identifier is not
+carried in mapping API URLs. The backend stores each workflow under:
+
+```text
+storage/temp/workflow_sessions/<session-id>/
+├── state.json
+└── <sha256>.bin
+```
+
+`state.json` links logical inputs and exports to their content-addressed snapshots.
+Unchanged bytes reuse the same hash, while changed results receive new snapshot
+references. Sessions inactive for 24 hours are removed with their complete folder.
+
+See [Session and data flow](docs/SESSION_AND_DATA_FLOW.md) for details.
+
+## API overview
+
+All workflow endpoints use the `/api/v1/mapping` prefix and cookie-based sessions.
+
+| Method and route | Purpose |
+| --- | --- |
+| `POST /session` | Create a workflow session and set its cookie |
+| `GET /session` | Restore the current session |
+| `POST /files/{kind}` | Upload a source file |
+| `POST /student-dump/fetch` | Fetch dump data for a school index |
+| `POST /admission-mapping/run` | Run admission mapping |
+| `POST /email-mapping/run` | Run email mapping |
+| `POST /full-name-class-mapping/run` | Run full-name/class mapping |
+| `GET /table-previews/{kind}` | Search and paginate source data |
+| `GET /result-previews/{stage}/{filename}` | Preview a result group |
+| `GET /downloads/{kind}` | Download a source or result file |
+
+The complete request and response schemas are available through `/docs` while the
+backend is running.
 
 ## Verification
 
-Python tests, from the root:
+Run the backend suite from the repository root:
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m unittest discover -s Backend/tests -v
+.\.venv\Scripts\python.exe -B -m unittest discover -s Backend/tests -p "test_*.py"
 ```
 
-Frontend tests and build, from `frontend/`:
+Run the frontend browser tests and production build:
 
 ```powershell
+Set-Location frontend
 npm.cmd test
 npm.cmd run build
 ```
 
-Browser tests start a fixture API on 8123 and Vite on 5173. If your normal frontend
-is using 5173, use the alternate configuration on 5174:
-
-```powershell
-npm.cmd test -- --config=playwright.feature-removal.config.js
-```
-
-Tests use synthetic fixtures and isolated storage rather than live MySQL data.
-The browser launcher currently uses Windows Python paths and Microsoft Edge.
-
-## CLI and administration
-
-From the root:
-
-```powershell
-.\.venv\Scripts\python.exe -m Backend.scripts.admission_mapping_cli --help
-.\.venv\Scripts\python.exe -m Backend.scripts.admission_mapping_cli --school school.csv --dump dump.csv --output results.xlsx
-```
-
-Direct execution of `Backend/scripts/admission_mapping_cli.py` is also supported.
-`Backend/scripts/init_db.py` is an optional database-writing administration command;
-it creates the ORM `students` table, not the external SQL lookup schema. It is not
-a normal installation or startup step.
+The current verified baseline is 128 backend tests and 18 browser tests passing,
+with a successful production frontend build. Browser tests use synthetic fixtures
+and isolated workflow storage rather than production data.
 
 ## Documentation
 
-- [Clone and run](cloning.md)
-- [Code flow and architecture](docs/CODE_FLOW.md)
+- [Complete installation guide](cloning.md)
 - [Mapping workflow](docs/MAPPING_WORKFLOW.md)
-- [Structure migration and path map](docs/STRUCTURE_MIGRATION.md)
-- [Frontend UI notes](frontend/docs/UI_REFINEMENT.md)
+- [Session and data flow](docs/SESSION_AND_DATA_FLOW.md)
+- [Code flow and architecture](docs/CODE_FLOW.md)
+- [Automated dump query](docs/AUTOMATED_DUMP_RETRIEVAL_QUERY.md)
+- [Website test report](docs/WEBSITE_TEST_REPORT.md)
 - [GitHub publishing safety](docs/GITHUB_SAFETY.md)
-- [Historical cleanup report](docs/CLEANUP_REPORT.md)
