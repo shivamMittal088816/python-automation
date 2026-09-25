@@ -17,8 +17,8 @@ Paths below are relative to the repository root unless an absolute path is shown
 | React `WorkspaceContext`: `workspace` state | Session API summary: files, settings, counts, versions and progress | No; restored through the session API |
 | React `WorkspaceContext`: `metadataCache` ref | Small metadata responses for mapping forms, plus shared pending requests | No; fetched again when needed |
 | Individual React components | Draft selections, loading/error state and fetched Preview screen rows | No; lifecycle depends on the component |
-| Browser `sessionStorage` | Selected Preview screen preferences such as page, search, worksheet and result group, through `useSessionValue` | Generally yes within the same tab |
-| Backend `state.json` | Saved workflow settings, signatures, workspace ID, file metadata and snapshot references | Yes, provided backend storage is retained |
+| Browser `sessionStorage` | Preview preferences and uncommitted mapping-form drafts, keyed by workspace and source version through `useSessionValue` | Yes within the same tab, until the key changes |
+| Backend `state.json` | Saved workflow settings, signatures, workspace ID, revision, file metadata and snapshot references | Yes, provided backend storage is retained |
 | Backend `.bin` snapshots | Uploaded file bytes and generated result workbook bytes | Yes, provided backend storage is retained |
 
 The complete workflow is not stored in browser local storage. Preview screen preferences
@@ -56,14 +56,14 @@ The API client uses `credentials: 'include'`, so the browser sends the session
 cookie with requests. A new session starts empty; supplying a school index when
 creating it does not automatically fetch a dump.
 
-There is also a startup check for the `school` URL query parameter. If it is present
-and differs from the restored dump's school index, the frontend creates a new
-session. Other startup errors are shown with a Retry button rather than silently
-creating a replacement session.
+The `school` URL query parameter is used only when a new session must be created.
+It does not replace a valid cookie-backed workspace when an older tab reloads.
+Other startup errors are shown with a Retry button rather than silently creating
+a replacement session.
 
 **The response is a summary derived from `state.json`, not the raw file.** It includes:
 
-- `workspace_id` and file metadata, including versions and available worksheets.
+- `workspace_id`, monotonic `revision`, and file metadata, including versions and available worksheets.
 - Saved settings and admission configuration.
 - Counts and versions of exported result groups.
 - Email readiness, committed mapping columns and pass/round progress.
@@ -132,10 +132,10 @@ After:  matched.xlsx → hash-C.bin    review.xlsx → hash-B.bin
 ```
 
 Invalidation or replacement **delinks** an old snapshot by removing/changing its
-manifest reference. Delinking makes it inaccessible through the workflow but does
-not immediately delete its `.bin`; unreferenced snapshots remain until the entire
-session folder is removed after expiry. This is why files physically present in
-the folder are not necessarily current workflow files.
+manifest reference. After the new manifest is atomically published, the storage
+layer removes `.bin` files no longer referenced by any current input or export and
+removes abandoned `.pending` snapshot files. Cleanup never runs before publication,
+so a failed write cannot remove snapshots still required by the active manifest.
 
 ### Loading, validation and search
 
@@ -165,17 +165,18 @@ them again. The backend rebuilds the filtered data temporarily for each request.
 
 ### Cleanup boundary
 
-After 24 hours without activity, cleanup deletes the complete session folder:
-`state.json`, referenced snapshots, and unreferenced snapshots together. Individual
-delinked `.bin` files are not currently garbage-collected earlier.
+After every successful manifest publication, snapshot garbage collection removes
+unreferenced `.bin` and `.pending` files. After 24 hours without activity, session
+cleanup deletes the complete remaining folder, including `state.json` and all
+referenced snapshots.
 
 ## 4. How a user operation updates the app
 
 For an operation such as upload, dump fetch or mapping:
 
 1. The user clicks the operation button.
-2. React sends the API request and shows the busy state.
-3. The backend loads the session, performs the operation and updates its state.
+2. React sends the API request with the current `X-Workspace-Revision` and shows the busy state.
+3. The backend locks the workspace, checks that revision, performs the operation and updates its state.
 4. Saved file bytes are written as snapshots. The manifest is written to
    `state.pending.json`, then replaces `state.json`.
 5. The API returns the updated summary.
@@ -193,11 +194,17 @@ This does **not** make browser memory and disk one atomic transaction. If saving
 succeeds but the response is lost, the browser can still show old data. The frontend
 tries to reload the session after operation errors. Refreshing also reloads it.
 
-The workspace context manager saves in a `finally` block. Therefore an endpoint
-that mutates state before an error can persist those changes; there is no universal
-rollback for all operations. SQL dump fetch avoids that risk by validating and
-fetching first, then replacing the previous dump and admission exports only after
-success. Admission mapping works on a copied state and commits it on success.
+The workspace context manager publishes state only when the endpoint exits
+successfully. Exceptions do not save the in-memory mutation. SQL dump fetch also
+validates and fetches before replacing the previous dump and results, while
+Admission mapping works on a copied state and commits it on success.
+
+Every successful mutation increments the workspace revision. A request carrying a
+stale revision receives `409 Conflict` before it can mutate or publish state. The
+frontend then reloads the current summary and asks the user to review and retry.
+Read-only session, preview and download requests do not increment the revision or
+rewrite the manifest; valid reads only refresh the manifest modification time used
+for inactivity expiry.
 
 The lock is local to one backend process, not a lock shared by multiple servers.
 
@@ -376,13 +383,14 @@ Changing keys removes old entries. An old request finishing later cannot overwri
 the current entry. Navigating away does not cancel a shared metadata request, so
 returning while it is pending can reuse it.
 
-An Admission rerun invalidates school-related metadata entries and increments the
-local revision. A new workspace changes all keys. Refreshing the browser clears
-every React cache entry.
+An Admission rerun invalidates school-related metadata entries through the updated
+workspace response. A new workspace or source version changes the relevant keys.
+Refreshing the browser clears every React cache entry.
 
-This cache is local to the current page lifetime. There is no cross-tab push
-synchronization: a change made elsewhere is detected when this tab receives an
-updated workspace summary, such as on reload.
+This cache is local to the current page lifetime. Tabs sharing the cookie announce
+successful mutations through `BroadcastChannel`; another tab reloads its summary
+when idle. Focus and visibility changes also trigger a refresh. Backend revision
+checks remain authoritative if notifications are delayed or unavailable.
 
 ## 10. Reload, expiry and storage suitability
 

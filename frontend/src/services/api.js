@@ -1,4 +1,10 @@
-const host = (import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`).replace(/\/$/, '');
+const defaultHost = import.meta.env.DEV
+  ? `${window.location.protocol}//${window.location.hostname}:8000`
+  : window.location.origin;
+const configuredHost = import.meta.env.PROD
+  ? import.meta.env.VITE_PRODUCTION_API_BASE_URL
+  : import.meta.env.VITE_API_BASE_URL;
+const host = (configuredHost || defaultHost).replace(/\/$/, '');
 const prefix = (import.meta.env.VITE_API_PREFIX || '/api/v1').replace(/^\/?/, '/').replace(/\/$/, '');
 export const API_BASE_URL = `${host}${prefix}`;
 

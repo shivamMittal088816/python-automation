@@ -1,4 +1,4 @@
-# Website test report — 24 September 2026
+# Website test report — 25 September 2026
 
 Reference: [Session and data flow](SESSION_AND_DATA_FLOW.md).
 
@@ -6,7 +6,7 @@ Reference: [Session and data flow](SESSION_AND_DATA_FLOW.md).
 
 - **18 browser tests passed**, using a separate visible Edge browser and isolated fixture sessions.
 - The production frontend build completed successfully.
-- **128 backend tests passed**.
+- **131 backend tests passed**.
 - No stale UI data was found in the covered browser scenarios. A regression test was
   added for failed/successful SQL dump replacement and result invalidation.
 
@@ -15,9 +15,10 @@ Reference: [Session and data flow](SESSION_AND_DATA_FLOW.md).
 | Area | Verification |
 |---|---|
 | Session lifecycle | Cookie transport, creation, restoration, reload, reopening a tab and inactivity expiry |
+| Concurrency | Shared-session tab refresh plus rejection of a deliberately stale mutation with HTTP 409 |
 | Saved school index | SQL fixture fetch restores the saved index after reload; unsubmitted typing does not overwrite it |
 | SQL replacement | Failed lookup preserves the loaded dump/results; successful replacement clears stale downstream results |
-| Files and storage | CSV/XLSX workflows, upload and local-path loading, saved identifiers, manifest persistence and source invalidation |
+| Files and storage | CSV/XLSX workflows, upload and local-path loading, saved identifiers, read-only GET behavior, manifest persistence, snapshot garbage collection and source invalidation |
 | Admission mapping | Name comparisons, single-character Review checks, duplicates, result Preview screens and downloads |
 | Email mapping | Direct school-file input, separate dump, matching rules and downstream invalidation |
 | Class concatenation | Direct school-file input, concatenated-key matching, saved results and downloads |
@@ -72,7 +73,7 @@ and the local browser application:
   index `22` dump.
 - The focused normalization and failed-fetch preservation tests passed.
 
-A later full backend-suite run passed all 128 tests.
+A later full backend-suite run passed all 131 tests.
 
 ### Subsequent admission left-join verification
 

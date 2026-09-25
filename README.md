@@ -84,6 +84,30 @@ CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
 Production must use HTTPS and `SESSION_COOKIE_SECURE=true`.
 
+## Production deployment
+
+Build the frontend once, then let FastAPI serve the compiled SPA and API from the
+same origin. Do not run the Vite development server in production.
+
+```powershell
+Set-Location frontend
+npm.cmd ci
+npm.cmd run build
+Set-Location ..
+
+$env:SERVE_FRONTEND = 'true'
+.\.venv\Scripts\python.exe -m uvicorn Backend.main:app --host 0.0.0.0 --port 8000
+```
+
+Open the HTTPS URL handled by the production reverse proxy. Direct URLs such as
+`/email_mapping_page` return the compiled `index.html`, so refresh and bookmarks
+work. Hashed `/assets/` files receive immutable caching; HTML is revalidated.
+Production bundles use the current page origin for `/api/v1` by default, preventing
+a developer `frontend/.env` URL from being embedded. Set
+`VITE_PRODUCTION_API_BASE_URL` only for an intentional cross-origin deployment.
+
+Startup fails clearly when `SERVE_FRONTEND=true` but `frontend/dist` is missing.
+
 ## Run locally
 
 Start the backend from the repository root:
@@ -196,7 +220,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current verified baseline is 128 backend tests and 18 browser tests passing,
+The current verified baseline is 131 backend tests and 18 browser tests passing,
 with a successful production frontend build. Browser tests use synthetic fixtures
 and isolated workflow storage rather than production data.
 

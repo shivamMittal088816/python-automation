@@ -26,6 +26,11 @@ the session ID is never placed in API URLs.
 | `POST /api/v1/mapping/session` | Create a session and set the cookie when GET finds no usable session. |
 | `POST /api/v1/mapping/configuration-preview` | Validate draft selections without committing them. |
 
+Every mutation request also sends the summary's current revision in the
+`X-Workspace-Revision` header. A stale revision returns HTTP 409 without changing
+the workspace. GET previews, downloads and session restoration are read-only with
+respect to logical state and do not advance that revision.
+
 ```mermaid
 sequenceDiagram
     participant UI as React browser
@@ -40,10 +45,16 @@ sequenceDiagram
         API->>Disk: Create state.json
         API-->>UI: Set cookie + empty workspace summary
     end
-    UI->>API: Upload, fetch, map, preview, or download
+    UI->>API: Mutation + X-Workspace-Revision, or read-only GET
     API->>Disk: Read current state/snapshots
-    API->>Disk: Write changed snapshots, then atomically replace state.json
-    API-->>UI: Updated summary or requested page/file
+    alt Current mutation revision
+        API->>Disk: Write changed snapshots, atomically replace state.json, collect unreferenced snapshots
+        API-->>UI: Updated summary with incremented revision
+    else Stale mutation revision
+        API-->>UI: 409 Conflict; no state change
+    else Read-only request
+        API-->>UI: Requested summary/page/file without a revision change
+    end
 ```
 
 Email and class-mapping source metadata is cached in React while its source,
@@ -58,8 +69,8 @@ Email and Class results; rerunning Email clears Class results.
 | Location | Responsibility |
 |---|---|
 | HTTP-only cookie | Carries the opaque workflow session ID. |
-| Browser `sessionStorage` | Remembers UI choices such as search, columns, page, and page size for the tab. |
-| Session `state.json` | Manifest of settings, metadata, and references to snapshots. |
+| Browser `sessionStorage` | Remembers Preview preferences and uncommitted mapping drafts for the tab; workspace/source-version keys prevent stale draft reuse. |
+| Session `state.json` | Manifest of workspace identity, revision, settings, metadata, and references to snapshots. |
 | Session `.bin` files | Content-addressed bytes for CSV/XLSX inputs and generated workbooks. |
 | React context cache | Avoids repeated metadata calls until a dependency changes or the page refreshes. |
 
@@ -76,9 +87,10 @@ dependent results; it never edits the original uploaded file.
 
 `state.json` is the logical source of truth: it identifies which hash-named
 `.bin` belongs to each input and result. Unchanged bytes reuse their snapshot;
-changed bytes create a new hash and the manifest link moves to it. The old file
-is then **delinked**, not immediately deleted. After 24 hours of inactivity, the
-entire session folder removes the manifest plus linked and unlinked snapshots.
+changed bytes create a new hash and the manifest link moves to it. After the new
+manifest is published, the old **delinked** snapshot and abandoned pending files
+are garbage-collected. After 24 hours of inactivity, the complete remaining
+session folder is removed.
 
 ### SQL dump selection and counts
 
@@ -475,20 +487,14 @@ state.json
   └── admission_exports
 ```
 
-The Email result `.bin` still may physically exist, but it is no longer accessible through the workflow because `state.json` no longer references it.
-
-This is an important distinction:
-
-```
-Delinked ≠ immediately deleted
-```
+The Email result becomes inaccessible as soon as the published `state.json` no
+longer references it. The post-publication garbage collector then removes its
+unreferenced `.bin` file.
 
 > [!IMPORTANT]
-> The application currently deletes the entire workflow folder after 24 hours of inactivity, which removes `state.json` and all its `.bin` files.
->
-> However, based on the current storage implementation, individual unreferenced `.bin` files are not immediately garbage-collected when they become delinked. They remain until the session expires and the complete folder is deleted.
->
-> Therefore, the documentation should not claim that old `.bin` files are deleted immediately after replacement.
+> Garbage collection runs only after the replacement manifest is safely published.
+> It removes unreferenced `.bin` snapshots and abandoned `.pending` files. The
+> complete workflow folder is still deleted after 24 hours of inactivity.
 
 ### 6. Loading a snapshot
 

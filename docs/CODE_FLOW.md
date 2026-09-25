@@ -23,7 +23,10 @@ flowchart TD
 ```
 
 `Backend/main.py` retains `app` and `create_app()`, registers health/student browsing
-plus `file_workflows`, and adds configured CORS. The backend does not import frontend code. React never imports Python or handles SQL/Excel matching.
+plus `file_workflows`, and adds configured CORS. Mapping responses disable caching,
+carry `X-Request-ID` and `Server-Timing`, and emit method/path/status/duration/request-ID
+completion logs for operational tracing. The backend does not import frontend code.
+React never imports Python or handles SQL/Excel matching.
 Its shared HTTP client reads `VITE_API_BASE_URL` and `VITE_API_PREFIX`, serializes
 query values, passes JSON/FormData, and displays API/network errors.
 
@@ -38,15 +41,24 @@ named-school files. Backend restarts preserve unexpired disk-backed workspaces.
 `WorkspaceContext` shares file metadata, mapping settings, counts and workbook
 versions across file pages. The backend retains actual inputs, workbooks and
 signatures in `storage/temp/workflow_sessions/{uuid}`. Manifests publish after
-referenced snapshots exist. `StoredFile` reconstructs snapshot bytes. Sessions
+referenced snapshots exist, then unreferenced snapshots are garbage-collected.
+`StoredFile` reconstructs snapshot bytes. Sessions
 expire after 24 hours of inactivity. Existing school folders are left untouched.
 An in-process lock serializes one-worker development operations; there is no
 multiworker lock.
 
-`useSessionValue` keeps Preview screen groups, pages, searches, scope and source choice across navigation and refresh. `useRequest` fetches
+`useSessionValue` keeps Preview screen preferences and uncommitted mapping drafts
+within the current tab. Draft keys include workspace/source identity so replaced
+files and workspaces do not reuse stale selections. `useRequest` fetches
 visible tables and ignores responses from obsolete requests while allowing them to finish normally. Workbook/file content hashes drive
 refresh when data changes without changing its row count. Busy state prevents
 repeated mapping submits and API errors remain visible.
+
+Mutation services send `X-Workspace-Revision`. The backend rejects stale writes
+with HTTP 409, and `WorkspaceContext` reloads current state before asking the user
+to retry. Successful mutations are announced to other tabs with `BroadcastChannel`;
+focus and visibility refreshes provide a fallback. GET previews and downloads do
+not advance revisions or rewrite manifests.
 
 ## Admission mapping
 
@@ -177,7 +189,8 @@ workbooks unchanged.
 The browser suite covers seven file-workflow pages, read-only Preview screens, downloads,
 source browsing, loading/error states, SQL dump fetching and responsive navigation.
 It also verifies the sidebar omits Jobs/Review students and former page URLs redirect to
-Admission mapping. `npm run build` validates the remaining frontend imports.
+Admission mapping. A two-tab scenario verifies refresh notification and stale-write
+409 handling. `npm run build` validates the remaining frontend imports.
 
 Tests use fixture repositories and isolated storage; they do not claim live MySQL
 or production-data acceptance. [CLEANUP_REPORT.md](CLEANUP_REPORT.md) describes the

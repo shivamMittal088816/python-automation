@@ -21,9 +21,12 @@ this SameSite configuration. Unsafe requests from foreign origins are rejected.
 The JSON workspace_id is a separate non-secret UI identifier; it cannot be used
 to access a backend session. The old studentMappingSession storage key is removed
 on startup. Cookies are shared across browser tabs, so tabs share the active
-workflow. Uploads, settings, mapping algorithms, downloads, and inactivity expiry
-retain their existing behavior. Named-school restore has since been removed;
-new sessions start empty.
+workflow. Each mutation sends the current `X-Workspace-Revision`; stale writes are
+rejected with HTTP 409 and the client refreshes its summary. Tabs also announce
+successful changes with `BroadcastChannel` and refresh on focus/visibility changes.
+Uploads, settings, mapping algorithms, downloads, and inactivity expiry retain
+their existing behavior. Named-school restore has since been removed; new sessions
+start empty.
 
 This change does not add login or school authorization. Those remain necessary
 before exposing saved school data to untrusted production users.

@@ -1,21 +1,21 @@
 # Workflow module guide
 
-The existing Backend and frontend directory structure is unchanged. Modules are
-grouped by responsibility within the existing folders. Mapping service rules,
-HTTP endpoints, session storage format and response fields are unchanged.
+The Backend and frontend modules are grouped by responsibility within the existing
+folders. Mapping service rules remain in the service layer; the workflow HTTP and
+storage contracts now include workspace revisions and snapshot cleanup.
 
 ## Backend responsibilities
 
 | Module | Responsibility |
 | --- | --- |
-| `Backend/api/file_workflow_state.py` | Session creation, expiry, locking and workflow access |
-| `Backend/api/file_workflow_session_storage.py` | Save and load session manifests and file snapshots |
-| `Backend/api/session_cookie.py` | Session cookie handling and request-origin checks |
+| `Backend/api/file_workflow_state.py` | Session creation, expiry, locking, revision checks and success-only workflow persistence |
+| `Backend/api/file_workflow_session_storage.py` | Atomic manifest publication, snapshot loading and unreferenced snapshot garbage collection |
+| `Backend/api/session_cookie.py` | Session cookie handling, request-origin checks and the workspace revision header dependency |
 | `Backend/api/file_workflow_constants.py` | Input, stage and source names |
 | `Backend/api/file_workflow_validation.py` | HTTP validation errors and required school identity |
 | `Backend/api/file_workflow_snapshots.py` | Input registration, file reading and worksheet selection |
 | `Backend/api/file_workflow_configuration.py` | Column suggestions and committed admission configuration |
-| `Backend/api/file_workflow_responses.py` | Workspace summaries, run metadata and paged responses |
+| `Backend/api/file_workflow_responses.py` | Workspace summaries with identity/revision, run metadata and paged responses |
 | `Backend/utils/workbook_operations.py` | Workbook conversion, status normalization and manual row transfers |
 | `Backend/utils/table_queries.py` | Literal search, header lookup and pagination |
 | `Backend/utils/school_statistics.py` | School identity inference and class/section statistics |
@@ -34,6 +34,12 @@ Admission, email, full-name/class and account-uniqueness logic remains in the
 existing `Backend/services` subfolders. Database queries remain in repositories;
 request/response models remain in schemas. Frontend pages, components, hooks and
 API clients retain their existing locations.
+
+`frontend/src/context/WorkspaceContext.jsx` normalizes workspace responses, sends
+revisions through mutation callbacks, refreshes after 409 conflicts and coordinates
+same-session tabs. `frontend/src/services/api.js` owns revision headers and error
+normalization. Email and full-name/class services expose direct named run functions;
+the obsolete object-style API wrapper is no longer supported.
 
 ## Naming conventions
 

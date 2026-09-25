@@ -2,12 +2,14 @@
 
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
@@ -21,6 +23,7 @@ from Backend.routes.file_workflows import router as file_workflows_router
 
 
 logger = logging.getLogger("uvicorn.error")
+FRONTEND_DIST = Path(__file__).resolve().parents[1] / 'frontend' / 'dist'
 
 
 def check_database_connection():
@@ -58,7 +61,8 @@ def create_app():
                          exc_info=(type(exc), exc, exc.__traceback__))
         return JSONResponse(status_code=500, content={'detail': 'An unexpected server error occurred. Please try again.'})
 
-    app.add_api_route("/", health, methods=["GET"], tags=["Health"])
+    if not settings.SERVE_FRONTEND:
+        app.add_api_route("/", health, methods=["GET"], tags=["Health"])
 
     app.include_router(
         student_mapping_router,
@@ -76,6 +80,10 @@ def create_app():
         response.headers['Server-Timing'] = f'app;dur={duration_ms:.1f}'
         if request.url.path.startswith(settings.API_V1_PREFIX + '/mapping'):
             response.headers['Cache-Control'] = 'no-store'
+        elif settings.SERVE_FRONTEND and request.url.path.startswith('/assets/'):
+            response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
+        elif settings.SERVE_FRONTEND and response.headers.get('content-type', '').startswith('text/html'):
+            response.headers['Cache-Control'] = 'no-cache'
         logger.info('%s %s completed status=%s duration_ms=%.1f request_id=%s',
                     request.method, request.url.path, response.status_code, duration_ms, request_id)
         return response
@@ -88,6 +96,25 @@ def create_app():
         allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID"],
         expose_headers=["Content-Disposition", "X-Request-ID", "Server-Timing"],
     )
+
+    if settings.SERVE_FRONTEND:
+        index = FRONTEND_DIST / 'index.html'
+        assets = FRONTEND_DIST / 'assets'
+        if not index.is_file() or not assets.is_dir():
+            raise RuntimeError('Frontend build is missing. Run `npm run build` in frontend/ before starting production.')
+        app.mount('/assets', StaticFiles(directory=assets), name='frontend-assets')
+
+        @app.get('/{path:path}', include_in_schema=False)
+        async def frontend_application(path: str):
+            if path == settings.API_V1_PREFIX.lstrip('/') or path.startswith(settings.API_V1_PREFIX.lstrip('/') + '/'):
+                raise HTTPException(404, 'Not Found')
+            candidate = (FRONTEND_DIST / path).resolve()
+            if candidate.parent == FRONTEND_DIST.resolve() and candidate.is_file():
+                return FileResponse(candidate)
+            # BrowserRouter routes all receive the application entry point.
+            if Path(path).suffix:
+                raise HTTPException(404, 'Not Found')
+            return FileResponse(index)
 
     return app
 

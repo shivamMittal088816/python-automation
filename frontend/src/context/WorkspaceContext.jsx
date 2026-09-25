@@ -11,22 +11,29 @@ export const useWorkspace = () => useContext(WorkspaceContext);
 // upgraded. Every page can rely on these collections existing.
 function normalizeWorkspace(data) {
   if (!data) return data;
+  const record = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const exports = record(data.exports);
+  const versions = record(data.export_versions);
+  const runColumns = record(data.run_columns);
   return {
     ...data,
     revision: Number.isInteger(data.revision) ? data.revision : 0,
-    files: data.files || {},
-    settings: data.settings || {},
+    files: record(data.files),
+    settings: record(data.settings),
     exports: {
-      admission: {}, email: {}, full_name_class: {},
-      ...(data.exports || {}),
+      admission: record(exports.admission),
+      email: record(exports.email),
+      full_name_class: record(exports.full_name_class),
     },
     export_versions: {
-      admission: {}, email: {}, full_name_class: {},
-      ...(data.export_versions || {}),
+      admission: record(versions.admission),
+      email: record(versions.email),
+      full_name_class: record(versions.full_name_class),
     },
     run_columns: {
-      admission: {}, email: {}, full_name_class: {},
-      ...(data.run_columns || {}),
+      admission: record(runColumns.admission),
+      email: record(runColumns.email),
+      full_name_class: record(runColumns.full_name_class),
     },
   };
 }
