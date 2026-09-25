@@ -1,4 +1,4 @@
-"""Regression checks for admission-to-email handoff and saved results."""
+"""Regression checks for independent school-file email mapping and saved results."""
 from io import BytesIO
 from pathlib import Path
 import sys
@@ -59,7 +59,7 @@ class EmailHandoffTests(unittest.TestCase):
         sync_email_stage(self.state)
         self.assertNotIn('email_exports', self.state)
 
-    # Email mapping is available for any school with Not matched students.
+    # Email mapping availability depends on the school file, not admission results.
     def test_email_stage_does_not_require_school_setting_or_confirmation(self):
         self.assertTrue(sync_email_stage(self.state))
         self.state["email_result_signature"] = (self.state["email_source_signature"], "email", "first", "email_first_name_school_v12", "914")
@@ -69,9 +69,9 @@ class EmailHandoffTests(unittest.TestCase):
         self.assertTrue(sync_email_stage(self.state))
         self.assertIn("email_exports", self.state)
         self.state["admission_exports"]["not_matched.xlsx"]["count"] = 0
-        self.assertFalse(sync_email_stage(self.state))
-        self.assertNotIn("saved_email_dump", self.state)
-        self.assertNotIn("email_exports", self.state)
+        self.assertTrue(sync_email_stage(self.state))
+        self.assertIn("saved_email_dump", self.state)
+        self.assertIn("email_exports", self.state)
         self.assertIn("not_matched.xlsx", self.state["admission_exports"])
 
     # Create independent school, dump and handoff fixtures for each test.
@@ -82,6 +82,7 @@ class EmailHandoffTests(unittest.TestCase):
                                   "user_firstname": ["Alice", "Bob", "Dan", "Don"], "user_id": ["1", "2", "3", "4"]})
         self.dump["user_edu_school"] = "914"
         self.state = {
+            "saved_admission_school": {"name": "school.csv", "data": self.school.to_csv(index=False).encode()},
             "admission_exports": {
                 "review.xlsx": build_workbook(self.school.iloc[:0], "Review"),
                 "not_matched.xlsx": build_workbook(self.school, "Not matched"),
@@ -213,7 +214,7 @@ class EmailHandoffTests(unittest.TestCase):
             "first name missing in school file", "first name missing in dump",
         ])
 
-    # Invalidate email data when the admission misses change.
+    # Invalidate email data when the school file changes, not admission results.
     def test_gate_and_invalidation(self):
         self.state["admission_exports"]["review.xlsx"]["count"] = 1
         self.assertTrue(sync_email_stage(self.state))
@@ -223,9 +224,12 @@ class EmailHandoffTests(unittest.TestCase):
         self.assertIn("email_exports", self.state)
         self.state["admission_exports"]["not_matched.xlsx"] = build_workbook(self.school.iloc[:1], "Not matched")
         sync_email_stage(self.state)
-        self.assertNotIn("email_exports", self.state)
+        self.assertIn("email_exports", self.state)
         self.state["admission_exports"]["not_matched.xlsx"]["count"] = 0
-        self.assertFalse(sync_email_stage(self.state))
+        self.assertTrue(sync_email_stage(self.state))
+        self.state["saved_admission_school"]["data"] = self.school.iloc[:1].to_csv(index=False).encode()
+        sync_email_stage(self.state)
+        self.assertNotIn("email_exports", self.state)
 
     # Round-trip admission and email files independently through session storage.
     def test_persistent_email_results(self):
@@ -245,7 +249,7 @@ class EmailHandoffTests(unittest.TestCase):
             self.assertTrue(sync_email_stage(restored))
             self.assertEqual(restored["email_exports"]["email_matched.xlsx"]["count"], 1)
             self.assertNotIn("email_matched.xlsx", restored["admission_exports"])
-            restored["admission_exports"]["not_matched.xlsx"] = build_workbook(self.school.iloc[:1], "Not matched")
+            restored["saved_admission_school"] = dict(restored["saved_admission_school"]) | {"data": self.school.iloc[:1].to_csv(index=False).encode()}
             sync_email_stage(restored)
             storage.save_state(folder, restored)
             self.assertNotIn("email_exports", storage.load_state(folder))

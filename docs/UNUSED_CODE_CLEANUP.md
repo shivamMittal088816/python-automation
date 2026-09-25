@@ -29,7 +29,7 @@ rest of that mapping implementation. Runtime files and logs were not deleted.
 - No missing backend import paths or unused frontend imports were found.
 - Frontend production build passes.
 - Browser suite: 4 passed, 5 failed out of 9. All five failures look for
-  `Start admission mapping`; the unchanged admission form renders `Run pass 1`.
+  `Start admission mapping`; the admission form now renders `Run mapping`.
   Passing checks cover draft-column behavior, session navigation, removed routes,
   and file-path/SQL-loading/error/responsive navigation behavior. The stale
   browser selectors were not changed as part of this unused-code cleanup.
@@ -49,7 +49,7 @@ numbers and matching school identities. Assertions verify unchanged pass-two
 workbooks and the actual duplicate-account Review students reason, rather than only counts.
 All 119 backend tests pass.
 
-Browser tests use the current Run pass 1 / Run pass 2 buttons, save school identity
+Browser tests use the current single-pass Run mapping buttons, save school identity
 before mapping, and check the current help text, result counts and school identity
 display. The shared dump fixture includes user_edu_school so the email tests
 exercise successful same-school matching. These corrections do not change

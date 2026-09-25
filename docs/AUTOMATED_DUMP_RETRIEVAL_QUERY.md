@@ -10,15 +10,14 @@ retrieval queries. The application uses MySQL through SQLAlchemy and PyMySQL.
 | Query | Tables | Trigger / implementation | Guide |
 |---|---|---|---|
 | School name lookup | `users_schools` | Admission fetch: `fetch_school_dump()`, `SCHOOL_NAME_QUERY` | [Admission](#admission-dump) |
-| Admission dump SELECT, including nested validity lookup | `users`, `paid_users` | Admission fetch: `fetch_school_dump()`, `SCHOOL_DUMP_QUERY` | [Admission](#admission-dump) |
-| Email lookup, repeated per batch | `users` | Email Pass 1: `fetch_email_dump()`, `QUERY` | [Email](#email-dump) |
+| Admission dump SELECT | `users`, `paid_users` | Admission fetch: `fetch_school_dump()`, `SCHOOL_DUMP_QUERY` | [Admission](#admission-dump) |
+| Email lookup, repeated per batch | `users` | Email mapping: `fetch_email_dump()`, `QUERY` | [Email](#email-dump) |
 | Student browse SELECT, with optional cursor | `users` | `UserStudentRepository.get_students()` | [Student browsing](#student-browsing) |
 | `SELECT 1` | None | Application startup: `check_database_connection()` | [Connection and schema](#connection-and-schema) |
 | Generated schema checks / CREATE TABLE / CREATE INDEX | `students` | Optional `Backend/scripts/init_db.py` | [Connection and schema](#connection-and-schema) |
 
-The first five entries are read-only runtime query types. The nested `SELECT 1`
-in the admission query is part of that query, not an extra database call. The
-startup `SELECT 1` is a separate connection check. Only the optional initialization
+The first five entries are read-only runtime query types. The startup `SELECT 1`
+is a separate connection check. Only the optional initialization
 script creates database objects.
 
 ## How the workflows connect
@@ -29,10 +28,10 @@ script creates database objects.
    student accounts from `users` with admissions attached from `paid_users`.
 3. Admission mapping operates on saved school/dump files in Python. It does not
    issue another database query for each student.
-4. Email Pass 1 takes Admission Not Matched rows and queries `users` for their
-   email addresses, in batches. Python then classifies the results.
-5. Email Pass 2 and full-name/class mapping use saved data; they do not fetch
-   database records again in their mapping routes.
+4. Email mapping takes rows directly from the school file and queries `users` for
+   their email addresses in batches. Python then classifies the results.
+5. Full-name/class mapping uses the school file and saved admission dump; it does
+   not fetch database records in its mapping route.
 6. The student browsing endpoint independently pages through `users`; it is not
    the school-filtered admission dump.
 
@@ -69,7 +68,7 @@ The application validates the entered numeric school index and binds it to
 `:school_index` in both queries using SQLAlchemy parameters.
 
 This guide covers all SQL executed by the admission dump fetch: the school-name
-lookup and the student/admission query, including its nested lookup. Email mapping
+lookup and the student/admission query. Email mapping
 has a separate database lookup and is outside this admission-fetch flow.
 
 ## Tables used
@@ -79,9 +78,6 @@ has a separate database lookup and is outside this admission-fetch flow.
 | `users_schools` | `us` | Confirm the school exists and retrieve its name | `school_id`, `school` |
 | `users` | `u` | Supply the students and their account details | `user_id`, `user_edu_school`, `user_type`, `user_firstname`, `user_lastname`, `user_name`, `user_edu_class`, `user_edu_major`, `user_package`, `user_email` |
 | `paid_users` | `pu` | Supply admission numbers for each student | `user_id`, `admission_number` |
-| `paid_users` (the same table) | `pu_valid` | Check whether that user has any valid admission number | `user_id`, `admission_number` |
-
-There are **three tables**, not four: `pu_valid` is another alias for `paid_users`.
 Both `users_schools.school_id` and `users.user_edu_school` are compared with the
 entered index in separate queries. The join between students and paid records is
 `users.user_id = paid_users.user_id`; it does not join on school index.
@@ -101,16 +97,14 @@ These queries only read the database; they do not modify any of these tables.
    ```
 
    Other user types, including NULL, are excluded even when their school matches.
-4. **Look up admission numbers in `paid_users`** using `user_id`. The `LEFT JOIN`
-   retains students without paid records; their admission number is initially SQL NULL.
-5. **Prefer valid admission numbers.** If a student has a valid number, their
-   missing entries are excluded. If none is valid, their missing entries remain.
-6. **Build the output columns.** Return student details, admission number,
+4. **Look up admission numbers in `paid_users`** using `user_id`. The inner `JOIN`
+   excludes students without paid records.
+5. **Build the output columns.** Return student details, admission number,
    `fullname` and the name/class matching key `generated_col`.
-7. **Remove identical rows.** SQL `DISTINCT` removes duplicate selected rows.
+6. **Remove identical rows.** SQL `DISTINCT` removes duplicate selected rows.
    Python then converts NULL cells to empty strings and removes rows that become
    identical after that conversion. This does not merge all rows for one student.
-8. **Save the result.** For a nonempty result, save a CSV snapshot and school
+7. **Save the result.** For a nonempty result, save a CSV snapshot and school
    metadata in the session. The displayed fetch count is the number of output rows.
 
 Successful nonempty flow:
@@ -162,46 +156,13 @@ SELECT DISTINCT
         )
     ) AS generated_col
 FROM users u
-LEFT JOIN paid_users pu ON u.user_id = pu.user_id
+JOIN paid_users pu ON u.user_id = pu.user_id
 WHERE u.user_edu_school = :school_index
 AND u.user_type = '0'
-AND (
-    (
-        NULLIF(TRIM(pu.admission_number), '') IS NOT NULL
-        AND LOWER(TRIM(pu.admission_number)) <> 'null'
-    )
-    OR NOT EXISTS (
-        SELECT 1
-        FROM paid_users AS pu_valid
-        WHERE pu_valid.user_id = pu.user_id
-        AND NULLIF(TRIM(pu_valid.admission_number), '') IS NOT NULL
-        AND LOWER(TRIM(pu_valid.admission_number)) <> 'null'
-    )
-)
 ```
 
-### How the admission filter works
-
-An admission is valid for this query when both conditions are true:
-
-```sql
-NULLIF(TRIM(pu.admission_number), '') IS NOT NULL
-AND LOWER(TRIM(pu.admission_number)) <> 'null'
-```
-
-`TRIM` removes surrounding spaces for this check. `NULLIF(..., '')` treats empty
-text as NULL. `LOWER` makes the literal text `null` check case-insensitive. Thus
-SQL NULL, empty text, spaces-only text, `null`, `NULL` and ` null ` are missing.
-This is a missing-value check, not a rule requiring numeric admissions.
-
-The `OR NOT EXISTS (...)` part searches `paid_users` again as `pu_valid`. It means
-"keep this row if this user has no valid admission anywhere in the paid table."
-If no paid row exists at all, the left join supplies NULL paid fields and the
-nested lookup finds no valid match, so the student still survives the filter.
-This is a subquery inside Query 2, not a third application database call.
-
-The filter does not select the first or latest paid record, check payment dates,
-or check payment status. Multiple distinct valid admissions are all retained.
+There is no additional admission-validity subquery. Every row produced by the
+inner join is eligible, and multiple distinct admissions are retained.
 
 ### Output columns and their sources
 
@@ -247,16 +208,14 @@ All students below belong to the entered school and have `user_type = '0'`:
 | Student | Admission entries in `paid_users` | Final dump rows |
 |---|---|---|
 | A | `001` | One row: `001` |
-| B | No paid record | One row: blank admission |
+| B | No paid record | Excluded by the inner join |
 | C | `002`, `002` | One row: `002` |
 | D | SQL NULL, empty text, `003` | One row: `003` |
 | E | `004`, `005` | Two rows: `004` and `005` |
 | F | SQL NULL, empty text | One row: blank admission |
 
-This example has **6 students and 7 dump rows**. Student E is represented twice.
-If a student has only SQL NULL, empty text, spaces-only text and literal `null`,
-several rows can remain: Python only normalizes SQL NULL to empty text, not every
-representation considered missing by the SQL validity check.
+Student E is represented twice. SQL NULL becomes empty text in Python; other
+representations remain distinct unless the complete normalized rows are identical.
 
 ## Comparing counts with the database
 
@@ -293,11 +252,8 @@ The route converts a nonempty frame to CSV bytes and saves it as
 `school_<index>_dump.csv` in the session snapshot system.
 
 - Select students for the provided school index with `user_type = '0'`.
-- Attach admission numbers by `user_id` using a `LEFT JOIN`; students without
-  paid records remain with blank admission numbers.
-- Prefer valid admission entries over missing entries for each user. SQL NULL,
-  empty text, spaces-only text and trimmed case-insensitive `null` count as missing
-  for this validity check. The selected admission text itself is not trimmed.
+- Attach admission numbers by `user_id` using an inner `JOIN`; students without
+  paid records are excluded.
 - Keep multiple distinct admission numbers as separate rows; no first/latest
   record or conflict flag is selected.
 - Read columns as text to preserve leading zeros, replace SQL NULL with empty
@@ -305,7 +261,7 @@ The route converts a nonempty frame to CSV bytes and saves it as
 - Dump records count rows; Students counts distinct user IDs. Different admissions
   or missing-value representations can produce multiple rows for one student.
 - Save the fetched result as a snapshot. Fetch again to reflect database changes
-  or include students omitted by the previous inner join.
+  using the current inner-join selection.
 
 These SQL rules apply when using **Fetch from SQL**. Uploading a CSV/XLSX dump
 does not run these queries or reconcile the uploaded rows with the database.
@@ -352,8 +308,8 @@ clause rather than interpolating addresses into SQL.
 
 ## Execution flow
 
-1. The route requires saved school identity and Admission Not Matched results.
-2. Read the selected email and first-name columns from that saved input.
+1. The route requires the school file; Admission results are not required.
+2. Read the selected email and first-name columns directly from the school file.
 3. In `fetch_email_dump()`, discard missing/empty inputs, trim surrounding
    whitespace, lowercase addresses, remove duplicates and sort the unique list.
 4. If the list is empty, return an empty DataFrame with the expected columns;
@@ -378,7 +334,6 @@ clause rather than interpolating addresses into SQL.
 - Multiple accounts may share an email; `DISTINCT` removes identical selected
   rows, not all rows sharing an email. Ambiguous candidates are handled in Python.
 - No `ORDER BY` is specified. Result order is not guaranteed.
-- Email Pass 2 uses the saved email dump instead of repeating this fetch.
 
 ---
 

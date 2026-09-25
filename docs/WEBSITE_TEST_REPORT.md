@@ -18,9 +18,9 @@ Reference: [Session and data flow](SESSION_AND_DATA_FLOW.md).
 | Saved school index | SQL fixture fetch restores the saved index after reload; unsubmitted typing does not overwrite it |
 | SQL replacement | Failed lookup preserves the loaded dump/results; successful replacement clears stale downstream results |
 | Files and storage | CSV/XLSX workflows, upload and local-path loading, saved identifiers, manifest persistence and source invalidation |
-| Admission mapping | Name comparisons, single-character Review students checks, duplicates, second pass, result Preview screens and downloads |
-| Email mapping | Admission handoff, separate dump, matching rules and second-pass backend behavior |
-| Class concatenation | Source selection, both rounds, saved results and downloads |
+| Admission mapping | Name comparisons, single-character Review checks, duplicates, result Preview screens and downloads |
+| Email mapping | Direct school-file input, separate dump, matching rules and downstream invalidation |
+| Class concatenation | Direct school-file input, concatenated-key matching, saved results and downloads |
 | Metadata caching | Sidebar revisits reuse data, shared admission metadata, source switching, refresh and admission-run invalidation |
 | Prerequisites | School or dump changes block both downstream pages until admission mapping runs again |
 | Draft selections | Draft edits do not commit mapping settings or run matching; explicit run saves them |
@@ -57,7 +57,7 @@ do not establish every possible browser/input combination.
 
 ## Targeted SQL dump verification
 
-The live counts below are historical results from before the later `LEFT JOIN`
+The live counts below are historical results from before the current inner `JOIN`
 change. They have not been revalidated against the live database for that change
 and do not establish equality of row and student counts for every school.
 
@@ -93,6 +93,6 @@ a registered `CONCAT_WS` function. This verifies row cardinality for those fixtu
 not MySQL collation behavior or live school counts.
 
 The final backend verification includes the file-workflow API tests. Email tests now
-follow Pass 1 first-name and Pass 2 sorted-full-name behavior, while full-name/class
+follow the current single-pass first-name behavior, while full-name/class
 tests reflect eligibility independent of admission number. The unused email-mapping
 compatibility parameter was also removed.

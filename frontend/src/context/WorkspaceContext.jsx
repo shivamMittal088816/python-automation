@@ -14,26 +14,59 @@ export function WorkspaceProvider({ children }) {
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState(null);
   const metadataCache = useRef({});
-  const [admissionRevision, setAdmissionRevision] = useState(0);
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+  const operationActive = useRef(false);
+  const readSequence = useRef(0);
+  const channel = useRef(null);
+  const refreshRef = useRef(null);
+  const fingerprint = data => JSON.stringify([data?.workspace_id, data?.files, data?.settings, data?.export_versions]);
+  const announce = () => channel.current?.postMessage('workspace-changed');
+  refreshRef.current = async () => {
+    if (operationActive.current || !workspaceRef.current) return;
+    const sequence = ++readSequence.current;
+    try {
+      const latest = await admissionMappingApi.getSession();
+      if (sequence !== readSequence.current || operationActive.current) return;
+      if (fingerprint(latest) !== fingerprint(workspaceRef.current)) {
+        setWorkspace(latest);
+        setNotice({ type: 'info', text: 'Workspace updated from another tab. Review your selections before running mapping.' });
+      }
+    } catch (error) {
+      if (sequence === readSequence.current) setNotice({ type: 'warning', text: error.message });
+    }
+  };
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel.current = new BroadcastChannel('student-mapping-workspace');
+      channel.current.onmessage = () => refreshRef.current?.();
+    }
+    const refresh = () => { if (document.visibilityState === 'visible') refreshRef.current?.(); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      channel.current?.close();
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      ++readSequence.current;
+    };
+  }, []);
   const emailSourceKey = JSON.stringify([
-    workspace?.workspace_id, workspace?.email_ready, admissionRevision,
-    workspace?.files.school, workspace?.files.dump,
-    workspace?.export_versions?.admission,
-    ...['admission_school_sheet', 'admission_dump_sheet', 'school_name_col',
-      'email_input_column', 'email_first_name_column', 'email_full_name_column', 'full_name_class_class_column',
+    workspace?.workspace_id, workspace?.files.school,
+    ...['admission_school_sheet', 'school_name_col',
+      'email_input_column', 'email_first_name_column', 'full_name_class_class_column',
       'school_overview_class_column', 'school_overview_section_column']
       .map(key => workspace?.settings[key]),
   ]);
   const metadataKeys = {
-    admission_source: emailSourceKey,
-    email_source: JSON.stringify([emailSourceKey, workspace?.export_versions?.email]),
+    school: emailSourceKey,
     dump: JSON.stringify([workspace?.workspace_id, workspace?.files.dump, workspace?.settings]),
   };
   useEffect(() => {
     for (const kind of Object.keys(metadataCache.current)) {
       if (metadataCache.current[kind].key !== metadataKeys[kind]) delete metadataCache.current[kind];
     }
-  }, [metadataKeys.admission_source, metadataKeys.email_source, metadataKeys.dump]);
+  }, [metadataKeys.school, metadataKeys.dump]);
   function getMappingMetadata(kind) {
     const key = metadataKeys[kind];
     if (!key) throw new Error('Unknown mapping metadata source.');
@@ -51,7 +84,7 @@ export function WorkspaceProvider({ children }) {
     metadataCache.current[kind] = entry;
     return entry.promise;
   }
-  const getEmailSourceMetadata = () => getMappingMetadata('admission_source');
+  const getEmailSourceMetadata = () => getMappingMetadata('school');
   useEffect(() => {
     let alive = true;
     async function initialize() {
@@ -62,30 +95,39 @@ export function WorkspaceProvider({ children }) {
       catch { /* Cookie sessions continue to work when browser storage is unavailable. */ }
       try { data = await admissionMappingApi.getSession(); }
       catch (error) { if (![401, 404, 409].includes(error.status)) throw error; }
-      if (!data || school && data.files.dump?.school_index !== school) data = await admissionMappingApi.createSession(school);
+      // The cookie identifies the active workspace; an old tab's school URL
+      // must not replace it when that tab reloads.
+      if (!data) { data = await admissionMappingApi.createSession(school); announce(); }
       if (alive) setWorkspace(data);
     }
     initialize().catch(error => alive && setError(error.message));
     return () => { alive = false; };
   }, [revision]);
-  async function run(label, action, { invalidateEmailSource = false } = {}) {
-    if (busy) return null;
+  async function run(label, action) {
+    if (operationActive.current) return null;
+    operationActive.current = true;
+    ++readSequence.current;
     setBusy(label); setNotice(null);
-    if (invalidateEmailSource) {
-      delete metadataCache.current.admission_source;
-      delete metadataCache.current.email_source;
-      setAdmissionRevision(value => value + 1);
-    }
     try {
-      const data = await action(); setWorkspace(data);
-      if (data.message) setNotice({ type: data.message_type || 'success', text: data.message });
-      return data;
+      const perform = async () => {
+        const latest = await admissionMappingApi.getSession();
+        if (fingerprint(latest) !== fingerprint(workspaceRef.current)) {
+          setWorkspace(latest);
+          setNotice({ type: 'warning', text: 'The workspace changed in another tab. Review the updated files and selections, then try again.' });
+          return null;
+        }
+        const data = await action(); setWorkspace(data); announce();
+        if (data.message) setNotice({ type: data.message_type || 'success', text: data.message });
+        return data;
+      };
+      return navigator.locks ? await navigator.locks.request('student-mapping-operation', perform) : await perform();
     } catch (error) {
       if (error.status === 401 || error.status === 409 || error.status === 404 && /session/i.test(error.message)) {
         try {
           const school = new URLSearchParams(location.search).get('school');
           const replacement = await admissionMappingApi.createSession(school);
           setWorkspace(replacement);
+          announce();
           setNotice({ type: 'warning', text: 'Your previous session expired or became unavailable. A new session has been created.' });
           return null;
         } catch (recoveryError) {
@@ -96,10 +138,10 @@ export function WorkspaceProvider({ children }) {
       setNotice({ type: 'error', text: error.message });
       try { setWorkspace(await admissionMappingApi.getSession(workspace.workspace_id)); } catch { /* Keep the original operation error visible. */ }
       return null;
-    } finally { setBusy(''); }
+    } finally { operationActive.current = false; setBusy(''); }
   }
   if (!workspace) return error
     ? <main className="mx-auto max-w-xl p-8"><Alert type="error">{error}</Alert><Button onClick={() => { setError(''); setRevision(value => value + 1); }}>Retry</Button></main>
     : <WorkspaceSkeleton />;
-  return <WorkspaceContext.Provider value={{ workspace, id: workspace.workspace_id, busy, run, notice, emailSourceKey, getEmailSourceMetadata, metadataKeys, getMappingMetadata }}>{children}</WorkspaceContext.Provider>;
+  return <WorkspaceContext.Provider value={{ workspace, id: workspace.workspace_id, busy, run, notice, clearNotice: () => setNotice(null), emailSourceKey, getEmailSourceMetadata, metadataKeys, getMappingMetadata }}>{children}</WorkspaceContext.Provider>;
 }

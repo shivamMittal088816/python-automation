@@ -39,22 +39,9 @@ SELECT DISTINCT
         )
     ) AS generated_col
 FROM users u
-LEFT JOIN paid_users pu ON u.user_id = pu.user_id
+JOIN paid_users pu ON u.user_id = pu.user_id
 WHERE u.user_edu_school = :school_index
 AND u.user_type = '0'
-AND (
-    (
-        NULLIF(TRIM(pu.admission_number), '') IS NOT NULL
-        AND LOWER(TRIM(pu.admission_number)) <> 'null'
-    )
-    OR NOT EXISTS (
-        SELECT 1
-        FROM paid_users AS pu_valid
-        WHERE pu_valid.user_id = pu.user_id
-        AND NULLIF(TRIM(pu_valid.admission_number), '') IS NOT NULL
-        AND LOWER(TRIM(pu_valid.admission_number)) <> 'null'
-    )
-)
 """)
 
 

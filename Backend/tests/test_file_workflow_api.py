@@ -91,6 +91,53 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.inputs()
         return self.json('POST',self.endpoint('/admission-mapping/run'))
 
+    def test_class_mapping_accepts_current_form_payload(self):
+        self.inputs()
+        result = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+            'name_column': 'full_name', 'class_column': 'classNumber',
+        })
+        self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'], 3)
+        self.assertEqual(result['settings']['full_name_class_name_column'], 'full_name')
+        self.assertEqual(result['settings']['full_name_class_class_column'], 'classNumber')
+
+    def test_class_mapping_uses_only_selected_not_matched_source(self):
+        self.inputs()
+        for source, stage, filename, student in (
+            ('admission_not_matched', 'admission_exports', 'not_matched.xlsx', 1),
+            ('email_not_matched', 'email_exports', 'email_not_matched.xlsx', 2),
+        ):
+            with self.subTest(source=source):
+                if source == 'email_not_matched':
+                    with patch.object(email_mapping, 'fetch_email_dump', return_value=self.dump.iloc[:0]):
+                        self.json('POST', self.endpoint('/email-mapping/run'), {
+                            'email_column': 'email', 'name_column': 'first_name',
+                        })
+                rows = self.school.iloc[[student]].rename(columns={
+                    'full_name': 'Selected name', 'classNumber': 'Selected class',
+                })
+                buffer = BytesIO()
+                rows.to_excel(buffer, index=False)
+                with state_store.workspace(self.id) as state:
+                    state[stage] = {filename: {'data': buffer.getvalue(), 'count': 1}}
+                result = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+                    'source': source, 'name_column': 'Selected name', 'class_column': 'Selected class',
+                })
+                self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'], 1)
+                self.assertEqual(result['settings']['full_name_class_input_source'], source)
+                preview = self.json('GET', self.endpoint('/result-previews/full_name_class/full_name_class_matched.xlsx'))
+                self.assertEqual(preview['rows'][0]['Selected name'], rows.iloc[0]['Selected name'])
+                self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+                    'source': source, 'name_column': 'full_name', 'class_column': 'classNumber',
+                }, expected=422)
+
+    def test_class_mapping_rejects_unavailable_sources(self):
+        self.inputs()
+        for source in ('admission_not_matched', 'email_not_matched', 'unknown'):
+            with self.subTest(source=source):
+                self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+                    'source': source, 'name_column': 'full_name', 'class_column': 'classNumber',
+                }, expected=422)
+
     def test_run_submits_columns_and_preview_does_not_save_them(self):
         before = self.mapped()
         choices = {'school_admission_col': 'email', 'school_name_col': 'full_name'}
@@ -113,11 +160,11 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.upload('school','school.csv',self.school.to_csv(index=False).encode())
         data=self.dump.to_csv(index=False).encode()
         self.upload('dump','dump.csv',data,save_index=False)
-        for endpoint, payload in (('/admission-mapping/run', None),
-                                  ('/email-mapping/run', {'email_column':'email','name_column':'first_name'}),
-                                  ('/full-name-class-mapping/run', {'source':'Admission mapping \u2014 Not matched','name_column':'full_name','class_column':'classNumber'})):
-            result=self.json('POST',self.endpoint(endpoint),payload,expected=422)
-            self.assertIn('school index', result['detail'])
+        result=self.json('POST',self.endpoint('/admission-mapping/run'),expected=422)
+        self.assertIn('school index', result['detail'])
+        # Direct school-file mapping is independent of an admission run.
+        self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+            'source': 'school_file', 'name_column': 'full_name', 'class_column': 'classNumber'})
         for index in ('', ' ', 'abc', '-1'):
             self.json('PATCH',self.endpoint('/school'),{'school_index':index},expected=422)
         saved=self.json('PATCH',self.endpoint('/school'),{'school_index':'914'})
@@ -228,89 +275,50 @@ class FileWorkflowAPITests(unittest.TestCase):
                 with self.subTest(source=source,destination=destination):
                     response=self.json('POST',self.endpoint('/admission-mapping/move'),{
                         'filename':source,'selected_rows':[0],'destination':destination,
-                        'version':preview['version']},expected=403)
-                    self.assertIn('locked',response['detail'])
+                        'version':preview['version']},expected=404)
+                    self.assertEqual(response['detail'], 'Not Found')
         after=self.json('GET',self.endpoint(''))
         self.assertEqual(after['exports'],before['exports'])
         self.assertEqual(after['export_versions'],before['export_versions'])
 
-    def test_admission_second_pass_requires_first_pass_and_preserves_results(self):
-        self.school.loc[0, 'first_name'] = 'Wrong'
-        self.school.loc[0, 'full_name'] = 'SMITHALICE'
-        self.inputs()
-        payload = {'name_column': 'full_name'}
-        blocked = self.json('POST', self.endpoint('/admission-mapping/second-pass'), payload, expected=422)
-        self.assertIn('pass 1', blocked['detail'])
-        self.json('POST', self.endpoint('/admission-mapping/run'))
-        self.json('POST', self.endpoint('/admission-mapping/second-pass'), {'name_column': 'invalid'}, expected=422)
-        before = self.json('GET', self.endpoint())
-        self.assertEqual(before['admission_result_pass'], 1)
-        result = self.json('POST', self.endpoint('/admission-mapping/second-pass'), payload)
-        self.assertEqual(result['admission_result_pass'], 2)
-        self.assertEqual(result['run_columns']['admission']['2'], ['admission_number', payload['name_column']])
-        self.assertEqual(result['exports']['admission'], {'matched.xlsx': 1, 'review.xlsx': 0, 'not_matched.xlsx': 2})
-        self.assertEqual(result['export_versions']['admission']['not_matched.xlsx'], before['export_versions']['admission']['not_matched.xlsx'])
-        preview = self.json('GET', self.endpoint('/result-previews/admission/matched.xlsx'))
-        self.assertEqual(preview['rows'][0]['mapping_user_id'], '0001')
-        self.assertIn('Pass 2', preview['rows'][0]['mapping_status'])
-        saved = self.json('GET', self.endpoint())
-        self.assertEqual(saved['exports']['admission'], result['exports']['admission'])
-        self.assertEqual(saved['admission_result_pass'], 2)
-        again = self.json('POST', self.endpoint('/admission-mapping/second-pass'), payload)
-        self.assertEqual(again['exports']['admission'], result['exports']['admission'])
-        rerun = self.json('POST', self.endpoint('/admission-mapping/run'))
-        self.assertEqual(rerun['admission_result_pass'], 1)
-        self.json('PUT', self.endpoint('/settings'), {'settings': {'school_name_col': 'full_name'}}, expected=404)
+    def test_removed_second_pass_endpoints_preserve_results(self):
+        before = self.mapped()
+        for endpoint in ('/admission-mapping/second-pass', '/email-mapping/second-pass'):
+            self.json('POST', self.endpoint(endpoint), {'name_column': 'full_name'}, expected=404)
+        after = self.json('GET', self.endpoint())
+        self.assertEqual(after['export_versions'], before['export_versions'])
 
-    def test_admission_second_pass_checks_duplicate_accounts(self):
-        self.school.loc[0, 'first_name'] = 'Wrong'
+    def test_admission_run_checks_duplicate_accounts(self):
         self.dump.loc[1, 'admission_number'] = '002'
         self.dump.loc[1, 'user_id'] = '0001'
-        self.mapped()
-        result = self.json('POST', self.endpoint('/admission-mapping/second-pass'), {'name_column': 'full_name'})
+        result = self.mapped()
         self.assertEqual(result['exports']['admission']['matched.xlsx'], 0)
         self.assertEqual(result['exports']['admission']['review.xlsx'], 2)
-        preview = self.json('GET', self.endpoint('/result-previews/admission/review.xlsx'))
-        self.assertTrue(all('Duplicate username or user ID' in row['mapping_status'] for row in preview['rows']))
 
     def test_email_and_full_name_stages_use_existing_services(self):
         self.mapped()
         self.json('PATCH',self.endpoint('/school'),{'school_index':'914','school_name':'Test School'})
         self.dump['user_edu_school']='914'
-        source=self.json('GET',self.endpoint('/table-previews/admission_source'))
+        source=self.json('GET',self.endpoint('/table-previews/school'))
         self.assertEqual(source['suggestions']['full_name_column'],'full_name')
         with patch.object(email_mapping,'fetch_email_dump',return_value=self.dump.iloc[1:2]) as fetch:
-            result=self.json('POST',self.endpoint('/email-mapping/run'),{'email_column':'email','name_column':'first_name'})
+            result=self.json('POST',self.endpoint('/email-mapping/run'),{'source':'admission_not_matched','email_column':'email','name_column':'first_name'})
         self.assertEqual(fetch.call_count,1)
         self.assertEqual(result['exports']['email']['email_matched.xlsx'],1)
         self.assertEqual(result['exports']['email']['email_not_matched.xlsx'],1)
-        result=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{'source':'Email mapping — Not matched','name_column':'full_name','class_column':'classNumber'})
+        result=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{'source':'email_not_matched','name_column':'full_name','class_column':'classNumber'})
         self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'],1)
         self.assertIn('email_dump',result['files'])
 
-    def test_email_second_pass_uses_saved_dump_and_persists(self):
+    def test_email_run_columns_and_results_survive_reload(self):
         self.mapped()
-        self.json('POST', self.endpoint('/email-mapping/second-pass'), expected=422)
-        dump = self.dump.iloc[1:2].copy()
-        dump['user_firstname'] = 'Robert'
-        dump['fullname'] = 'BobJones'
-        dump['user_edu_school'] = '914'
-        with patch.object(email_mapping, 'fetch_email_dump', return_value=dump) as fetch:
-            first = self.json('POST', self.endpoint('/email-mapping/run'), {'email_column': 'email', 'name_column': 'first_name'})
-            self.assertEqual(first['exports']['email']['email_review.xlsx'], 1)
-            self.assertEqual(first['email_result_pass'], 1)
-            second = self.json('POST', self.endpoint('/email-mapping/second-pass'), {'name_column': 'full_name'})
-            self.assertEqual(fetch.call_count, 1)
-        self.assertEqual(second['exports']['email']['email_matched.xlsx'], 1)
-        self.assertEqual(second['exports']['email']['email_review.xlsx'], 0)
+        with patch.object(email_mapping, 'fetch_email_dump', return_value=self.dump.iloc[1:2]):
+            result = self.json('POST', self.endpoint('/email-mapping/run'), {
+                'source': 'admission_not_matched', 'email_column': 'email', 'name_column': 'first_name'})
+        self.assertEqual(result['run_columns']['email'], {'1': ['email', 'first_name']})
         saved = self.json('GET', self.endpoint())
-        self.assertEqual(saved['exports']['email'], second['exports']['email'])
-        self.assertTrue(saved['email_pass_one_complete'])
-        self.assertEqual(saved['email_result_pass'], 2)
-        self.assertEqual(saved['run_columns']['email'], {'1':['email','first_name'], '2':['full_name']})
-        with patch.object(email_mapping, 'fetch_email_dump', return_value=dump):
-            rerun = self.json('POST', self.endpoint('/email-mapping/run'), {'email_column': 'email', 'name_column': 'first_name'})
-        self.assertEqual(rerun['email_result_pass'], 1)
+        self.assertEqual(saved['export_versions'], result['export_versions'])
+        self.assertEqual(saved['run_columns'], result['run_columns'])
 
     def test_email_match_from_another_school_goes_to_review(self):
         self.mapped()
@@ -324,17 +332,16 @@ class FileWorkflowAPITests(unittest.TestCase):
         rows=self.json('GET',self.endpoint('/result-previews/email/email_review.xlsx'))['rows']
         self.assertIn('user_edu_school differs',rows[0]['email_mapping_status'])
 
-    def test_account_conflicts_reconcile_all_stages(self):
-        self.mapped()
-        self.json('PATCH',self.endpoint('/school'),{'school_index':'914','school_name':'Test School'})
-        self.dump['user_edu_school']='914'
-        conflicting=self.dump.iloc[1:2].copy()
-        conflicting['user_id']='0001'
-        with patch.object(email_mapping,'fetch_email_dump',return_value=conflicting):
-            result=self.json('POST',self.endpoint('/email-mapping/run'),{'email_column':'email','name_column':'first_name'})
-        self.assertEqual(result['exports']['admission']['matched.xlsx'],0)
-        self.assertEqual(result['exports']['admission']['review.xlsx'],1)
-        self.assertEqual(result['exports']['email']['email_review.xlsx'],1)
+    def test_email_run_preserves_independent_admission_results(self):
+        before = self.mapped()
+        conflicting = self.dump.iloc[1:2].copy()
+        conflicting['user_id'] = '0001'
+        conflicting['user_edu_school'] = '914'
+        with patch.object(email_mapping, 'fetch_email_dump', return_value=conflicting):
+            result = self.json('POST', self.endpoint('/email-mapping/run'), {
+                'email_column': 'email', 'name_column': 'first_name'})
+        self.assertEqual(result['export_versions']['admission'], before['export_versions']['admission'])
+        self.assertEqual(result['exports']['email']['email_matched.xlsx'], 1)
 
     def test_email_handoff_and_missing_column_validation(self):
         self.mapped()
@@ -349,25 +356,18 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.assertNotIn('email_dump',changed['files'])
         self.upload('school','school.csv',self.school.drop(columns='email').to_csv(index=False).encode())
         self.json('POST',self.endpoint('/admission-mapping/run'))
-        source=self.json('GET',self.endpoint('/table-previews/admission_source'))
+        source=self.json('GET',self.endpoint('/table-previews/school'))
         self.assertIsNone(source['suggestions']['email_column'])
         with patch.object(email_mapping,'fetch_email_dump') as fetch:
             self.json('POST',self.endpoint('/email-mapping/run'),{'email_column':'email','name_column':'first_name'},expected=422)
         fetch.assert_not_called()
 
-    def test_conflicting_review_cannot_be_manually_promoted(self):
-        self.mapped()
-        self.json('PATCH',self.endpoint('/school'),{'school_index':'914','school_name':'Test School'})
-        self.dump['user_edu_school']='914'
-        conflicting=self.dump.iloc[1:2].copy()
-        conflicting['user_id']='0001'
-        with patch.object(email_mapping,'fetch_email_dump',return_value=conflicting):
-            self.json('POST',self.endpoint('/email-mapping/run'),{'email_column':'email','name_column':'first_name'})
-        preview=self.json('GET',self.endpoint('/result-previews/admission/review.xlsx'))
-        self.json('POST',self.endpoint('/admission-mapping/move'),{'filename':'review.xlsx','selected_rows':[0],'destination':'matched.xlsx','version':preview['version']},expected=403)
-        # Locked previews preserve the account conflict classifications.
-        result=self.json('POST',self.endpoint('/duplicate-accounts/reconcile'))
-        self.assertEqual(result['exports']['admission']['matched.xlsx'],0)
+    def test_removed_manual_mutations_preserve_results(self):
+        before = self.mapped()
+        self.json('POST', self.endpoint('/admission-mapping/move'), {
+            'filename': 'review.xlsx', 'selected_rows': [0], 'destination': 'matched.xlsx'}, expected=404)
+        self.json('POST', self.endpoint('/duplicate-accounts/reconcile'), expected=404)
+        self.assertEqual(self.json('GET', self.endpoint())['export_versions'], before['export_versions'])
 
     def test_result_versions_change_when_counts_stay_the_same(self):
         before=self.mapped()
@@ -379,61 +379,27 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.assertNotEqual(before['export_versions']['admission']['matched.xlsx'],after['export_versions']['admission']['matched.xlsx'])
         self.assertNotEqual(before['files']['dump']['version'],after['files']['dump']['version'])
 
-    def test_full_name_second_round_retries_misses_and_survives_reload(self):
-        self.school.loc[1,'full_name']='Jones Bob'
-        self.dump['user_edu_class']=['3','4','5']
+    def test_class_rerun_replaces_results_and_invalid_run_preserves_them(self):
         self.mapped()
-        payload={'source':'Admission mapping — Not matched','name_column':'full_name','class_column':'classNumber'}
-        second={**payload,'round':2}
-        rejected=self.json('POST',self.endpoint('/full-name-class-mapping/run'),second,expected=422)
-        self.assertIn('1st round',rejected['detail'])
-        first=self.json('POST',self.endpoint('/full-name-class-mapping/run'),payload)
-        self.assertEqual(first['exports']['full_name_class']['full_name_class_matched.xlsx'],1)
-        self.assertEqual(first['full_name_class_round_one_not_matched'],1)
-        self.assertEqual(first['full_name_class_round'],1)
-        self.json('POST',self.endpoint('/full-name-class-mapping/run'),{**second,'class_column':'missing'},expected=422)
-        after_error=self.json('GET',self.endpoint())
-        self.assertEqual(after_error['export_versions'],first['export_versions'])
-        result=self.json('POST',self.endpoint('/full-name-class-mapping/run'),second)
-        self.assertEqual(result['full_name_class_round'],2)
-        self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'],2)
-        self.assertEqual(result['exports']['full_name_class']['full_name_class_not_matched.xlsx'],0)
-        matched=self.json('GET',self.endpoint('/result-previews/full_name_class/full_name_class_matched.xlsx'))
-        self.assertEqual([row['full_name'] for row in matched['rows']],['Carol Lee','Jones Bob'])
-        self.assertEqual([row['full_name_class_user_id'] for row in matched['rows']],['0003','0002'])
-        self.assertNotIn('Round 2',matched['rows'][0]['full_name_class_status'])
-        self.assertIn('Round 2',matched['rows'][1]['full_name_class_status'])
-        self.assertEqual(self.json('POST',self.endpoint('/full-name-class-mapping/run'),second)['exports'],result['exports'])
-        status,_,body=asyncio.run(asgi_request(self.app,'GET','/api/v1'+self.endpoint('/downloads/full_name_class?filename=full_name_class_matched.xlsx&format=csv')))
-        self.assertEqual(status,200)
-        self.assertIn('Jones Bob',body.decode('utf-8-sig'))
-        self.json('PATCH',self.endpoint('/school'),{'school_index':'914','school_name':'Round Test'})
-        restored=self.json('GET',self.endpoint())
-        self.id=self.app.state.test_cookie.decode().split('=', 1)[1]
-        self.assertEqual(restored['exports'],result['exports'])
-        self.assertEqual(restored['full_name_class_round'],2)
-        self.assertEqual(restored['full_name_class_round_one_not_matched'],1)
-        self.assertEqual(self.json('POST',self.endpoint('/full-name-class-mapping/run'),second)['exports'],result['exports'])
-        # A different school name column replaces round 2, retaining round 1.
-        changed=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{**second,'name_column':'first_name'})
-        self.assertEqual(changed['exports']['full_name_class']['full_name_class_matched.xlsx'],1)
-        self.assertEqual(changed['run_columns']['full_name_class'], {'1':['full_name','classNumber'], '2':['first_name','classNumber']})
-        self.assertEqual(changed['exports']['full_name_class']['full_name_class_not_matched.xlsx'],1)
-        rerun=self.json('POST',self.endpoint('/full-name-class-mapping/run'),payload)
-        self.assertEqual(rerun['full_name_class_round'],1)
-        self.assertEqual(rerun['exports']['full_name_class'],first['exports']['full_name_class'])
+        payload = {'source': 'admission_not_matched', 'name_column': 'full_name', 'class_column': 'classNumber'}
+        first = self.json('POST', self.endpoint('/full-name-class-mapping/run'), payload)
+        self.assertEqual(first['exports']['full_name_class']['full_name_class_matched.xlsx'], 2)
+        self.json('POST', self.endpoint('/full-name-class-mapping/run'), {**payload, 'class_column': 'missing'}, expected=422)
+        self.assertEqual(self.json('GET', self.endpoint())['export_versions'], first['export_versions'])
+        changed = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {**payload, 'name_column': 'first_name'})
+        self.assertEqual(changed['exports']['full_name_class']['full_name_class_matched.xlsx'], 0)
+        self.assertEqual(changed['run_columns']['full_name_class'], {'1': ['first_name', 'classNumber']})
+        self.assertEqual(self.json('GET', self.endpoint())['export_versions'], changed['export_versions'])
+        rerun = self.json('POST', self.endpoint('/full-name-class-mapping/run'), payload)
+        self.assertEqual(rerun['exports'], first['exports'])
 
-    def test_second_round_keeps_cross_round_duplicate_account_protection(self):
-        self.school.loc[1,'full_name']='Jones Bob'
-        self.dump['user_edu_class']=['3','4','5']
-        self.dump.loc[1,'user_id']='0003'
+    def test_class_run_keeps_duplicate_account_protection(self):
+        self.dump.loc[1, 'user_id'] = '0003'
         self.mapped()
-        payload={'source':'Admission mapping — Not matched','name_column':'full_name','class_column':'classNumber'}
-        self.json('POST',self.endpoint('/full-name-class-mapping/run'),payload)
-        result=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{
-            **payload,'round':2})
-        self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'],0)
-        self.assertEqual(result['exports']['full_name_class']['full_name_class_review.xlsx'],2)
+        result = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
+            'source': 'admission_not_matched', 'name_column': 'full_name', 'class_column': 'classNumber'})
+        self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'], 0)
+        self.assertEqual(result['exports']['full_name_class']['full_name_class_review.xlsx'], 2)
 
     def test_literal_scoped_search_and_overviews(self):
         self.inputs()
@@ -467,7 +433,7 @@ class FileWorkflowAPITests(unittest.TestCase):
         with patch.object(email_mapping, 'fetch_email_dump', return_value=self.dump.iloc[1:2]):
             self.json('POST', self.endpoint('/email-mapping/run'), {'email_column':'email','name_column':'first_name'})
         before = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
-            'source':'Email mapping — Not matched','name_column':'full_name','class_column':'classNumber'})
+            'source':'email_not_matched','name_column':'full_name','class_column':'classNumber'})
         folder = state_store.ROOT / self.id
         original_files = {p.name:p.read_bytes() for p in folder.glob('*.bin')}
         session_path = state_store.ROOT / self.id / 'state.json'

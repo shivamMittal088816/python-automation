@@ -17,14 +17,14 @@ class AdmissionDumpCountTests(unittest.TestCase):
         cases = [
             # label, school, user type, paid admission values, DB count, dump count
             ('one admission', '914', '0', ['0007'], 1, 1),
-            ('no paid row', '914', '0', [], 1, 1),
+            ('no paid row', '914', '0', [], 1, 0),
             ('non student', '914', '1', ['0007'], 1, 0),
             ('null user type', '914', None, ['0007'], 1, 0),
             ('different school', '915', '0', ['0007'], 0, 0),
             ('null school', None, '0', ['0007'], 0, 0),
             ('repeated admission', '914', '0', ['0007', '0007'], 1, 1),
             ('multiple admissions', '914', '0', ['0007', '0008'], 1, 2),
-            ('valid replaces missing', '914', '0', [None, '', ' ', 'null', 'NULL', '0007'], 1, 1),
+            ('valid and missing admissions', '914', '0', [None, '', ' ', 'null', 'NULL', '0007'], 1, 5),
             ('only null admission', '914', '0', [None], 1, 1),
             ('normalized duplicates', '914', '0', [None, ''], 1, 1),
             ('different missing representations', '914', '0', [None, '', ' ', 'null'], 1, 3),

@@ -274,18 +274,15 @@ backend `.env` configured as described above.
    `frontend/e2e/fixtures/dump.csv`.
 4. Select `admission_number` as the school admission number column and
    `first_name` as the first-name column.
-5. Click **Start admission mapping**. File selection alone does not run mapping.
+5. Click **Run mapping**. File selection alone does not run mapping.
 6. Open a result Preview screen and try **Download Excel** or **Download CSV**.
 
 With these fixtures, admission mapping produces **1 Matched, 0 Review students, and
 3 Not matched** records after dropping one identical duplicate school row.
 
-To try the final mapping stage without MySQL, open **Full name + class Number**,
-choose **Admission mapping — Not matched**, select `full_name` and `classNumber`,
-and click **1st round mapping**. The fixture dump includes `generated_col`.
-If records remain Not matched, choose the dump full-name and class columns and
-click **2nd round mapping** to compare sorted name characters and class numbers.
-Selecting `user_edu_class` adds 1 to its stored number for this second round.
+To try Full name + class without MySQL, open **Full name + class Number**,
+select `full_name` and `classNumber`, and click **Run mapping**. It reads the
+school file directly, and the fixture dump includes `generated_col`.
 
 Normal **Email mapping** fetches student records from MySQL. It will not work with
 placeholder credentials; the automated browser tests use fixture database responses
@@ -319,18 +316,18 @@ queries `users`. Exact selected columns and joins are defined in:
 
 In Admission mapping, choose **Fetch from SQL**, enter a valid school index, and
 click **Fetch dump data**. The query selects school users with `user_type = '0'`
-and attaches admissions using `LEFT JOIN paid_users` by `user_id`. Students without
-paid records stay in the dump with blank admissions. Multiple distinct admissions
+and attaches admissions using `JOIN paid_users` by `user_id`. Students without
+paid records are excluded. Multiple distinct admissions
 can still produce multiple rows for one student; no first/latest record is selected.
 See [SQL dump selection and counts](docs/MAPPING_WORKFLOW.md#sql-dump-selection-and-counts).
 SQL `NULL` cells are normalized to empty text and rows
 that then become completely identical are retained once. A failed fetch preserves
-the previously loaded dump and results. Once files and columns are ready, click **Start admission
-mapping**. For remaining students, select their email and first-name columns and
-run Email Pass 1. It compares email plus first name, and sends matching
-one-character first names to Review. Email Pass 2 uses a separately selected full
-name and sorted full-name characters. Then optionally use
-**1st round mapping** and **2nd round mapping** for full-name/class matching.
+the previously loaded dump and results. Once files and columns are ready, click
+**Run mapping**. Email mapping independently reads the school file and compares
+email plus first name. Full name + class also reads the school file directly.
+Each mapping has one run action. Changing the school file, dump, or school index
+clears all results; rerunning Admission clears Email/Class, and rerunning Email
+clears Class so downstream results can be rebuilt from current data.
 
 Do not run `Backend/scripts/init_db.py` as a general setup step. It creates the ORM
 `students` table and performs database writes; it does not create or populate the

@@ -10,6 +10,7 @@ from Backend.repositories.admission_dump_service import fetch_school_dump
 from Backend.api.file_workflow_snapshots import add_snapshot
 from Backend.api.file_workflow_validation import fail
 from Backend.api.file_workflow_responses import summary
+from Backend.api.file_workflow_invalidation import clear_all_mappings
 
 
 router = APIRouter(tags=['Input files'])
@@ -25,7 +26,12 @@ def upload_file(session_id: SessionId, kind: str, file: UploadFile = File(...)):
     if not data:
         fail('The uploaded file is empty.')
     with workspace(session_id) as state:
+        previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
+        changed = (not previous or previous.get('data') != data
+                   or kind == 'dump' and bool(previous.get('school_index')))
         add_snapshot(state,kind,file.filename or '',data)
+        if changed:
+            clear_all_mappings(state)
         return summary(state,session_id)
 
 
@@ -42,7 +48,12 @@ def load_path(session_id: SessionId,kind: str,payload: FilePathInput):
     except OSError as exc:
         fail(f'Could not load file: {exc}')
     with workspace(session_id) as state:
+        previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
+        changed = (not previous or previous.get('data') != data
+                   or kind == 'dump' and bool(previous.get('school_index')))
         add_snapshot(state,kind,path.name,data,source=str(path),path=str(path))
+        if changed:
+            clear_all_mappings(state)
         return summary(state,session_id)
 
 
@@ -60,16 +71,22 @@ def fetch_dump(session_id: SessionId,payload: SchoolInput):
             logger.exception('Failed to fetch the admission dump from the database.')
             fail('Could not fetch dump data. Check the database connection and try again.',503)
         label=f"{dump.attrs['school_index']}-{dump.attrs['school_name']}"
+        dump_data=dump.to_csv(index=False).encode('utf-8')
+        previous=state.get('saved_admission_dump')
+        changed=(not previous
+                 or previous.get('data') != dump_data
+                 or str(previous.get('school_index', '')).strip() != str(dump.attrs['school_index']).strip())
         # Publish the replacement only after the new school was validated and
         # fetched successfully. A failed fetch leaves the current workspace intact.
         state.pop('saved_admission_dump',None)
-        state.pop('admission_exports',None)
+        if changed:
+            clear_all_mappings(state)
         state.setdefault('admission_settings', {}).update(
             admission_dump_school_index=str(dump.attrs['school_index']),
             admission_dump_source='Fetch from SQL',
         )
         if not dump.empty:
-            add_snapshot(state,'dump',f'school_{index}_dump.csv',dump.to_csv(index=False).encode('utf-8'),
+            add_snapshot(state,'dump',f'school_{index}_dump.csv',dump_data,
                          source=f'SQL school {index}',school_index=dump.attrs['school_index'],school_name=dump.attrs['school_name'])
         return summary(state,session_id) | {'message':f'Fetched {len(dump)} student records for {label}.' if not dump.empty else f'No student records found for {label}.','message_type':'success' if not dump.empty else 'warning'}
 
@@ -84,5 +101,8 @@ def school_details(session_id: SessionId,payload: SchoolDetails):
         if not state.get('saved_admission_dump'):
             fail('Load the admission dump first.')
         snapshot=state['saved_admission_dump']
+        changed = index != str(snapshot.get('school_index', '')).strip()
         state['saved_admission_dump']={key:snapshot[key] for key in snapshot} | {'school_index':index,'school_name':name if name is not None else snapshot.get('school_name','')}
+        if changed:
+            clear_all_mappings(state)
         return summary(state,session_id) | {'message':'School details saved with this dump.'}

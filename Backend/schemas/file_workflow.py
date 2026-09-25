@@ -1,6 +1,6 @@
-"""HTTP transport inputs for the existing file-mapping workflows."""
-from typing import Literal
+"""HTTP transport inputs for the file-mapping workflows."""
 from pydantic import BaseModel
+from typing import Literal
 
 
 class CreateSession(BaseModel):
@@ -26,28 +26,13 @@ class SchoolDetails(SchoolInput):
     school_name: str | None = None
 
 
-class MoveInput(BaseModel):
-    filename: str
-    selected_rows: list[int]
-    destination: str
-    version: str
-
-
 class EmailInput(BaseModel):
     email_column: str
     name_column: str
-
-
-class EmailSecondPassInput(BaseModel):
-    name_column: str
+    source: Literal['school_file', 'admission_not_matched'] = 'school_file'
 
 
 class FullNameInput(BaseModel):
-    source: Literal['Admission mapping — Not matched', 'Email mapping — Not matched']
     name_column: str
     class_column: str
-    round: Literal[1, 2] = 1
-
-
-class AdmissionSecondPassInput(BaseModel):
-    name_column: str
+    source: Literal['school_file', 'admission_not_matched', 'email_not_matched'] = 'school_file'

@@ -251,7 +251,6 @@ migration table and ignored audit/runtime artifacts only.
 | `server/services/admission_mapping/admission_workbook.py` | `Backend/services/admission_mapping/admission_workbook.py` |
 | `server/services/email_file_mapping.py` | `Backend/services/email_file_mapping.py` |
 | `server/services/full_name_class_mapping.py` | `Backend/services/full_name_class_mapping.py` |
-| `server/services/mapping_account_uniqueness.py` | `Backend/services/mapping_account_uniqueness.py` |
 | `server/services/mapping_username_uniqueness.py` | `Backend/services/mapping_username_uniqueness.py` |
 | `server/utils/__init__.py` | `Backend/utils/__init__.py` |
 | `server/utils/api_responses.py` | `Backend/utils/api_responses.py` |

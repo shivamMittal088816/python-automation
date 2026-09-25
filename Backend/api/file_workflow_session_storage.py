@@ -6,7 +6,7 @@ from Backend.utils.file_snapshots import StoredFile
 
 
 FILE_KEYS = ('saved_admission_school', 'saved_admission_dump', 'saved_email_dump')
-EXPORT_KEYS = ('admission_exports', 'email_exports', 'full_name_class_exports', 'full_name_class_round_one_exports')
+EXPORT_KEYS = ('admission_exports', 'email_exports', 'full_name_class_exports')
 
 
 def save_state(folder, state):

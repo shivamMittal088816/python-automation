@@ -1,6 +1,6 @@
 # Student mapping workflow
 
-The workspace maps school records to existing accounts in three explicit stages:
+The workspace maps school records to existing accounts through three independent mappings:
 **Admission Number**, **Email**, and **Full Name + Class**. A stage runs only when
 its mapping button is clicked; navigation, refresh, column selection, searching,
 and pagination never run mapping automatically.
@@ -46,11 +46,12 @@ sequenceDiagram
     API-->>UI: Updated summary or requested page/file
 ```
 
-Email and final-stage source metadata is cached in React while its source,
+Email and class-mapping source metadata is cached in React while its source,
 worksheet, results, and relevant settings are unchanged. Failed requests are not
-cached; refresh clears this memory cache. Admission results are required before
-downstream stages. Changing the school file or admission dump invalidates them and
-shows **First run admission mapping.** until Admission is rerun.
+cached; refresh clears this memory cache. Admission, Email, and Full Name + Class
+can be started when their own required files are available. Changing the school
+file, dump file, or school index clears all results. Rerunning Admission clears
+Email and Class results; rerunning Email clears Class results.
 
 ### Storage and input files
 
@@ -65,8 +66,8 @@ shows **First run admission mapping.** until Admission is rerun.
 School and Dump accept CSV/XLSX upload; local-path loading supports the same
 formats only when `ALLOW_LOCAL_FILE_PATHS` is enabled. XLSX files expose worksheet
 selection. Dump can alternatively be fetched from SQL by numeric school index.
-SQL fetches select school students and attach admission numbers with a `LEFT JOIN`,
-retaining students without paid records. See [selection and counts](#sql-dump-selection-and-counts).
+SQL fetches select school students with an inner `JOIN` to paid admission records.
+Students without a paid record are excluded. See [selection and counts](#sql-dump-selection-and-counts).
 For SQL dumps, missing cells become empty text and records that are completely
 identical after normalization are stored once. A failed lookup preserves the
 currently loaded dump and results; replacement occurs only after a successful fetch.
@@ -87,25 +88,21 @@ entire session folder removes the manifest plus linked and unlinked snapshots.
    `users_schools`. An unknown school causes an error.
 2. Select `users` with `user_edu_school = :school_index` and `user_type = '0'`.
    Non-student users and users with a NULL type are excluded.
-3. `LEFT JOIN paid_users` on `user_id` to attach admission numbers. Students with
-   no paid record remain with a blank admission number.
-4. If a user has any valid admission number, keep their valid admission entries
-   and exclude their missing entries. For this check, SQL NULL, empty text,
-   spaces-only text and case-insensitive trimmed `null` are missing. If no valid
-   admission exists, retain the missing entries instead.
-5. SQL `DISTINCT` removes duplicate selected records. Convert SQL NULL cells to
+3. `JOIN paid_users` on `user_id` to attach admission numbers. Students with no
+   paid record are excluded.
+4. SQL `DISTINCT` removes duplicate selected records. Convert SQL NULL cells to
    empty text and remove rows that then become completely identical. Identifiers
    stay text, including leading zeros. The validity check trims admission text;
    it does not rewrite the stored admission value.
 
 | Paid records for one selected student | Dump result |
 |---|---|
-| No paid record | One row with a blank admission |
+| No paid record | Excluded by the inner join |
 | `001` | One row with `001` |
 | `002`, `002` | One row with `002` |
-| NULL, empty text, `003` | One row with `003` |
+| NULL, empty text, `003` | Distinct joined rows are retained, then exact normalized duplicates are removed |
 | `004`, `005` | Two rows for the same student |
-| NULL, empty text only | One row with a blank admission after normalization |
+| NULL, empty text only | One blank row after normalization if the selected rows become identical |
 | NULL, empty text, spaces-only text, literal `null` | Can retain several rows because these values are not all normalized to empty text |
 
 Multiple distinct admissions are retained; the fetch does not select a first or
@@ -143,22 +140,21 @@ flowchart LR
     A --> AM["Matched"]
     A --> AR["Review"]
     A --> AN["Not Matched"]
-    AN --> E["Email"]
+    S --> E["Email"]
+    AN --> E
     E --> EM["Matched"]
     E --> ER["Review"]
     E --> EN["Not Matched"]
-    EN --> F["Full Name + Class"]
-    AN -. "optional direct source" .-> F
+    S --> F["Full Name + Class"]
     D --> F
     F --> FM["Matched"]
     F --> FR["Review"]
     F --> FN["Not Matched: unresolved"]
 ```
 
-- Normally only the preceding stage's `Not Matched` rows continue. Matched and
-  Review rows are not forwarded.
-- Full Name + Class can use Admission misses directly. After Email this may
-  reprocess rows already handled there; account reconciliation resolves conflicts.
+- Email can read either the original school file or Admission **Not Matched**.
+  The school-file option is independent; the Admission option requires a saved
+  Admission run. Full Name + Class reads the original school file directly.
 - Review rows remain in their originating workbook. Read-only previews mean that
   corrections require input changes and a rerun.
 - Final misses have no further automatic stage or account creation.
@@ -194,8 +190,10 @@ first name was absent from the dump.
 
 ## 2. Email mapping
 
-Email starts from current Admission `not_matched.xlsx`, removes Admission audit
-columns, and needs at least one row. A separate SQL lookup fetches the selected
+The Email input selector offers the selected school worksheet or Admission
+**Not Matched**. The school-file option does not require Admission mapping. If
+Admission **Not Matched** is selected before Admission has run, the UI and API
+instruct the user to run Admission mapping first. A separate SQL lookup fetches the selected
 emails across all schools; it neither uses nor replaces the admission dump and
 needs no school confirmation. Requested emails and identical returned rows are
 deduplicated.
@@ -212,24 +210,19 @@ deduplicated.
 
 Emails and first names are trimmed and lowercased. The selected school first-name
 column is compared directly with dump `user_firstname`; there is no fuzzy or
-full-name comparison in Pass 1. Matching one-character names, including initials
+full-name comparison. Matching one-character names, including initials
 such as `A.`, remain in Review. A successful name match must also pass the school
 and account-uniqueness checks. Email misses normally continue, and the lookup is
 saved as `email_dump.csv`.
 
-Pass 2 retries only Review rows whose email was found but whose first name was
-different. The user selects a separate school full-name column. Pass 2 compares
-its sorted characters with dump `fullname` (falling back to first name plus last
-name), ignoring case and whitespace. The school and account checks still apply.
-
 ## 3. Full Name + Class mapping
 
-This uses Admission or Email misses plus the saved admission dump—not the email
-dump. Required source/dump columns must exist. Dump rows remain eligible when
+This uses the original school file plus the saved admission dump—not the email
+dump. Admission and Email results are not prerequisites. Required school/dump columns must exist. Dump rows remain eligible when
 their admission number is blank; matching is based on name and class in this
-stage. Neither round runs automatically.
+mapping. It runs only when **Run mapping** is clicked.
 
-### Round 1: concatenated key
+### Concatenated key
 
 The source key is lowercased, trimmed full name with literal spaces removed plus
 trimmed/lowercased Class Number: `Alice Smith` + `3` → `alicesmith3`. It is
@@ -244,25 +237,9 @@ compared with dump `generated_col`.
 
 SQL `generated_col` uses name plus package-adjusted class: package **14** uses
 `user_edu_class`, **12** adds 1, **11** adds 2, and others use stored class.
-Uploaded dumps must provide a compatible column. Round 1 does not numerically
+Uploaded dumps must provide a compatible column. The mapping does not numerically
 normalize source class (`3` differs from `3.0`); dump-browser display offsets are
 separate from this rule.
-
-### Round 2: sorted characters and class
-
-Round 2 retries only Round 1 misses using selected dump name/class columns. Names
-are lowercased, all whitespace removed, and **characters** sorted; counts,
-punctuation, and accents remain significant (`Mary Ann` matches `Myra Nan`).
-Original exported names are unchanged.
-
-Sorted names and classes must match. Integral classes `04`, `4`, and `4.0` are
-equal. For dump `user_edu_class`, add 1 (stored `3` matches source `4`); other
-class columns compare directly. Round 2 ignores `generated_col` package rules.
-
-One candidate is Matched, none/missing data is Not Matched, and multiple candidates
-are Review. Round 1 Matched/Review rows remain. Round 2 replaces its previous
-retry results from saved Round 1 misses, including after session restore; rerunning
-Round 1 resets Round 2. It adds no export names or database writes.
 
 ## Account uniqueness and reconciliation
 
@@ -270,12 +247,9 @@ Each stage rejects a shared nonblank **username OR user ID** among candidate
 matches. Identifiers are trimmed, case-sensitive text; blanks are ignored. Every
 row sharing either identifier moves to Review with evidence retained.
 
-After Email/final runs and when entering those pages, the backend reconciles saved
-matches across stages. No stage has priority: conflicting Admission and Email
-matches both become Review. Duplicate-account Review rows continue reserving their
-identifiers; ordinary Review rows caused by name/lookup ambiguity do not.
-Reconciliation changes Matched/Review workbooks, never Not Matched input. This is
-workspace-level, not a database-wide registration constraint.
+Automatic runs check uniqueness within their own mapping. Upstream reruns clear
+downstream workbooks rather than reclassifying them. The obsolete cross-stage
+reconciliation endpoint has been removed.
 
 ## Results, previews, and invalidation
 
@@ -286,9 +260,8 @@ workspace-level, not a database-wide registration constraint.
 | Full Name + Class | `full_name_class_matched.xlsx` | `full_name_class_review.xlsx` | `full_name_class_not_matched.xlsx` → unresolved |
 
 Every run writes three XLSX files, with headers even when empty. They contain
-school fields, evidence, account fields, and status/reason. Admission audit fields
-are removed downstream; final results sourced from Email misses retain Email
-evidence. No combined master workbook is produced.
+school fields, evidence, account fields, and status/reason. Each mapping reads the
+school file directly. No combined master workbook is produced.
 
 Result previews paginate and download Excel/CSV (UTF-8 BOM):
 `GET /api/v1/mapping/result-previews/{stage}/{filename}?page=1&limit=50`.
@@ -296,11 +269,10 @@ They are read-only; the former Admission move API returns HTTP 403.
 
 Invalidation follows dependencies:
 
-- School/dump, worksheet, or Admission-column changes invalidate Admission;
-  rerunning Admission clears later results.
-- Email-column changes clear its dump/results and final results; rerunning Email
-  clears final results.
-- Final source or name/class changes clear final results.
+- School file, dump file, or school-index changes clear all mapping results.
+- Rerunning Admission clears Email and Full Name + Class results.
+- Rerunning Email clears Full Name + Class results.
+- Rerunning Full Name + Class replaces only its own results.
 - Mapping/reconciliation rebuild only affected workbooks.
 
 Original uploads remain separate. SQL admission fetch saves
@@ -361,10 +333,9 @@ the health check.
 | `POST /api/v1/mapping/files/{school|dump}` | Upload CSV/XLSX input. |
 | `POST /api/v1/mapping/files/{kind}/path` | Load an allowed server-local CSV/XLSX path. |
 | `POST /api/v1/mapping/student-dump/fetch` | Fetch school dump from SQL. |
-| `POST .../admission-mapping/run` | Run Admission pass 1. |
-| `POST .../admission-mapping/second-pass` | Run Admission pass 2. |
-| `POST .../email-mapping/run` / `second-pass` | Run Email pass 1/2. |
-| `POST .../full-name-class-mapping/run` | Run selected final round. |
+| `POST .../admission-mapping/run` | Run Admission mapping. |
+| `POST .../email-mapping/run` | Run Email mapping from the selected school-file or Admission Not-matched source. |
+| `POST .../full-name-class-mapping/run` | Run Full Name + Class from the school file. |
 | `GET .../table-previews/{kind}` | Read paginated source data. |
 | `GET .../result-previews/{stage}/{filename}` | Read paginated results. |
 | `GET .../downloads/{kind}` | Download source/result as supported CSV/XLSX. |

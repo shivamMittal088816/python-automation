@@ -44,7 +44,7 @@ An in-process lock serializes one-worker development operations; there is no
 multiworker lock.
 
 `useSessionValue` keeps Preview screen groups, pages, searches, scope and source choice across navigation and refresh. `useRequest` fetches
-visible tables and cancels obsolete requests. Workbook/file content hashes drive
+visible tables and ignores responses from obsolete requests while allowing them to finish normally. Workbook/file content hashes drive
 refresh when data changes without changing its row count. Busy state prevents
 repeated mapping submits and API errors remain visible.
 
@@ -57,8 +57,8 @@ Start with `pages/AdmissionMapping/AdmissionMappingForm.jsx`:
    Unique parse staging files are removed afterward; source paths remain untouched.
 2. SQL dump fetch calls the existing `admission_dump_service.fetch_school_dump()`.
    It validates school identity, selects `users` for the school with `user_type = '0'`,
-   and uses `LEFT JOIN paid_users` on `user_id`, keeping students without paid records.
-   Valid admissions take precedence over missing entries for each user; multiple
+   and uses `JOIN paid_users` on `user_id`, excluding students without paid records.
+   Multiple
    distinct admissions remain separate rows. It normalizes missing cells and removes rows that
    become completely identical after normalization. The previous dump/results are
    replaced only after a successful fetch; validation or connection failures leave
@@ -67,8 +67,8 @@ Start with `pages/AdmissionMapping/AdmissionMappingForm.jsx`:
    details missing-value handling and the difference between row and student counts.
 3. The workspace summary lists worksheets, suggests/restores school columns,
    resolves required dump columns, checks admission hits and summarizes duplicates.
-   File/sheet/column changes invalidate outdated admission results and email handoff.
-4. **Start admission mapping** posts to the API, which invokes the unchanged
+   File/sheet/column changes invalidate outdated results that depend on those inputs.
+4. **Run mapping** posts to the API, which invokes the unchanged
    `map_students()` and `build_exports()` in `Backend/services/admission_mapping/`.
    React displays counts and links to the Preview screen; it does not classify any records.
 5. `AdmissionPreviewPage` renders `ResultPreview`. The API reads saved workbooks,
@@ -87,38 +87,25 @@ workbook styling and per-stage account checks remain in existing Python services
 
 ## Email and full-name/class mapping
 
-`EmailMappingPage` requests the admission Not matched source with original input
-columns restored by `email_school_input()`. `sync_email_stage()` clears later
-results when the handoff changes. `EmailForm` preserves email/first-name choices
-and posts **Run pass 1**. The API calls the cross-school email repository and
-`map_by_email()`, saving a separate `email_dump.csv` and grouped workbooks. Pass 1
-compares the selected school first name with dump `user_firstname`; matching
-one-character names go to Review. Pass 2 retries first-name mismatches using a
-separately selected school full-name column and sorted dump full-name characters.
-The admission dump is retained.
+`EmailMappingPage` reads either the uploaded school file or Admission Not Matched.
+`EmailForm` preserves the source/email/first-name choices and posts **Run mapping**. The API calls the cross-school
+email repository and `map_by_email()`, saving a separate `email_dump.csv` and
+grouped workbooks. It compares the selected school first name with dump
+`user_firstname`; matching one-character names go to Review.
 
-`FullNameClassMappingPage` offers both original Not matched source labels/counts.
-It reads source metadata and admission dump `generated_col` availability. Changing
-source or chosen name/class columns clears stale full-name/class results. **1st round mapping** invokes `map_by_full_name_class()` against the saved
-admission dump and selected worksheet; blank dump admission numbers do not exclude
-records from either class-concatenation pass. Empty source and missing generated column
-produce the same workflow messages instead of running mapping.
+`FullNameClassMappingPage` also reads the school file directly and checks admission
+dump `generated_col` availability. **Run mapping** invokes
+`map_by_full_name_class()` against the saved dump and selected worksheets.
 
-**2nd round mapping** uses a separately persisted copy of round 1's Not matched
-workbook. `full_name_class_second_round.map_second_round()` sorts the characters
-of the input and selected dump full names (ignoring case/whitespace), then requires
-the selected class numbers to match. Dump `user_edu_class` receives the same +1
-conversion as the dump browser; other class columns compare directly. The result
-keeps round-one matches/reviews and replaces its misses. The original first-round
-snapshot lets a rerun replace round-two results without duplicating rows, including
-after session reload. Both buttons call the existing endpoint;
-omitting the optional `round` field continues to select round 1.
+The mapping forms do not render result tables. `EmailPreviewPage` and
+`FullNameClassPreviewPage` provide the same read-only grouped preview/download
+experience as `AdmissionPreviewPage`; successful forms link to their preview page.
 
-The existing `mapping_account_uniqueness.review_duplicate_accounts()` runs after
-email and full-name/class mapping; opening a page does not issue a mapping request. A
-duplicate nonblank username or user ID moves conflicting Matched records across
-stages to Review students, preserving identifiers/evidence and reserved duplicate accounts.
-React displays returned workbooks; it implements no account reconciliation logic.
+The mappings do not require another mapping's results to start. Their saved results
+follow an invalidation hierarchy: input file or school-index changes clear all
+stages; Admission reruns clear Email and Class; Email reruns clear Class. Duplicate
+username/user-ID checks apply within each mapping. Cross-stage reconciliation is
+an explicit separate API.
 
 ## Source browsing, overviews and downloads
 

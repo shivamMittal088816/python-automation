@@ -197,7 +197,7 @@ The workspace context manager saves in a `finally` block. Therefore an endpoint
 that mutates state before an error can persist those changes; there is no universal
 rollback for all operations. SQL dump fetch avoids that risk by validating and
 fetching first, then replacing the previous dump and admission exports only after
-success. Admission pass 1 works on a copied state and commits it on success.
+success. Admission mapping works on a copied state and commits it on success.
 
 The lock is local to one backend process, not a lock shared by multiple servers.
 
@@ -205,9 +205,8 @@ The lock is local to one backend process, not a lock shared by multiple servers.
 
 `POST /api/v1/mapping/student-dump/fetch` receives the entered school index.
 The repository validates the school name, then selects `users` for that school
-with `user_type = '0'`. A `LEFT JOIN` to `paid_users` by `user_id` attaches admission
-numbers while retaining students with no paid record. Valid admission entries
-take precedence over missing entries; multiple distinct valid admissions remain.
+with `user_type = '0'`. An inner `JOIN` to `paid_users` by `user_id` attaches admission
+numbers and excludes students with no paid record. Multiple distinct admissions remain.
 After a successful lookup it saves:
 
 - The fetched dump and its school metadata when records exist.
@@ -223,8 +222,8 @@ different missing-value representations can produce multiple rows per student.
 See [SQL dump selection and counts](MAPPING_WORKFLOW.md#sql-dump-selection-and-counts)
 for examples and the matching database count query.
 
-Previously saved dumps retain their original bytes. Fetch again to include
-students without paid records that the earlier inner join excluded.
+Previously saved dumps retain their original bytes. Fetch again to apply the
+current inner-join selection.
 
 The form prefers the loaded SQL dump's index, falling back to the saved search
 setting. This also repairs the displayed value for older sessions whose search
@@ -236,7 +235,7 @@ saves the search setting but does not create a dump snapshot. An invalid index o
 database failure does not replace the loaded dump, its school metadata, or its
 existing admission results.
 
-## 6. Mapping order and when pages are blocked
+## 6. Independent mappings and page requirements
 
 ```mermaid
 flowchart TD
@@ -244,23 +243,17 @@ flowchart TD
     Admission --> Matched[Matched]
     Admission --> Review["Review students"]
     Admission --> Misses[Admission Not Matched]
-    Misses --> Email[Optional email mapping]
-    Misses --> Class[Full name and class concatenation]
-    Email --> EmailMisses[Email Not Matched]
-    EmailMisses --> Class
+    School[School input] --> Email[Run email mapping]
+    Misses --> Email
+    School --> Class[Run full name and class]
+    Dump[Admission dump] --> Class
 ```
 
-Admission mapping is the first required stage. Class concatenation can then use
-either admission Not Matched or email Not Matched; email mapping is not mandatory
-before class concatenation.
-
-Without current admission results, both downstream pages show:
-
-> First run admission mapping.
-
-They do not mount their mapping forms or fetch form metadata in this state.
-If admission has run but there are no Not Matched students, Email mapping shows
-that there are no students to send instead.
+Admission, Email using the school-file source, and Full name + class can be started
+without another mapping's results. Email may instead read Admission Not Matched;
+that option requires Admission mapping to run first. Full name + class reads the
+school file and admission dump directly. Changing the school file, dump, or school index
+clears all results; Admission reruns clear Email and Class; Email reruns clear Class.
 
 Changing school/dump contents invalidates admission results, requiring admission
 mapping again. Identical uploaded bytes need not invalidate the results. A SQL
@@ -268,9 +261,9 @@ dump fetch explicitly clears the previous admission results. Draft dropdown edit
 are distinct from committed settings: a configuration check does not itself
 rerun mapping or replace saved results.
 
-Admission pass 1 clears downstream mapping results when rerun. Other changes are
-checked using source signatures; downstream results are invalidated when their
-source becomes stale. Cache invalidation alone does not run any mapping.
+Rerunning Admission replaces Admission and clears Email/Class. Rerunning Email
+replaces Email and clears Class. Rerunning Class replaces only Class. Source
+signatures also invalidate stale dependent results. Invalidation does not run a mapping.
 
 ### Admission first-name check discussed during development
 
@@ -286,7 +279,7 @@ When an admission number occurs exactly once in the dump:
 Comparison trims outer spaces and ignores case. The initial-length check happens
 after equality comparison: `A` and `A.` are still different names. Duplicate
 admissions, missing usernames and account uniqueness checks continue to apply.
-Single-character reviews are not promoted by admission pass 2.
+Single-character matches remain in Review; there is no admission second pass.
 
 ## 7. File and result Preview screen flow
 
@@ -335,18 +328,16 @@ complete selected file/result, not just the visible page.
 
 | Page | Metadata needed to prepare its form |
 |---|---|
-| Email mapping | Admission Not Matched columns, total count, email/first-name/full-name suggestions and one sample row |
-| Class concatenation | Selected Not Matched source metadata and admission dump metadata |
+| Email mapping | School-file columns, total count, email/first-name suggestions and one sample row |
+| Class concatenation | School-file metadata and admission dump metadata |
 
 The metadata request uses `limit=1`. It is not an email or class mapping run.
-Class concatenation already gets both source counts from the workspace summary,
-so it does not fetch both complete Not Matched groups when the page opens.
+Both mappings request only a one-row metadata preview rather than the complete file.
 
 Relevant metadata URLs are:
 
 ```text
-GET /api/v1/mapping/table-previews/admission_source?limit=1
-GET /api/v1/mapping/table-previews/email_source?limit=1
+GET /api/v1/mapping/table-previews/school?limit=1
 GET /api/v1/mapping/table-previews/dump?limit=1&sheet=<selected-sheet>
 ```
 
@@ -362,8 +353,7 @@ contains its key, a shared promise, and the resolved response data.
 
 | Entry | Used by | Key depends on |
 |---|---|---|
-| `admission_source` | Email mapping and class concatenation | Workspace ID, email readiness, local admission-run revision, school/dump metadata and versions, admission export versions, relevant saved column/worksheet settings |
-| `email_source` | Class concatenation | Admission-source key plus email export versions |
+| `school` | Email mapping and class concatenation | Workspace ID, school metadata/version and relevant saved column/worksheet settings |
 | `dump` | Class concatenation | Workspace ID, dump metadata/version and saved settings |
 
 The current dump key includes the whole settings object, so any saved setting
@@ -386,10 +376,9 @@ Changing keys removes old entries. An old request finishing later cannot overwri
 the current entry. Navigating away does not cancel a shared metadata request, so
 returning while it is pending can reuse it.
 
-Both admission run buttons explicitly invalidate admission/email source entries
-and increment the local revision, including reruns with identical output. Email
-source changes are detected through export versions. A new workspace changes all
-keys. Refreshing the browser clears every React cache entry.
+An Admission rerun invalidates school-related metadata entries and increments the
+local revision. A new workspace changes all keys. Refreshing the browser clears
+every React cache entry.
 
 This cache is local to the current page lifetime. There is no cross-tab push
 synchronization: a change made elsewhere is detected when this tab receives an

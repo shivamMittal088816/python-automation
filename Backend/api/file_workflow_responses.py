@@ -7,33 +7,10 @@ from Backend.api.file_workflow_configuration import admission_configuration
 from Backend.api.file_workflow_snapshots import read_snapshot, sheets
 from Backend.utils.table_queries import preview_page_bounds, search_dump
 from Backend.services.email_mapping.email_file_mapping import sync_email_stage
-from Backend.services.email_mapping.email_input import email_pass_one_complete
 
 
 def records(rows):
     return rows.fillna('').to_dict(orient='records')
-
-
-def result_pass(state, stage):
-    exports = state.get(STAGES[stage], {})
-    if not exports:
-        return 0
-    values = state.setdefault('admission_settings', {})
-    key = f'{stage}_result_pass'
-    if key not in values:
-        # Recover the displayed pass for results saved before pass tracking existed.
-        prefix = 'email_' if stage == 'email' else ''
-        status = 'email_mapping_status' if stage == 'email' else 'mapping_status'
-        values[key] = 1
-        for group in ('matched', 'review'):
-            filename = f'{prefix}{group}.xlsx'
-            snapshot = exports.get(filename)
-            if snapshot and snapshot['count']:
-                rows = read_snapshot({'name': filename, 'data': snapshot['data']})
-                if status in rows and rows[status].astype(str).str.contains('Pass 2:', regex=False).any():
-                    values[key] = 2
-                    break
-    return values[key]
 
 
 def mapping_run_columns(state):
@@ -42,22 +19,12 @@ def mapping_run_columns(state):
     admission = state.get('admission_signature') or ()
     if state.get('admission_exports') and len(admission) > 6:
         columns['admission']['1'] = [admission[3], admission[6]]
-        if result_pass(state, 'admission') == 2:
-            name = state.get('admission_settings', {}).get('admission_round_two_name_column')
-            if name:
-                columns['admission']['2'] = [admission[3], name]
     email = state.get('email_result_signature') or ()
     if state.get('email_exports') and len(email) > 2:
-        columns['email']['1'] = [email[1], email[2]]
-        if result_pass(state, 'email') == 2:
-            name = state.get('admission_settings', {}).get('email_full_name_column')
-            if name:
-                columns['email']['2'] = [name]
+        columns['email']['1'] = list(email[2:4] if len(email) == 6 else email[1:3])
     full_name = state.get('full_name_class_result_signature') or ()
     if state.get('full_name_class_exports') and len(full_name) >= 6:
         columns['full_name_class']['1'] = [full_name[3], full_name[4]]
-        if len(full_name) >= 9:
-            columns['full_name_class']['2'] = [full_name[7], full_name[8]]
     return columns
 
 
@@ -74,12 +41,7 @@ def summary(state, session_id):
         'exports':{stage:{name:item['count'] for name,item in state.get(field,{}).items()} for stage,field in STAGES.items()},
         'export_versions':{stage:{name:hashlib.sha256(item['data']).hexdigest() for name,item in state.get(field,{}).items()} for stage,field in STAGES.items()},
         'email_ready':ready,
-        'run_columns':mapping_run_columns(state),
-        'admission_result_pass':result_pass(state, 'admission'),
-        'email_result_pass':result_pass(state, 'email'),
-        'email_pass_one_complete':email_pass_one_complete(state),
-        'full_name_class_round':(2 if len(state.get('full_name_class_result_signature') or ()) > 6 else 1) if state.get('full_name_class_exports') else 0,
-        'full_name_class_round_one_not_matched':(state.get('full_name_class_round_one_exports') or state.get('full_name_class_exports',{})).get('full_name_class_not_matched.xlsx',{}).get('count',0)}
+        'run_columns':mapping_run_columns(state)}
 
 
 def page_response(rows,page,limit,query='',columns=None):

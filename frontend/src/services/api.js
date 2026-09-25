@@ -29,7 +29,10 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     let payload = {};
     try { payload = await response.json(); } catch { /* Use the status fallback for non-JSON errors. */ }
     const detail = payload.detail || payload.message;
-    const error = new Error(Array.isArray(detail) ? detail.map(item => item.msg).join('; ') : detail || `Request failed (${response.status}).`);
+    const error = new Error(Array.isArray(detail) ? detail.map(item => {
+      const field = (item.loc || []).filter(part => !['body', 'query', 'path'].includes(part)).join('.');
+      return field ? `${field}: ${item.msg}` : item.msg;
+    }).join('; ') : detail || `Request failed (${response.status}).`);
     error.status = response.status;
     throw error;
   }

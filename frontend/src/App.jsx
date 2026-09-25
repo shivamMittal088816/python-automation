@@ -8,11 +8,13 @@ import { SchoolFilePage } from './pages/SchoolFile/SchoolFilePage';
 import { DumpFilePage } from './pages/DumpFile/DumpFilePage';
 import { EmailMappingPage } from './pages/EmailMapping/EmailMappingPage';
 import { EmailDumpPage } from './pages/EmailDump/EmailDumpPage';
+import { EmailPreviewPage } from './pages/EmailPreview/EmailPreviewPage';
 import { FullNameClassMappingPage } from './pages/FullNameClassMapping/FullNameClassMappingPage';
+import { FullNameClassPreviewPage } from './pages/FullNameClassPreview/FullNameClassPreviewPage';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 export function App() {
   const legacy = new URLSearchParams(location.search);
   const initial = legacy.get('page') === 'admission-preview' ? '/admission_preview_page' : '/admission_file_page';
-  return <ErrorBoundary><BrowserRouter><WorkspaceProvider><Routes><Route element={<AppLayout />}><Route path="/" element={<Navigate replace to={`${initial}${location.search}`} />} /><Route path="/admission_file_page" element={<AdmissionMappingPage />} /><Route path="/admission_preview_page" element={<AdmissionPreviewPage />} /><Route path="/school_file_page" element={<SchoolFilePage />} /><Route path="/dump_file_page" element={<DumpFilePage />} /><Route path="/email_mapping_page" element={<EmailMappingPage />} /><Route path="/email_dump_page" element={<EmailDumpPage />} /><Route path="/full_name_class_mapping_page" element={<FullNameClassMappingPage />} /><Route path="/mapping_rules_page" element={<MappingRulesPage />} /><Route path="*" element={<Navigate replace to="/admission_file_page" />} /></Route></Routes></WorkspaceProvider></BrowserRouter></ErrorBoundary>;
+  return <ErrorBoundary><BrowserRouter><WorkspaceProvider><Routes><Route element={<AppLayout />}><Route path="/" element={<Navigate replace to={`${initial}${location.search}`} />} /><Route path="/admission_file_page" element={<AdmissionMappingPage />} /><Route path="/admission_preview_page" element={<AdmissionPreviewPage />} /><Route path="/school_file_page" element={<SchoolFilePage />} /><Route path="/dump_file_page" element={<DumpFilePage />} /><Route path="/email_mapping_page" element={<EmailMappingPage />} /><Route path="/email_preview_page" element={<EmailPreviewPage />} /><Route path="/email_dump_page" element={<EmailDumpPage />} /><Route path="/full_name_class_mapping_page" element={<FullNameClassMappingPage />} /><Route path="/full_name_class_preview_page" element={<FullNameClassPreviewPage />} /><Route path="/mapping_rules_page" element={<MappingRulesPage />} /><Route path="*" element={<Navigate replace to="/admission_file_page" />} /></Route></Routes></WorkspaceProvider></BrowserRouter></ErrorBoundary>;
 }

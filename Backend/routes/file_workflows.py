@@ -4,7 +4,6 @@ from Backend.api.session_cookie import verify_origin
 
 from Backend.routes.file_workflow_routes import (
     admission_mapping,
-    duplicate_accounts,
     email_mapping,
     file_downloads,
     file_inputs,
@@ -22,7 +21,6 @@ for workflow_router in (
     configuration_preview.router,
     set_session.router,
     get_session.router,
-    duplicate_accounts.router,
     file_inputs.router,
     admission_mapping.router,
     email_mapping.router,

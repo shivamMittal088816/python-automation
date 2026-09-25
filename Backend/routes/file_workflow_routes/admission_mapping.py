@@ -2,12 +2,13 @@
 from Backend.api.session_cookie import SessionId
 from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
-from Backend.schemas.file_workflow import MoveInput, AdmissionSecondPassInput, AdmissionRunInput
+from Backend.schemas.file_workflow import AdmissionRunInput
 from Backend.services.admission_mapping.admission_file_mapping import map_students, build_exports
 from Backend.api.file_workflow_configuration import admission_configuration
 from Backend.api.file_workflow_validation import fail, require_dump_school_index
 from Backend.api.file_workflow_snapshots import read_snapshot
 from Backend.api.file_workflow_responses import summary
+from Backend.api.file_workflow_invalidation import clear_email_and_class_mapping
 
 
 router = APIRouter(tags=['Admission mapping'])
@@ -33,46 +34,11 @@ def admission_map(session_id: SessionId, payload: AdmissionRunInput | None = Non
                 values['school_admission_col'],config['dump_admission'],config['username'],values['school_name_col'],
                 name_is_full=False,dump_first_name_column=config['dump_first_name'])
             state['admission_exports']=build_exports(result)
-            values['admission_result_pass'] = 1
+            clear_email_and_class_mapping(state)
         except (ValueError,KeyError,OSError) as exc:
             state.pop('admission_exports',None)
             fail(f'Could not map these files: {exc}')
-        for key in ('email_exports','email_result_signature','full_name_class_exports','full_name_class_result_signature','full_name_class_round_one_exports'):
-            state.pop(key,None)
         result = summary(state,session_id)
         saved_state.clear()
         saved_state.update(state)
         return result
-
-
-@router.post('/admission-mapping/move')
-def admission_move(session_id: SessionId,payload: MoveInput):
-    fail('Student previews are locked. Moving students between result groups is disabled.',403)
-
-
-
-@router.post('/admission-mapping/second-pass')
-def admission_second_pass(session_id: SessionId, payload: AdmissionSecondPassInput):
-    from Backend.services.admission_mapping.admission_second_pass import map_admission_second_pass
-    from Backend.services.shared_mapping.mapping_account_uniqueness import review_duplicate_accounts
-
-    with workspace(session_id) as state:
-        config = admission_configuration(state, apply_settings=True)
-        require_dump_school_index(state)
-        if not config or config['missing_columns'] or not all(
-                name in state.get('admission_exports', {}) for name in ('matched.xlsx', 'review.xlsx', 'not_matched.xlsx')):
-            fail('Run admission mapping pass 1 for the current files and columns before pass 2.')
-        if payload.name_column not in config['school_columns']:
-            fail('Choose the full name column from the school input file.')
-        values = state['admission_settings']
-        try:
-            result = map_admission_second_pass(state['admission_exports'],
-                read_snapshot(state['saved_admission_dump'], values.get('admission_dump_sheet')),
-                payload.name_column, config['dump_admission'], config['username'])
-        except (ValueError, KeyError) as exc:
-            fail(str(exc))
-        state['admission_exports'] = result
-        values['admission_round_two_name_column'] = payload.name_column
-        values['admission_result_pass'] = 2
-        review_duplicate_accounts(state)
-        return summary(state, session_id)

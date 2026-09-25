@@ -19,7 +19,7 @@ HTTP endpoints, session storage format and response fields are unchanged.
 | `Backend/utils/workbook_operations.py` | Workbook conversion, status normalization and manual row transfers |
 | `Backend/utils/table_queries.py` | Literal search, header lookup and pagination |
 | `Backend/utils/school_statistics.py` | School identity inference and class/section statistics |
-| `Backend/repositories/admission_dump_service.py` | Select school students, attach admissions with a left join, retain students without paid records and remove exact normalized duplicates |
+| `Backend/repositories/admission_dump_service.py` | Select school students with an inner join to paid admissions, generate the name/class key and remove exact normalized duplicates |
 
 SQL dump rows are not necessarily unique students. The repository retains multiple
 distinct admissions; `school_statistics.py` reports distinct student IDs separately

@@ -69,11 +69,11 @@ def cleanup_expired_sessions(now=None):
 
 
 def create_session(school_index=None):
-    """Start an empty workspace; school_index is accepted for API compatibility."""
+    """Start an empty workspace, retaining an optional school index."""
     with LOCK:
         cleanup_expired_sessions()
         session_id = str(uuid4())
-        state = {'admission_settings': {}}
+        state = {'admission_settings': {'workspace_school_index': str(school_index).strip() if school_index else ''}}
         save_state(session_folder(session_id), state)
         return session_id
 

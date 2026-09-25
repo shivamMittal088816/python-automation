@@ -3,7 +3,6 @@ from Backend.api.session_cookie import SessionId
 from fastapi import APIRouter, Query
 from Backend.api.file_workflow_state import workspace
 from Backend.utils.school_statistics import dump_overview, inferred_school_index, school_class_statistics
-from Backend.services.email_mapping.email_file_mapping import email_school_input, sync_email_stage
 from Backend.api.file_workflow_constants import FILES
 from Backend.api.file_workflow_validation import fail
 from Backend.api.file_workflow_responses import page_response, records
@@ -19,18 +18,10 @@ def table_view(session_id: SessionId,kind: str,sheet: str | None=None,query: str
                columns: list[str] | None=Query(None),page: int=Query(1,ge=1),limit: int=Query(50,ge=0),
                class_column: str | None=None,section_column: str | None=None):
     with workspace(session_id,persist=False) as state:
-        if kind in ('admission_source','email_source'):
-            sync_email_stage(state)
-            field,filename=('admission_exports','not_matched.xlsx') if kind=='admission_source' else ('email_exports','email_not_matched.xlsx')
-            snapshot=state.get(field,{}).get(filename)
-            if not snapshot:
-                fail('Not matched source is not available yet.',404)
-            rows=email_school_input(read_snapshot({'name':filename,'data':snapshot['data']}))
-        else:
-            if kind not in FILES or not state.get(FILES[kind]):
-                fail('No file available.',404)
-            snapshot=state[FILES[kind]]
-            rows=read_snapshot(snapshot,selected_sheet(state,kind,sheet))
+        if kind not in FILES or not state.get(FILES[kind]):
+            fail('No file available.',404)
+        snapshot=state[FILES[kind]]
+        rows=read_snapshot(snapshot,selected_sheet(state,kind,sheet))
         if columns and any(column not in rows for column in columns):
             fail('Choose valid search columns.')
         result=page_response(rows,page,limit,query,columns)
