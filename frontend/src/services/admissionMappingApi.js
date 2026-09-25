@@ -1,11 +1,11 @@
 import { request } from './api';
-export const workspacePath = () => '/mapping';
+export const workspacePath = '/mapping';
 export const admissionMappingApi = {
   createSession: school => request('/mapping/session', { method: 'POST', body: { school_index: school || null } }),
   getSession: () => request('/mapping/session'),
-  fetchDump: (id, school_index) => request(`${workspacePath(id)}/student-dump/fetch`, { method: 'POST', body: { school_index } }),
-  schoolDetails: (id, body) => request(`${workspacePath(id)}/school`, { method: 'PATCH', body }),
-  map: (id, body) => request(`${workspacePath(id)}/admission-mapping/run`, { method: 'POST', body }),
-  configuration: (id, body, signal) => request(`${workspacePath(id)}/configuration-preview`, { method: 'POST', body, signal }),
-  results: (id, stage, filename, params, signal) => request(`${workspacePath(id)}/result-previews/${stage}/${encodeURIComponent(filename)}`, { params, signal }),
+  fetchDump: (school_index, revision) => request(`${workspacePath}/student-dump/fetch`, { method: 'POST', body: { school_index }, revision }),
+  schoolDetails: (body, revision) => request(`${workspacePath}/school`, { method: 'PATCH', body, revision }),
+  map: (body, revision) => request(`${workspacePath}/admission-mapping/run`, { method: 'POST', body, revision }),
+  configuration: (body, signal) => request(`${workspacePath}/configuration-preview`, { method: 'POST', body, signal }),
+  results: (stage, filename, params, signal) => request(`${workspacePath}/result-previews/${stage}/${encodeURIComponent(filename)}`, { params, signal }),
 };

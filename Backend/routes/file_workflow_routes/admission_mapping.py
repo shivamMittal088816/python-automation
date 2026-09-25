@@ -1,5 +1,5 @@
 """Admission mapping endpoints for the mapping API."""
-from Backend.api.session_cookie import SessionId
+from Backend.api.session_cookie import SessionId, WorkspaceRevision
 from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
 from Backend.schemas.file_workflow import AdmissionRunInput
@@ -15,8 +15,8 @@ router = APIRouter(tags=['Admission mapping'])
 
 
 @router.post('/admission-mapping/run')
-def admission_map(session_id: SessionId, payload: AdmissionRunInput | None = None):
-    with workspace(session_id) as saved_state:
+def admission_map(session_id: SessionId, revision: WorkspaceRevision, payload: AdmissionRunInput | None = None):
+    with workspace(session_id, expected_revision=revision) as saved_state:
         state = dict(saved_state)
         state['admission_settings'] = dict(saved_state.get('admission_settings', {}))
         if payload:

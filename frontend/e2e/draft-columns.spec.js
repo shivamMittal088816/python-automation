@@ -18,12 +18,12 @@ test('mapping dropdown edits make no requests and only a run saves the columns',
   await page.reload();
   await expect(column).toHaveValue('first_name');
   await column.selectOption('full_name');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Pass 1: Admission/ })).toContainText('Last run: admission_number + full_name');
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('heading', { name: /Admission number \+ first name/ })).toContainText('Last run: admission_number + full_name');
   await page.reload();
   await expect(column).toHaveValue('full_name');
   await column.selectOption('first_name');
-  await expect(page.getByRole('heading', { name: /Pass 1: Admission/ })).toContainText('Last run: admission_number + full_name');
+  await expect(page.getByRole('heading', { name: /Admission number \+ first name/ })).toContainText('Last run: admission_number + full_name');
   expect(requests.filter(request => request.url().endsWith('/settings'))).toHaveLength(0);
   const mapping = requests.find(request => request.url().endsWith('/admission-mapping/run'));
   expect(mapping.postDataJSON().school_name_col).toBe('full_name');

@@ -8,6 +8,7 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 from Backend.api import file_workflow_state as sessions
+from Backend.api.file_workflow_session_storage import save_state
 
 
 class SessionExpiryTests(unittest.TestCase):
@@ -82,6 +83,17 @@ class SessionExpiryTests(unittest.TestCase):
 
         self.assertEqual(error.exception.status_code, 409)
         self.assertIn("reference", error.exception.detail.lower())
+
+    def test_save_removes_unreferenced_snapshots_after_manifest_publish(self):
+        folder = self.root / 'snapshot-gc'
+        state = {'saved_admission_school': {'name': 'school.csv', 'data': b'first'}}
+        save_state(folder, state)
+        first = next(folder.glob('*.bin'))
+        state['saved_admission_school']['data'] = b'second'
+        save_state(folder, state)
+        snapshots = list(folder.glob('*.bin'))
+        self.assertEqual(len(snapshots), 1)
+        self.assertNotEqual(snapshots[0].name, first.name)
 
 
 if __name__ == "__main__":

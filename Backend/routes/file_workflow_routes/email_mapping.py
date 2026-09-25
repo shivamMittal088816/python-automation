@@ -1,5 +1,5 @@
 """Email mapping endpoints for the mapping API."""
-from Backend.api.session_cookie import SessionId
+from Backend.api.session_cookie import SessionId, WorkspaceRevision
 import logging
 from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
@@ -18,8 +18,8 @@ logger = logging.getLogger('uvicorn.error')
 
 
 @router.post('/email-mapping/run')
-def email_map(session_id: SessionId,payload: EmailInput):
-    with workspace(session_id) as state:
+def email_map(session_id: SessionId,revision: WorkspaceRevision,payload: EmailInput):
+    with workspace(session_id, expected_revision=revision) as state:
         if not sync_email_stage(state):
             fail('Load a school file first.')
         values=state.setdefault('admission_settings',{})

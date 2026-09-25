@@ -27,16 +27,16 @@ test('all active pages remain readable at desktop, tablet and mobile widths', as
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
   await expect(page.getByLabel('School admission number column')).toBeVisible();
   await capture('admission-configured');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   await capture('admission-results');
   await page.goto('/email_mapping_page');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Email result group')).toBeVisible();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   await capture('email-results');
   await page.goto('/full_name_class_mapping_page');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Result group', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   await capture('full-name-results');
   for (const width of [1440, 820, 390]) {
     await page.setViewportSize({ width, height: 1000 });

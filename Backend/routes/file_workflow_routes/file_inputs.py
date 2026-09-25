@@ -1,5 +1,5 @@
 """Input files endpoints for the mapping API."""
-from Backend.api.session_cookie import SessionId
+from Backend.api.session_cookie import SessionId, WorkspaceRevision
 from pathlib import Path
 import logging
 from fastapi import APIRouter, File, UploadFile
@@ -18,14 +18,14 @@ logger = logging.getLogger('uvicorn.error')
 
 
 @router.post('/files/{kind}')
-def upload_file(session_id: SessionId, kind: str, file: UploadFile = File(...)):
+def upload_file(session_id: SessionId, revision: WorkspaceRevision, kind: str, file: UploadFile = File(...)):
     try:
         data = file.file.read()
     except (OSError, ValueError) as exc:
         fail(f'Could not read the uploaded file: {exc}')
     if not data:
         fail('The uploaded file is empty.')
-    with workspace(session_id) as state:
+    with workspace(session_id, expected_revision=revision) as state:
         previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
         changed = (not previous or previous.get('data') != data
                    or kind == 'dump' and bool(previous.get('school_index')))
@@ -36,7 +36,7 @@ def upload_file(session_id: SessionId, kind: str, file: UploadFile = File(...)):
 
 
 @router.post('/files/{kind}/path')
-def load_path(session_id: SessionId,kind: str,payload: FilePathInput):
+def load_path(session_id: SessionId,revision: WorkspaceRevision,kind: str,payload: FilePathInput):
     if not settings.ALLOW_LOCAL_FILE_PATHS:
         fail('File path loading is disabled on this Backend.',403)
     value = payload.path.strip().strip('"')
@@ -47,7 +47,7 @@ def load_path(session_id: SessionId,kind: str,payload: FilePathInput):
         data=path.read_bytes()
     except OSError as exc:
         fail(f'Could not load file: {exc}')
-    with workspace(session_id) as state:
+    with workspace(session_id, expected_revision=revision) as state:
         previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
         changed = (not previous or previous.get('data') != data
                    or kind == 'dump' and bool(previous.get('school_index')))
@@ -58,8 +58,8 @@ def load_path(session_id: SessionId,kind: str,payload: FilePathInput):
 
 
 @router.post('/student-dump/fetch')
-def fetch_dump(session_id: SessionId,payload: SchoolInput):
-    with workspace(session_id) as state:
+def fetch_dump(session_id: SessionId,revision: WorkspaceRevision,payload: SchoolInput):
+    with workspace(session_id, expected_revision=revision) as state:
         index=payload.school_index.strip()
         if not index:
             fail('Enter a school index first.')
@@ -92,12 +92,12 @@ def fetch_dump(session_id: SessionId,payload: SchoolInput):
 
 
 @router.patch('/school')
-def school_details(session_id: SessionId,payload: SchoolDetails):
+def school_details(session_id: SessionId,revision: WorkspaceRevision,payload: SchoolDetails):
     index=payload.school_index.strip()
     name=payload.school_name.strip() if payload.school_name is not None else None
     if not index.isascii() or not index.isdecimal() or name == "":
         fail('Enter a numeric school index and, if provided, a nonempty school name.')
-    with workspace(session_id) as state:
+    with workspace(session_id, expected_revision=revision) as state:
         if not state.get('saved_admission_dump'):
             fail('Load the admission dump first.')
         snapshot=state['saved_admission_dump']

@@ -14,5 +14,5 @@ router = APIRouter(tags=['Mapping sessions'])
 def new_session(payload: CreateSession, response: Response):
     session_id = create_session(payload.school_index)
     set_session_cookie(response, session_id)
-    with workspace(session_id) as state:
+    with workspace(session_id, persist=False) as state:
         return summary(state, session_id)

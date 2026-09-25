@@ -1,5 +1,5 @@
 """Full name and class mapping endpoints for the mapping API."""
-from Backend.api.session_cookie import SessionId
+from Backend.api.session_cookie import SessionId, WorkspaceRevision
 import hashlib
 from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
@@ -14,8 +14,8 @@ router = APIRouter(tags=['Full name and class mapping'])
 
 
 @router.post('/full-name-class-mapping/run')
-def full_name_map(session_id: SessionId,payload: FullNameInput):
-    with workspace(session_id) as state:
+def full_name_map(session_id: SessionId,revision: WorkspaceRevision,payload: FullNameInput):
+    with workspace(session_id, expected_revision=revision) as state:
         values=state.setdefault('admission_settings',{})
         sheet=None
         if payload.source == 'school_file':

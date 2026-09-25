@@ -34,6 +34,22 @@ def save_state(folder, state):
     staged = folder / 'state.pending.json'
     staged.write_text(json.dumps(manifest, ensure_ascii=False), encoding='utf-8')
     staged.replace(folder / 'state.json')
+    referenced = {
+        item['file']
+        for key in FILE_KEYS
+        if isinstance((item := manifest.get(key)), dict) and isinstance(item.get('file'), str)
+    }
+    for key in EXPORT_KEYS:
+        referenced.update(
+            item['file'] for item in manifest.get(key, {}).values()
+            if isinstance(item, dict) and isinstance(item.get('file'), str)
+        )
+    for target in folder.glob('*.bin'):
+        if target.name not in referenced and target.is_file() and not target.is_symlink():
+            target.unlink(missing_ok=True)
+    for target in folder.glob('*.pending'):
+        if target.is_file() and not target.is_symlink():
+            target.unlink(missing_ok=True)
 
 
 def load_state(folder):
@@ -46,6 +62,11 @@ def load_state(folder):
         raise HTTPException(409, 'Saved mapping session metadata is unreadable. Start a new session.') from exc
     if not isinstance(state, dict):
         raise HTTPException(409, 'Saved mapping session metadata is invalid. Start a new session.')
+    # Older manifests predate optimistic concurrency. Keep reads side-effect free
+    # while giving those sessions a stable identity and revision until their next
+    # successful mutation persists the migrated fields.
+    state.setdefault('workspace_id', folder.name)
+    state.setdefault('revision', 0)
     def snapshot(item):
         if not isinstance(item, dict) or not isinstance(item.get('file'), str) or not isinstance(item.get('metadata'), dict):
             raise HTTPException(409, 'Saved mapping file reference is invalid. Start a new session.')

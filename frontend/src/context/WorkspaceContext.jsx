@@ -7,8 +7,35 @@ import { Alert, Button } from '../components/common/Controls';
 const WorkspaceContext = createContext(null);
 export const useWorkspace = () => useContext(WorkspaceContext);
 
+// Keep pages usable while an older backend process or saved session is being
+// upgraded. Every page can rely on these collections existing.
+function normalizeWorkspace(data) {
+  if (!data) return data;
+  return {
+    ...data,
+    revision: Number.isInteger(data.revision) ? data.revision : 0,
+    files: data.files || {},
+    settings: data.settings || {},
+    exports: {
+      admission: {}, email: {}, full_name_class: {},
+      ...(data.exports || {}),
+    },
+    export_versions: {
+      admission: {}, email: {}, full_name_class: {},
+      ...(data.export_versions || {}),
+    },
+    run_columns: {
+      admission: {}, email: {}, full_name_class: {},
+      ...(data.run_columns || {}),
+    },
+  };
+}
+
 export function WorkspaceProvider({ children }) {
-  const [workspace, setWorkspace] = useState(null);
+  const [workspaceState, setWorkspace] = useState(null);
+  // Normalize during render as well as when responses arrive. Vite can preserve
+  // pre-update React state during hot reload, and that state may lack revision.
+  const workspace = normalizeWorkspace(workspaceState);
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState('');
@@ -20,7 +47,7 @@ export function WorkspaceProvider({ children }) {
   const readSequence = useRef(0);
   const channel = useRef(null);
   const refreshRef = useRef(null);
-  const fingerprint = data => JSON.stringify([data?.workspace_id, data?.files, data?.settings, data?.export_versions]);
+  const fingerprint = data => JSON.stringify([data?.workspace_id, data?.revision]);
   const announce = () => channel.current?.postMessage('workspace-changed');
   refreshRef.current = async () => {
     if (operationActive.current || !workspaceRef.current) return;
@@ -29,7 +56,7 @@ export function WorkspaceProvider({ children }) {
       const latest = await admissionMappingApi.getSession();
       if (sequence !== readSequence.current || operationActive.current) return;
       if (fingerprint(latest) !== fingerprint(workspaceRef.current)) {
-        setWorkspace(latest);
+        setWorkspace(normalizeWorkspace(latest));
         setNotice({ type: 'info', text: 'Workspace updated from another tab. Review your selections before running mapping.' });
       }
     } catch (error) {
@@ -75,7 +102,7 @@ export function WorkspaceProvider({ children }) {
     const entry = { key };
     const params = { limit: 1 };
     if (kind === 'dump') params.sheet = workspace.settings.admission_dump_sheet;
-    entry.promise = fileApi.table(workspace.workspace_id, kind, params)
+    entry.promise = fileApi.table(kind, params)
       .then(data => { entry.data = data; return data; })
       .catch(error => {
         if (metadataCache.current[kind] === entry) delete metadataCache.current[kind];
@@ -98,7 +125,7 @@ export function WorkspaceProvider({ children }) {
       // The cookie identifies the active workspace; an old tab's school URL
       // must not replace it when that tab reloads.
       if (!data) { data = await admissionMappingApi.createSession(school); announce(); }
-      if (alive) setWorkspace(data);
+      if (alive) setWorkspace(normalizeWorkspace(data));
     }
     initialize().catch(error => alive && setError(error.message));
     return () => { alive = false; };
@@ -110,23 +137,26 @@ export function WorkspaceProvider({ children }) {
     setBusy(label); setNotice(null);
     try {
       const perform = async () => {
-        const latest = await admissionMappingApi.getSession();
-        if (fingerprint(latest) !== fingerprint(workspaceRef.current)) {
-          setWorkspace(latest);
-          setNotice({ type: 'warning', text: 'The workspace changed in another tab. Review the updated files and selections, then try again.' });
-          return null;
-        }
-        const data = await action(); setWorkspace(data); announce();
+        const data = await action(workspaceRef.current.revision); setWorkspace(normalizeWorkspace(data)); announce();
         if (data.message) setNotice({ type: data.message_type || 'success', text: data.message });
         return data;
       };
       return navigator.locks ? await navigator.locks.request('student-mapping-operation', perform) : await perform();
     } catch (error) {
-      if (error.status === 401 || error.status === 409 || error.status === 404 && /session/i.test(error.message)) {
+      if (error.status === 409) {
+        try {
+          setWorkspace(normalizeWorkspace(await admissionMappingApi.getSession()));
+          setNotice({ type: 'warning', text: 'The workspace changed in another tab. Review the updated files and selections, then try again.' });
+        } catch (reloadError) {
+          setNotice({ type: 'error', text: reloadError.message });
+        }
+        return null;
+      }
+      if (error.status === 401 || error.status === 404 && /session/i.test(error.message)) {
         try {
           const school = new URLSearchParams(location.search).get('school');
           const replacement = await admissionMappingApi.createSession(school);
-          setWorkspace(replacement);
+          setWorkspace(normalizeWorkspace(replacement));
           announce();
           setNotice({ type: 'warning', text: 'Your previous session expired or became unavailable. A new session has been created.' });
           return null;
@@ -136,7 +166,7 @@ export function WorkspaceProvider({ children }) {
         }
       }
       setNotice({ type: 'error', text: error.message });
-      try { setWorkspace(await admissionMappingApi.getSession(workspace.workspace_id)); } catch { /* Keep the original operation error visible. */ }
+      try { setWorkspace(normalizeWorkspace(await admissionMappingApi.getSession())); } catch { /* Keep the original operation error visible. */ }
       return null;
     } finally { operationActive.current = false; setBusy(''); }
   }

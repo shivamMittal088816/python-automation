@@ -1,6 +1,6 @@
 """Cookie-only workflow session transport."""
 from typing import Annotated
-from fastapi import Depends, HTTPException, Request, Response
+from fastapi import Depends, Header, HTTPException, Request, Response
 from Backend.config.settings import settings
 from Backend.api.file_workflow_state import session_folder
 
@@ -39,6 +39,7 @@ def require_session(request: Request, response: Response):
 
 
 SessionId = Annotated[str, Depends(require_session)]
+WorkspaceRevision = Annotated[int, Header(alias='X-Workspace-Revision', ge=0)]
 
 
 def set_session_cookie(response: Response, session_id: str):

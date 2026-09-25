@@ -16,26 +16,26 @@ test('mapping runs only after an explicit start action, never on navigation or r
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   expect(actions).toEqual([]);
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   expect(actions).toEqual(['admission-mapping/run']);
   await page.goto('/email_mapping_page');
-  await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   expect(actions).toEqual(['admission-mapping/run']);
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Email result group')).toBeVisible();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   expect(actions).toEqual(['admission-mapping/run', 'email-mapping/run']);
   await page.goto('/full_name_class_mapping_page');
-  await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   expect(actions).toEqual(['admission-mapping/run', 'email-mapping/run']);
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Result group', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   for (const route of ['/admission_file_page', '/email_mapping_page', '/full_name_class_mapping_page']) {
     await page.goto(route);
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   }
   expect(actions).toEqual(['admission-mapping/run', 'email-mapping/run', 'full-name-class-mapping/run']);
 });
@@ -49,14 +49,14 @@ async function mapAdmission(page) {
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
   await expect(page.getByLabel('School admission number column')).toBeVisible();
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Preview not matched', exact: true })).toBeVisible();
 }
 
 test('email metadata is cached across navigation and refreshed after admission runs and reload', async ({ page }) => {
   let requests = 0;
   page.on('request', request => {
-    if (new URL(request.url()).pathname.endsWith('/table-previews/admission_source')) requests++;
+    if (new URL(request.url()).pathname.endsWith('/table-previews/school')) requests++;
   });
   async function openSidebar(group, link) {
     await page.locator('summary').filter({ hasText: group }).click();
@@ -71,14 +71,14 @@ test('email metadata is cached across navigation and refreshed after admission r
   await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(1);
   await openSidebar('Admission No. Mapping', 'Admission mapping');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   await openSidebar('Email mapping', 'Email mapping');
   await expect(page.getByLabel('School email column')).toBeVisible();
-  expect(requests).toBe(2);
+  expect(requests).toBe(1);
   await page.reload();
   await expect(page.getByLabel('School email column')).toBeVisible();
-  expect(requests).toBe(3);
+  expect(requests).toBe(2);
   await openSidebar('Admission No. Mapping', 'Admission mapping');
   await page.getByLabel('Add school file').setInputFiles({
     name: 'changed-school.csv', mimeType: 'text/csv',
@@ -86,12 +86,12 @@ test('email metadata is cached across navigation and refreshed after admission r
   });
   await expect(page.getByText('Loaded: changed-school.csv', { exact: true })).toBeVisible();
   await openSidebar('Email mapping', 'Email mapping');
-  await expect(page.getByText('First run admission mapping.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(3);
 });
 
 test('class concatenation caches both sources and dump metadata across navigation', async ({ page }) => {
-  const requests = { admission_source: 0, email_source: 0, dump: 0 };
+  const requests = { school: 0, email_source: 0, dump: 0 };
   page.on('request', request => {
     const path = new URL(request.url()).pathname;
     for (const kind of Object.keys(requests)) if (path.endsWith(`/table-previews/${kind}`)) requests[kind]++;
@@ -105,17 +105,17 @@ test('class concatenation caches both sources and dump metadata across navigatio
   await expect(page.getByLabel('School email column')).toBeVisible();
   await navigate('Full name + class Number', 'Concatenation mapping');
   await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
-  expect(requests).toEqual({ admission_source: 1, email_source: 0, dump: 1 });
+  expect(requests).toEqual({ school: 1, email_source: 0, dump: 1 });
   await navigate('Email mapping', 'Email mapping');
   await navigate('Full name + class Number', 'Concatenation mapping');
   await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
-  expect(requests).toEqual({ admission_source: 1, email_source: 0, dump: 1 });
+  expect(requests).toEqual({ school: 1, email_source: 0, dump: 1 });
   await navigate('Email mapping', 'Email mapping');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Email result group')).toBeVisible();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   await navigate('Full name + class Number', 'Concatenation mapping');
   await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
-  expect(requests.email_source).toBe(1);
+  expect(requests.email_source).toBe(0);
   await page.getByRole('radio', { name: /Admission mapping/ }).check();
   await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
   const cachedCounts = { ...requests };
@@ -127,7 +127,8 @@ test('class concatenation caches both sources and dump metadata across navigatio
   expect(requests).toEqual(cachedCounts);
   await page.reload();
   await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
-  expect(requests.email_source).toBe(cachedCounts.email_source + 1);
+  expect(requests.email_source).toBe(cachedCounts.email_source);
+  expect(requests.school).toBe(cachedCounts.school + 1);
   expect(requests.dump).toBe(cachedCounts.dump + 1);
 });
 
@@ -153,39 +154,24 @@ test('admission upload, locked preview, workbook downloads and refresh', async (
 });
 
 for (const kind of ['school', 'dump']) {
-  test(`${kind} changes require admission mapping before email and class concatenation`, async ({ page }) => {
-    let previews = 0;
-    page.on('request', request => {
-      if (new URL(request.url()).pathname.includes('/table-previews/')) previews++;
-    });
-    async function expectAdmissionRequired() {
-      const before = previews;
-      for (const route of ['/email_mapping_page', '/full_name_class_mapping_page']) {
-        await page.goto(route);
-        await expect(page.getByText('First run admission mapping.', { exact: true })).toBeVisible();
-        await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toHaveCount(0);
-      }
-      expect(previews).toBe(before);
-    }
-    await expectAdmissionRequired();
+  test(`${kind} changes clear stale results while direct mapping remains available`, async ({ page }) => {
     await mapAdmission(page);
     await page.getByLabel(kind === 'school' ? 'Add school file' : 'Add dump file').setInputFiles({
       name: `changed-${kind}.csv`, mimeType: 'text/csv',
       buffer: Buffer.from(readFileSync(kind === 'school' ? school : dump, 'utf8') + '\n'),
     });
     await expect(page.getByText(`Loaded: changed-${kind}.csv`, { exact: true })).toBeVisible();
-    await expectAdmissionRequired();
+    await page.goto('/admission_preview_page');
+    await expect(page.getByText('No results available in this session. Map your files first to preview the results.', { exact: true })).toBeVisible();
     await page.goto('/admission_file_page');
     if (kind === 'dump') {
       await page.getByLabel('School index', { exact: true }).fill('914');
       await page.getByRole('button', { name: 'Save school index', exact: true }).click();
       await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
     }
-    await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-    await expect(page.getByRole('link', { name: 'Preview not matched', exact: true })).toBeVisible();
     for (const route of ['/email_mapping_page', '/full_name_class_mapping_page']) {
       await page.goto(route);
-      await expect(page.getByRole('button', { name: 'Run pass 1', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
     }
   });
 }
@@ -194,9 +180,9 @@ test('email handoff, separate dump, full-name/class mapping, search and download
   await mapAdmission(page);
   await page.goto('/email_mapping_page');
   await expect(page.getByLabel('School email column')).toBeVisible();
-  await expect(page.getByLabel('School full name column')).toHaveValue('full_name');
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Email result group')).toBeVisible();
+  await expect(page.getByLabel('School first name column')).toHaveValue('first_name');
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await page.getByRole('link', { name: 'Preview matched', exact: true }).click();
   await expect(page.getByRole('button', { name: /Move selected/ })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: /Select row/ })).toHaveCount(0);
   await expect(page.getByRole('cell', { name: '0002', exact: true })).toBeVisible();
@@ -205,9 +191,9 @@ test('email handoff, separate dump, full-name/class mapping, search and download
   await page.getByLabel('Search email dump').fill('bob@example.test');
   await expect(page.locator('mark').first()).toHaveText('bob@example.test');
   await page.goto('/full_name_class_mapping_page');
-  await expect(page.getByLabel('Email mapping — Not matched (2 students)')).toBeChecked();
-  await page.getByRole('button', { name: 'Run pass 1', exact: true }).click();
-  await expect(page.getByLabel('Result group')).toBeVisible();
+  await page.getByRole('radio', { name: /Email mapping/ }).check();
+  await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
+  await page.getByRole('link', { name: 'Preview matched', exact: true }).click();
   await expect(page.getByRole('button', { name: /Move selected/ })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: /Select row/ })).toHaveCount(0);
   await expect(page.getByRole('cell', { name: '0003', exact: true })).toBeVisible();
@@ -306,7 +292,7 @@ test('SQL dump replacement preserves results on failure and invalidates them on 
   await page.goto('/admission_preview_page');
   await expect(page.getByText('No results available in this session. Map your files first to preview the results.', { exact: true })).toBeVisible();
   await page.goto('/email_mapping_page');
-  await expect(page.getByText('First run admission mapping.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('School email column')).toBeVisible();
   await page.goto('/full_name_class_mapping_page');
-  await expect(page.getByText('First run admission mapping.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Full name', { exact: true })).toBeVisible();
 });

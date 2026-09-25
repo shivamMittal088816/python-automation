@@ -18,17 +18,17 @@ router = APIRouter(tags=['Mapping previews'])
 
 @router.get('/result-previews/{stage}/{filename}')
 def result_view(session_id: SessionId,stage: str,filename: str,page: int=Query(1,ge=1),limit: int=Query(50,ge=1)):
-    with workspace(session_id) as state:
+    with workspace(session_id,persist=False) as state:
         if stage not in STAGES:
             fail('Result stage not found.',404)
-        if stage=='admission' and state.get('admission_exports'):
-            exports=remove_original_columns(state['admission_exports'])
+        exports = state.get(STAGES[stage], {})
+        if stage=='admission' and exports:
+            exports=remove_original_columns(exports)
             if 'new_students.xlsx' in exports:
                 if exports['new_students.xlsx']['count']:
                     exports=move_students(exports,'new_students.xlsx',list(range(exports['new_students.xlsx']['count'])),'not_matched.xlsx')
                 exports.pop('new_students.xlsx')
-            state['admission_exports']=exports
-        snapshot=state.get(STAGES[stage],{}).get(filename)
+        snapshot=exports.get(filename)
         if not snapshot:
             fail('Result group not found.',404)
         rows=read_snapshot({'name':filename,'data':snapshot['data']})

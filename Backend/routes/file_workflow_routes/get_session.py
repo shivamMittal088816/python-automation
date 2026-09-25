@@ -11,5 +11,5 @@ router = APIRouter(tags=['Mapping sessions'])
 
 @router.get('/session')
 def get_session(session_id: SessionId):
-    with workspace(session_id) as state:
+    with workspace(session_id, persist=False) as state:
         return summary(state, session_id)

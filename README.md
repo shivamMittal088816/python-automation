@@ -12,6 +12,7 @@ provides paginated previews, and exports mapping results as CSV or Excel files.
 - Provides searchable, paginated source and result previews.
 - Preserves workflow state while users move between mapping pages.
 - Stores source and result bytes as content-addressed `.bin` snapshots.
+- Rejects stale concurrent edits with workspace revisions instead of overwriting them.
 - Expires inactive workflow sessions after 24 hours.
 
 Mapping is read-only with respect to the main SQL database: classifications are
@@ -147,7 +148,15 @@ storage/temp/workflow_sessions/<session-id>/
 
 `state.json` links logical inputs and exports to their content-addressed snapshots.
 Unchanged bytes reuse the same hash, while changed results receive new snapshot
-references. Sessions inactive for 24 hours are removed with their complete folder.
+references. Snapshots that are no longer referenced are removed after a manifest is
+published. Sessions inactive for 24 hours are removed with their complete folder.
+
+Mutation requests must send the revision returned by `GET /session` in the
+`X-Workspace-Revision` header. The API returns `409 Conflict` for a stale revision;
+the browser refreshes to the latest workspace state and asks the user to retry.
+Read-only requests do not advance the revision or rewrite the session manifest.
+Mapping responses include `X-Request-ID` and `Server-Timing` headers for tracing and
+latency monitoring.
 
 See [Session and data flow](docs/SESSION_AND_DATA_FLOW.md) for details.
 

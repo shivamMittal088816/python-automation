@@ -2,6 +2,8 @@
 
 from contextlib import asynccontextmanager
 import logging
+from time import perf_counter
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -66,9 +68,16 @@ def create_app():
     app.include_router(file_workflows_router, prefix=settings.API_V1_PREFIX)
     @app.middleware('http')
     async def prevent_workflow_caching(request, call_next):
+        request_id = request.headers.get('X-Request-ID') or str(uuid4())
+        started = perf_counter()
         response = await call_next(request)
+        duration_ms = (perf_counter() - started) * 1000
+        response.headers['X-Request-ID'] = request_id
+        response.headers['Server-Timing'] = f'app;dur={duration_ms:.1f}'
         if request.url.path.startswith(settings.API_V1_PREFIX + '/mapping'):
             response.headers['Cache-Control'] = 'no-store'
+        logger.info('%s %s completed status=%s duration_ms=%.1f request_id=%s',
+                    request.method, request.url.path, response.status_code, duration_ms, request_id)
         return response
 
     app.add_middleware(
@@ -76,8 +85,8 @@ def create_app():
         allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
         allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
         allow_credentials=True,
-        allow_headers=["Content-Type"],
-        expose_headers=["Content-Disposition"],
+        allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID"],
+        expose_headers=["Content-Disposition", "X-Request-ID", "Server-Timing"],
     )
 
     return app

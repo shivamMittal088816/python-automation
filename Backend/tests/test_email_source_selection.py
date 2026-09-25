@@ -24,7 +24,7 @@ class EmailSourceSelectionTests(unittest.TestCase):
     @staticmethod
     def workspace_for(state):
         @contextmanager
-        def workspace(_session_id):
+        def workspace(_session_id, **_kwargs):
             yield state
         return workspace
 
@@ -33,7 +33,7 @@ class EmailSourceSelectionTests(unittest.TestCase):
         payload = EmailInput(source='admission_not_matched', email_column='email', name_column='first')
         with patch.object(email_mapping, 'workspace', self.workspace_for(state)):
             with self.assertRaises(HTTPException) as raised:
-                email_mapping.email_map('session', payload)
+                email_mapping.email_map('session', 0, payload)
         self.assertEqual(raised.exception.status_code, 422)
         self.assertIn('Run Admission mapping first', raised.exception.detail)
 
@@ -48,7 +48,7 @@ class EmailSourceSelectionTests(unittest.TestCase):
                 patch.object(email_mapping, 'fetch_email_dump', return_value=dump), \
                 patch.object(email_mapping, 'map_by_email', return_value=exports) as mapper, \
                 patch.object(email_mapping, 'summary', return_value={'ok': True}):
-            self.assertEqual(email_mapping.email_map('session', payload), {'ok': True})
+            self.assertEqual(email_mapping.email_map('session', 0, payload), {'ok': True})
         self.assertEqual(read.call_args.args[0]['name'], 'not_matched.xlsx')
         self.assertIs(mapper.call_args.args[0], admission_rows)
         self.assertEqual(state['admission_settings']['email_input_source'], 'admission_not_matched')
@@ -63,7 +63,7 @@ class EmailSourceSelectionTests(unittest.TestCase):
                 patch.object(email_mapping, 'fetch_email_dump', return_value=pd.DataFrame()), \
                 patch.object(email_mapping, 'map_by_email', return_value={}), \
                 patch.object(email_mapping, 'summary', return_value={'ok': True}):
-            email_mapping.email_map('session', payload)
+            email_mapping.email_map('session', 0, payload)
         self.assertEqual(state['admission_settings']['email_input_source'], 'school_file')
 
 

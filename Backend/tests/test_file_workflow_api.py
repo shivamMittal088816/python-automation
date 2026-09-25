@@ -64,10 +64,18 @@ class FileWorkflowAPITests(unittest.TestCase):
 
     def json(self,method,path,payload=None,expected=200,headers=None):
         body=json.dumps(payload).encode() if payload is not None else b''
+        headers = list(headers or [])
+        if (method in ('POST', 'PUT', 'PATCH')
+                and path not in ('/mapping/session', self.endpoint('/configuration-preview'))
+                and not any(key.lower() == b'x-workspace-revision' for key, _ in headers)):
+            headers.append((b'x-workspace-revision', str(getattr(self.app.state, 'test_revision', 0)).encode()))
         status,_,data=asyncio.run(asgi_request(self.app,method,'/api/v1'+path,body,
-            [(b'content-type',b'application/json')]+(headers or [])))
+            [(b'content-type',b'application/json')]+headers))
         self.assertEqual(status,expected,data.decode(errors='replace'))
-        return json.loads(data)
+        result = json.loads(data)
+        if isinstance(result, dict) and 'revision' in result:
+            self.app.state.test_revision = result['revision']
+        return result
 
     def endpoint(self,suffix=''):
         return '/mapping'+(suffix or '/session')
@@ -77,11 +85,14 @@ class FileWorkflowAPITests(unittest.TestCase):
         body=(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{filename}"\r\n'
               'Content-Type: application/octet-stream\r\n\r\n').encode()+data+f'\r\n--{boundary}--\r\n'.encode()
         status,_,response=asyncio.run(asgi_request(self.app,'POST','/api/v1'+self.endpoint('/files/'+kind),body,
-            [(b'content-type',f'multipart/form-data; boundary={boundary}'.encode())]))
+            [(b'content-type',f'multipart/form-data; boundary={boundary}'.encode()),
+             (b'x-workspace-revision', str(getattr(self.app.state, 'test_revision', 0)).encode())]))
         self.assertEqual(status,200,response.decode(errors='replace'))
+        uploaded = json.loads(response)
+        self.app.state.test_revision = uploaded['revision']
         if kind == "dump" and save_index:
             return self.json("PATCH",self.endpoint("/school"),{"school_index":"914"})
-        return json.loads(response)
+        return uploaded
 
     def inputs(self):
         self.upload('school','school.csv',self.school.to_csv(index=False).encode())
@@ -90,6 +101,26 @@ class FileWorkflowAPITests(unittest.TestCase):
     def mapped(self):
         self.inputs()
         return self.json('POST',self.endpoint('/admission-mapping/run'))
+
+    def test_stale_revision_returns_conflict_without_changing_workspace(self):
+        initial = self.json('GET', self.endpoint())
+        self.upload('school', 'school.csv', self.school.to_csv(index=False).encode())
+        current = self.json('GET', self.endpoint())
+        stale_headers = [(b'x-workspace-revision', str(initial['revision']).encode())]
+        response = self.json('PATCH', self.endpoint('/school'), {'school_index': '914'},
+                             expected=409, headers=stale_headers)
+        self.assertIn('changed', response['detail'])
+        after = self.json('GET', self.endpoint())
+        self.assertEqual(after['revision'], current['revision'])
+        self.assertNotIn('dump', after['files'])
+
+    def test_get_requests_do_not_change_revision_or_result_versions(self):
+        before = self.mapped()
+        self.json('GET', self.endpoint('/result-previews/admission/matched.xlsx'))
+        self.json('GET', self.endpoint('/table-previews/school'))
+        after = self.json('GET', self.endpoint())
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(after['export_versions'], before['export_versions'])
 
     def test_class_mapping_accepts_current_form_payload(self):
         self.inputs()
@@ -119,6 +150,7 @@ class FileWorkflowAPITests(unittest.TestCase):
                 rows.to_excel(buffer, index=False)
                 with state_store.workspace(self.id) as state:
                     state[stage] = {filename: {'data': buffer.getvalue(), 'count': 1}}
+                self.app.state.test_revision = self.json('GET', self.endpoint())['revision']
                 result = self.json('POST', self.endpoint('/full-name-class-mapping/run'), {
                     'source': source, 'name_column': 'Selected name', 'class_column': 'Selected class',
                 })
@@ -211,7 +243,8 @@ class FileWorkflowAPITests(unittest.TestCase):
               f'--{boundary}--\r\n').encode()
         status,_,response=asyncio.run(asgi_request(
             self.app,'POST','/api/v1'+self.endpoint('/files/school'),body,
-            [(b'content-type',f'multipart/form-data; boundary={boundary}'.encode())]))
+            [(b'content-type',f'multipart/form-data; boundary={boundary}'.encode()),
+             (b'x-workspace-revision', str(self.app.state.test_revision).encode())]))
         self.assertEqual(status,422,response.decode(errors='replace'))
         self.assertIn('empty',json.loads(response)['detail'].lower())
         self.assertNotIn('school',self.json('GET',self.endpoint())['files'])

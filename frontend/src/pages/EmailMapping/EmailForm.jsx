@@ -1,7 +1,7 @@
 import { useSessionValue } from '../../hooks/useSessionValue';
 import { RunColumns } from '../../components/common/RunColumns';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { emailMappingApi } from '../../services/emailMappingApi';
+import { runEmailMapping } from '../../services/emailMappingApi';
 import { fileApi } from '../../services/fileApi';
 import { Alert, Button, Card, DownloadButton, Select } from '../../components/common/Controls';
 import { MappingResultCards } from '../../components/common/MappingResultCards';
@@ -59,14 +59,14 @@ export function EmailForm({ schoolSource, admissionSource }) {
           <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
             <h4 className="text-sm font-semibold text-blue-900">Email and first name <RunColumns stage="email" pass="1" /></h4>
             <p className="my-3 caption">Duplicate school emails go to Review. Otherwise, a unique email and matching first name is Matched. One-character, missing, or different names and duplicate accounts go to Review; emails not found go to Not matched.</p>
-            <Button primary disabled={!!busy || !firstName} onClick={() => run('Fetching users by email and mapping students...', () => emailMappingApi.run(id, {
+            <Button primary disabled={!!busy || !firstName} onClick={() => run('Fetching users by email and mapping students...', revision => runEmailMapping({
               source: inputSource,
               email_column: email,
               name_column: firstName,
-            }))}>Run mapping</Button>
+            }, revision))}>Run mapping</Button>
           </div>}
       </>}
-      {workspace.files.email_dump && <details className="mt-3"><summary className="text-sm font-medium">E-mail dump file</summary><p className="my-3 caption">Separate email lookup file: email_dump.csv. The admission dump is unchanged.</p><DownloadButton action={() => fileApi.download(id, 'email_dump')}>Download e-mail dump file</DownloadButton></details>}
+      {workspace.files.email_dump && <details className="mt-3"><summary className="text-sm font-medium">E-mail dump file</summary><p className="my-3 caption">Separate email lookup file: email_dump.csv. The admission dump is unchanged.</p><DownloadButton action={() => fileApi.download('email_dump')}>Download e-mail dump file</DownloadButton></details>}
     </Card>
     {Object.keys(workspace.exports.email).length > 0 && <MappingResultCards stage="email" previewPath="/email_preview_page" title="Mapping results" />}
   </div>;

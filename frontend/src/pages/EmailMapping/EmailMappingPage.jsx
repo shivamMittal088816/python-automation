@@ -14,7 +14,7 @@ function EmailSource() {
   const admissionVersion = workspace.export_versions?.admission?.['not_matched.xlsx'];
   const admission = useRequest(
     () => admissionVersion
-      ? admissionMappingApi.results(id, 'admission', 'not_matched.xlsx', { page: 1, limit: 1 })
+      ? admissionMappingApi.results('admission', 'not_matched.xlsx', { page: 1, limit: 1 })
       : Promise.resolve(null),
     [id, admissionVersion],
   );

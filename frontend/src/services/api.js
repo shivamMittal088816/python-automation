@@ -2,6 +2,11 @@ const host = (import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}/
 const prefix = (import.meta.env.VITE_API_PREFIX || '/api/v1').replace(/^\/?/, '/').replace(/\/$/, '');
 export const API_BASE_URL = `${host}${prefix}`;
 
+const cleanMessage = value => String(value || '')
+  .replace(/&#x20;|&#32;/gi, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
 export function apiUrl(path, params = {}) {
   const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, '')}`);
   Object.entries(params).forEach(([key, value]) => {
@@ -12,13 +17,16 @@ export function apiUrl(path, params = {}) {
   return url.toString();
 }
 
-export async function request(path, { method = 'GET', body, params, signal, blob = false } = {}) {
+export async function request(path, { method = 'GET', body, params, signal, blob = false, revision } = {}) {
   const multipart = body instanceof FormData;
   let response;
   try {
     response = await fetch(apiUrl(path, params), {
       method, signal, credentials: 'include',
-      headers: body && !multipart ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...(body && !multipart ? { 'Content-Type': 'application/json' } : {}),
+        ...(revision !== undefined ? { 'X-Workspace-Revision': String(revision) } : {}),
+      },
       body: body ? multipart ? body : JSON.stringify(body) : undefined,
     });
   } catch (error) {
@@ -31,8 +39,9 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     const detail = payload.detail || payload.message;
     const error = new Error(Array.isArray(detail) ? detail.map(item => {
       const field = (item.loc || []).filter(part => !['body', 'query', 'path'].includes(part)).join('.');
-      return field ? `${field}: ${item.msg}` : item.msg;
-    }).join('; ') : detail || `Request failed (${response.status}).`);
+      const message = cleanMessage(item.msg);
+      return field ? `${field}: ${message}` : message;
+    }).join('; ') : cleanMessage(detail) || `Request failed (${response.status}).`);
     error.status = response.status;
     throw error;
   }

@@ -73,13 +73,19 @@ def create_session(school_index=None):
     with LOCK:
         cleanup_expired_sessions()
         session_id = str(uuid4())
-        state = {'admission_settings': {'workspace_school_index': str(school_index).strip() if school_index else ''}}
+        state = {
+            'workspace_id': str(uuid4()),
+            'revision': 0,
+            'admission_settings': {
+                'workspace_school_index': str(school_index).strip() if school_index else '',
+            },
+        }
         save_state(session_folder(session_id), state)
         return session_id
 
 
 @contextmanager
-def workspace(session_id, persist=True):
+def workspace(session_id, persist=True, expected_revision=None):
     # Serialize operations within the existing single-worker development Backend.
     with LOCK:
         folder = session_folder(session_id)
@@ -87,11 +93,21 @@ def workspace(session_id, persist=True):
             _remove_session(folder)
             raise HTTPException(404, 'Mapping session expired. A new session will be created.')
         state = load_state(folder)
+        current_revision = int(state.get('revision', 0))
+        if expected_revision is not None and expected_revision != current_revision:
+            raise HTTPException(
+                409,
+                'This workspace changed in another tab or request. Reload it and try again.',
+            )
         # Reading a valid session counts as activity, including read-only previews.
         (folder / 'state.json').touch()
+        if persist:
+            state['revision'] = current_revision + 1
         try:
             yield state
-        finally:
+        except Exception:
+            raise
+        else:
             if persist:
                 sync_email_stage(state)
                 save_state(folder, state)

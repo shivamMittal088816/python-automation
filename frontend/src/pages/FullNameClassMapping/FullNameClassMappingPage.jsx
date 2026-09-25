@@ -3,7 +3,7 @@ import { PageHeader } from '../../components/common/Presentation';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useSessionValue } from '../../hooks/useSessionValue';
 import { useRequest } from '../../hooks/useRequest';
-import { emailMappingApi } from '../../services/emailMappingApi';
+import { runFullNameClassMapping } from '../../services/emailMappingApi';
 import { Alert, Button, Card, Loading, Select } from '../../components/common/Controls';
 import { MappingResultCards } from '../../components/common/MappingResultCards';
 
@@ -72,11 +72,11 @@ function SourceFields({ source }) {
         <Select label="Full name" options={[{ value: '', label: 'Choose a full name column' }, ...columns]} value={name} disabled={!!busy} onChange={event => update({ full_name_class_name_column: event.target.value })} />
         <Select label="Class Number" options={[{ value: '', label: 'Choose a class column' }, ...columns]} value={classColumn} disabled={!!busy} onChange={event => update({ full_name_class_class_column: event.target.value })} />
       </div>
-      <div className="mt-3"><Button primary disabled={!!busy || !name || !classColumn} onClick={() => run('Running class concatenation mapping...', () => emailMappingApi.fullNameClass(id, {
+      <div className="mt-3"><Button primary disabled={!!busy || !name || !classColumn} onClick={() => run('Running class concatenation mapping...', revision => runFullNameClassMapping({
         name_column: name,
         class_column: classColumn,
         source,
-      }))}>Run mapping</Button></div>
+      }, revision))}>Run mapping</Button></div>
     </section>
   </>;
 }

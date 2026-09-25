@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 function readValue(key, initial) {
   try { const saved = sessionStorage.getItem(key); return saved === null ? initial : JSON.parse(saved); }
@@ -7,8 +7,10 @@ function readValue(key, initial) {
 
 export function useSessionValue(key, initial) {
   const [entry, setEntry] = useState(() => ({ key, value: readValue(key, initial) }));
-  const value = entry.key === key ? entry.value : readValue(key, initial);
-  if (entry.key !== key) setEntry({ key, value });
+  const value = entry.key === key ? entry.value : initial;
+  useEffect(() => {
+    setEntry({ key, value: readValue(key, initial) });
+  }, [key]);
   const update = useCallback(next => setEntry(previous => {
     const current = previous.key === key ? previous.value : readValue(key, initial);
     const result = typeof next === 'function' ? next(current) : next;
