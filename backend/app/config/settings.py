@@ -1,0 +1,47 @@
+# Read application and database settings from environment variables and .env.
+# The cached settings object is shared by imports throughout the API.
+
+from pydantic_settings import BaseSettings
+from pydantic import Field, model_validator
+from functools import lru_cache
+from typing import Literal
+
+
+# Validate required database settings when the application configuration is loaded.
+class Settings(BaseSettings):
+    APP_NAME: str = "Student Mapping API"
+
+    DB_HOST: str
+    DB_PORT: int
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_NAME: str
+
+    API_V1_PREFIX: str = "/api/v1"
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    ALLOW_LOCAL_FILE_PATHS: bool = True
+    MAX_UPLOAD_BYTES: int = Field(default=100 * 1024 * 1024, gt=0)
+    SESSION_COOKIE_SECURE: bool = True
+    SESSION_COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "lax"
+
+    @model_validator(mode="after")
+    def validate_browser_security(self):
+        origins = [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+        if not origins or "*" in origins:
+            raise ValueError("CORS_ORIGINS must contain explicit frontend origins.")
+        if self.SESSION_COOKIE_SAMESITE == "none" and not self.SESSION_COOKIE_SECURE:
+            raise ValueError("SESSION_COOKIE_SAMESITE=none requires SESSION_COOKIE_SECURE=true.")
+        return self
+
+    # Read settings from the local .env file.
+    class Config:
+        env_file = ".env"
+
+
+# Load validated settings once; lru_cache reuses the object on subsequent calls.
+@lru_cache
+def get_settings():
+    return Settings()
+
+
+settings = get_settings()
