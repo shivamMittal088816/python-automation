@@ -270,6 +270,13 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.assertEqual(status,200)
         self.assertTrue(body.startswith(b'\xef\xbb\xbf'))
         self.assertIn('0001',body.decode('utf-8-sig'))
+        status,_,body=asyncio.run(asgi_request(
+            self.app,'GET','/api/v1'+self.endpoint('/downloads/final-results')))
+        self.assertEqual(status,200)
+        workbook=load_workbook(BytesIO(body),read_only=True)
+        self.assertEqual(workbook.sheetnames,[
+            'Admission Matched','Admission Review','Admission Not Matched',
+        ])
 
     def test_admission_preview_uses_actual_dump_headers(self):
         self.school = self.school.rename(columns={'first_name': 'FIRST NAME'})
@@ -342,6 +349,15 @@ class FileWorkflowAPITests(unittest.TestCase):
         result=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{'source':'email_not_matched','name_column':'full_name','class_column':'classNumber'})
         self.assertEqual(result['exports']['full_name_class']['full_name_class_matched.xlsx'],1)
         self.assertIn('email_dump',result['files'])
+        status,headers,body=asyncio.run(asgi_request(
+            self.app,'GET','/api/v1'+self.endpoint('/downloads/final-results')))
+        self.assertEqual(status,200)
+        self.assertIn(b'automation-914-Test%20School.xlsx',headers[b'content-disposition'])
+        workbook=load_workbook(BytesIO(body),read_only=True)
+        self.assertEqual(workbook.sheetnames,[
+            'Admission Matched','Admission Review','Admission Not Matched',
+            'Email Matched','Email Review','Class Matched','Class Review','Final Not Matched',
+        ])
 
     def test_email_run_columns_and_results_survive_reload(self):
         self.mapped()

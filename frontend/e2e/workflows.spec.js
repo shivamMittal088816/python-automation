@@ -178,6 +178,10 @@ for (const kind of ['school', 'dump']) {
 
 test('email handoff, separate dump, full-name/class mapping, search and downloads', async ({ page }) => {
   await mapAdmission(page);
+  await expect(page.getByRole('button', { name: 'Download mapping results', exact: true })).toBeEnabled();
+  const admissionResults = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download mapping results', exact: true }).click();
+  expect((await admissionResults).suggestedFilename()).toBe('automation-914-school.xlsx');
   await page.goto('/email_mapping_page');
   await expect(page.getByLabel('School email column')).toBeVisible();
   await expect(page.getByLabel('School first name column')).toHaveValue('first_name');
@@ -200,6 +204,9 @@ test('email handoff, separate dump, full-name/class mapping, search and download
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download CSV', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('full_name_class_matched.csv');
+  const finalDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download mapping results', exact: true }).click();
+  expect((await finalDownload).suggestedFilename()).toBe('automation-914-school.xlsx');
   await page.goto('/school_file_page');
   await expect(page.getByLabel('Search all columns')).toBeVisible();
   await page.getByLabel('Class column', { exact: true }).selectOption('classNumber');

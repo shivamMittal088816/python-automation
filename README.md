@@ -222,6 +222,7 @@ All workflow endpoints use the `/api/v1/mapping` prefix and cookie-based session
 | `GET /table-previews/{kind}` | Search and paginate source data |
 | `GET /result-previews/{stage}/{filename}` | Preview a result group |
 | `GET /downloads/{kind}` | Download a source or result file |
+| `GET /downloads/final-results` | Download available result groups as separate sheets in `automation-<school-index>-<school-name>.xlsx` |
 
 The complete request and response schemas are available through `/docs` while the
 backend is running.
@@ -242,7 +243,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current verified baseline is 131 backend tests and 18 browser tests passing,
+The current verified baseline is 133 backend tests and 18 browser tests passing,
 with a successful production frontend build. Browser tests use synthetic fixtures
 and isolated workflow storage rather than production data.
 

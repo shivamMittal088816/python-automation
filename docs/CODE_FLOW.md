@@ -63,6 +63,11 @@ Successful mutations call the hook's announce function; receiving tabs reload
 `GET /session` while idle. GET previews and downloads do not advance revisions or
 rewrite manifests.
 
+`services/final_results_workbook.py` resolves available result snapshots into one
+XLSX download. Admission contributes Matched, Review, and Not Matched; Email adds
+Matched and Review; Full Name + Class adds Matched, Review, and the final Not Matched.
+The schemas are not merged, and the download is available after any stage completes.
+
 ## Admission mapping
 
 Start with `pages/AdmissionMapping/AdmissionMappingForm.jsx`:
