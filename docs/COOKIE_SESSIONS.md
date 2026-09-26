@@ -23,7 +23,10 @@ to access a backend session. The old studentMappingSession storage key is remove
 on startup. Cookies are shared across browser tabs, so tabs share the active
 workflow. Each mutation sends the current `X-Workspace-Revision`; stale writes are
 rejected with HTTP 409 and the client refreshes its summary. Tabs also announce
-successful changes with `BroadcastChannel` and refresh on focus/visibility changes.
+successful changes by publishing `workspace-changed` on the
+`student-mapping-workspace` `BroadcastChannel`. Receiving tabs reload the session
+summary while idle. Focus/visibility refreshes cover unsupported browsers and
+missed notifications; server-side revision checks remain the consistency boundary.
 Uploads, settings, mapping algorithms, downloads, and inactivity expiry retain
 their existing behavior. Named-school restore has since been removed; new sessions
 start empty.

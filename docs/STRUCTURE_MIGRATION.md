@@ -69,7 +69,8 @@ into `routes/`. Existing handler internals were not extracted or rewritten.
   data stays under root `storage/`.
 - Backend `docs/`: shared architecture is in root `docs/`; no duplicate documentation tree.
 - Backend `dist/` and `node_modules/`: Python does not need frontend build/dependency folders.
-- Frontend `public/` and `src/utils/`: no current assets/helpers require them.
+- Frontend `public/`: no current static assets require it. Small shared frontend
+  helpers now live in `src/utils/`.
 - `controllers/` and `views/`: no MVC architecture introduced.
 
 No requested source move was blocked. The obsolete database package initializer

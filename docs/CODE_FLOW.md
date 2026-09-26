@@ -56,9 +56,12 @@ repeated mapping submits and API errors remain visible.
 
 Mutation services send `X-Workspace-Revision`. The backend rejects stale writes
 with HTTP 409, and `WorkspaceContext` reloads current state before asking the user
-to retry. Successful mutations are announced to other tabs with `BroadcastChannel`;
-focus and visibility refreshes provide a fallback. GET previews and downloads do
-not advance revisions or rewrite manifests.
+to retry. `services/cross-tab-broadcast-channel.js` owns the browser channel and
+its `workspace-changed` message. `hooks/useCrossTabWorkspaceUpdates.js` subscribes
+to it, closes it during unmount, and adds focus/visibility refreshes as a fallback.
+Successful mutations call the hook's announce function; receiving tabs reload
+`GET /session` while idle. GET previews and downloads do not advance revisions or
+rewrite manifests.
 
 ## Admission mapping
 

@@ -31,6 +31,13 @@ Every mutation request also sends the summary's current revision in the
 the workspace. GET previews, downloads and session restoration are read-only with
 respect to logical state and do not advance that revision.
 
+When a mutation succeeds, its tab publishes `workspace-changed` through the
+`student-mapping-workspace` `BroadcastChannel`. Another tab sharing the cookie
+reloads `GET /session` and applies the summary only if the workspace ID or revision
+changed. Focus and visibility events provide a fallback refresh. The notification
+does not carry workspace data or credentials, and backend revision validation still
+prevents stale writes.
+
 ```mermaid
 sequenceDiagram
     participant UI as React browser
@@ -45,16 +52,20 @@ sequenceDiagram
         API->>Disk: Create state.json
         API-->>UI: Set cookie + empty workspace summary
     end
-    UI->>API: Mutation + X-Workspace-Revision, or read-only GET
+    Note over UI,Disk: Mutation request path
+    UI->>API: Mutation + X-Workspace-Revision
     API->>Disk: Read current state/snapshots
-    alt Current mutation revision
-        API->>Disk: Write changed snapshots, atomically replace state.json, collect unreferenced snapshots
+    alt Current workspace revision
+        API->>Disk: Write changed snapshots and atomically replace state.json
+        API->>Disk: Collect unreferenced snapshots
         API-->>UI: Updated summary with incremented revision
-    else Stale mutation revision
-        API-->>UI: 409 Conflict; no state change
-    else Read-only request
-        API-->>UI: Requested summary/page/file without a revision change
+    else Stale workspace revision
+        API-->>UI: 409 Conflict with no state change
     end
+    Note over UI,Disk: Read-only request path
+    UI->>API: Read-only session, preview, or download request
+    API->>Disk: Read current state/snapshots
+    API-->>UI: Requested summary, page, or file without a revision change
 ```
 
 Email and class-mapping source metadata is cached in React while its source,
@@ -70,6 +81,7 @@ Email and Class results; rerunning Email clears Class results.
 |---|---|
 | HTTP-only cookie | Carries the opaque workflow session ID. |
 | Browser `sessionStorage` | Remembers Preview preferences and uncommitted mapping drafts for the tab; workspace/source-version keys prevent stale draft reuse. |
+| Browser `BroadcastChannel` | Notifies other same-origin tabs that the shared workspace changed; it carries only `workspace-changed`. |
 | Session `state.json` | Manifest of workspace identity, revision, settings, metadata, and references to snapshots. |
 | Session `.bin` files | Content-addressed bytes for CSV/XLSX inputs and generated workbooks. |
 | React context cache | Avoids repeated metadata calls until a dependency changes or the page refreshes. |
@@ -527,3 +539,39 @@ workflow_sessions/<session-id>/
               ↓
        Entire folder deleted
 ```
+
+### 8. BroadcastChannel API and cross-tab synchronization
+
+Tabs opened on the same origin share the HTTP-only workflow cookie, so they point
+to the same backend session. Their React state, metadata cache, and
+`sessionStorage` remain independent until each tab refreshes its own session
+summary.
+
+After a successful upload, settings change, dump fetch, or mapping run, the tab
+that performed the operation sends `workspace-changed` through a browser
+`BroadcastChannel` named `student-mapping-workspace`. The message contains no
+student data, session identifier, cookie, or workspace state. It only asks other
+tabs to fetch the authoritative summary from `GET /session`.
+
+An idle receiving tab compares the returned `workspace_id` and `revision` with its
+current values. It replaces its workspace state only when that fingerprint changed
+and displays a notice asking the user to review the updated selections. A tab does
+not interrupt an operation already in progress to apply a channel notification.
+
+Cross-tab responsibilities are separated as follows:
+
+| Module | Responsibility |
+|---|---|
+| `frontend/src/services/cross-tab-broadcast-channel.js` | Creates the channel, filters messages, publishes changes, provides the unsupported-browser fallback, and closes the channel. |
+| `frontend/src/hooks/useCrossTabWorkspaceUpdates.js` | Subscribes during the React lifecycle and refreshes when the tab becomes focused or visible. |
+| `frontend/src/context/WorkspaceContext.jsx` | Announces successful mutations, reloads session state, and applies changed workspace summaries. |
+
+Focus and visibility refreshes provide a fallback when `BroadcastChannel` is
+unsupported or a message is missed. Cross-tab notification improves update speed;
+it is not the concurrency guarantee. Every mutation still includes
+`X-Workspace-Revision`, and the backend returns `409 Conflict` before applying a
+stale write.
+
+Session expiry is independent of this browser API. A channel message cannot restore
+a deleted or expired backend session; the normal session recovery flow creates a
+new session instead.

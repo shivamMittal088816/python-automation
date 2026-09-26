@@ -15,7 +15,7 @@ Paths below are relative to the repository root unless an absolute path is shown
 |---|---|---|
 | Browser session cookie | Backend session identifier | Yes, until expiry or deletion |
 | React `WorkspaceContext`: `workspace` state | Session API summary: files, settings, counts, versions and progress | No; restored through the session API |
-| React `WorkspaceContext`: `metadataCache` ref | Small metadata responses for mapping forms, plus shared pending requests | No; fetched again when needed |
+| React `useWorkspaceMetadata`: internal cache ref | Small metadata responses for mapping forms, plus shared pending requests | No; fetched again when needed |
 | Individual React components | Draft selections, loading/error state and fetched Preview screen rows | No; lifecycle depends on the component |
 | Browser `sessionStorage` | Preview preferences and uncommitted mapping-form drafts, keyed by workspace and source version through `useSessionValue` | Yes within the same tab, until the key changes |
 | Backend `state.json` | Saved workflow settings, signatures, workspace ID, revision, file metadata and snapshot references | Yes, provided backend storage is retained |
@@ -354,9 +354,10 @@ cache all Preview screen pages or stop those requests.
 
 ## 9. React metadata cache
 
-The cache is a `useRef` called `metadataCache` owned by `WorkspaceProvider`.
-It is separate from the `workspace` state received from the backend. Each entry
-contains its key, a shared promise, and the resolved response data.
+The cache is an internal ref owned by `useWorkspaceMetadata`. It is separate from
+the `workspace` state received from the backend. Each entry contains its key, a
+shared promise, and the resolved response data. `WorkspaceProvider` consumes the
+hook's metadata keys and request functions without owning the cache implementation.
 
 | Entry | Used by | Key depends on |
 |---|---|---|
@@ -387,10 +388,8 @@ An Admission rerun invalidates school-related metadata entries through the updat
 workspace response. A new workspace or source version changes the relevant keys.
 Refreshing the browser clears every React cache entry.
 
-This cache is local to the current page lifetime. Tabs sharing the cookie announce
-successful mutations through `BroadcastChannel`; another tab reloads its summary
-when idle. Focus and visibility changes also trigger a refresh. Backend revision
-checks remain authoritative if notifications are delayed or unavailable.
+This cache is local to the current page lifetime. Cross-tab synchronization is
+described separately after the session expiry and storage discussion.
 
 ## 10. Reload, expiry and storage suitability
 
@@ -415,7 +414,44 @@ across restarts/deployments if sessions should survive. Multiple backend process
 or servers need coordinated storage/locking. This is expiring workflow storage,
 not a permanent project archive.
 
-## 11. How to inspect the data yourself
+## 11. BroadcastChannel browser API and cross-tab synchronization
+
+Browser tabs on the same origin share the HTTP-only workflow cookie and therefore
+refer to the same active backend session. Each tab still has independent React
+state, metadata caches, and `sessionStorage`; changing one tab does not directly
+change another tab's memory.
+
+After a mutation succeeds, the initiating tab sends the string
+`workspace-changed` through a `BroadcastChannel` named
+`student-mapping-workspace`. The notification contains no workspace contents,
+session cookie, credentials, or revision. It is only a signal that another tab
+should reload the authoritative summary from `GET /session`.
+
+The receiving tab refreshes only while it is not running another operation. It
+compares the returned `workspace_id` and `revision` with its current summary and
+updates React state only when that fingerprint changed. The user then sees a notice
+asking them to review the refreshed selections before running another mapping.
+
+The implementation is divided into these responsibilities:
+
+| Module | Responsibility |
+|---|---|
+| `services/cross-tab-broadcast-channel.js` | Owns the channel name, message type, publishing, message filtering, browser-support fallback, and channel cleanup. |
+| `hooks/useCrossTabWorkspaceUpdates.js` | Connects the channel to the React lifecycle and refreshes on browser focus or visibility changes. |
+| `context/WorkspaceContext.jsx` | Announces successful mutations, reloads the session summary, compares workspace fingerprints, and applies changed state. |
+
+If `BroadcastChannel` is unavailable, the transport exposes safe no-op methods.
+Focus and visibility events still refresh the session when the user returns to a
+tab. These mechanisms improve how quickly tabs display changes, but they are not
+the consistency boundary: every mutation carries `X-Workspace-Revision`, and the
+backend rejects stale writes with `409 Conflict` even when a notification is
+delayed, missed, or unsupported.
+
+Closing or reloading a tab closes its channel subscription. Session expiry remains
+independent of BroadcastChannel: an expired backend session cannot be restored by a
+cross-tab message, so the normal session-replacement flow creates a new session.
+
+## 12. How to inspect the data yourself
 
 - **DevTools → Network:** reload and select `session`; Response shows the session
   summary. Filter `table-previews` to inspect metadata and source Preview screen responses.
@@ -432,7 +468,7 @@ not a permanent project archive.
 Changing pages should reuse cached form metadata while its key is unchanged.
 Refreshing the browser should cause metadata requests again when the forms load.
 
-## 12. Code map
+## 13. Code map
 
 | Responsibility | File |
 |---|---|
@@ -449,7 +485,11 @@ Refreshing the browser should cause metadata requests again when the forms load.
 | Admission endpoints | [admission_mapping.py](../Backend/routes/file_workflow_routes/admission_mapping.py) |
 | Email endpoints | [email_mapping.py](../Backend/routes/file_workflow_routes/email_mapping.py) |
 | Class concatenation endpoints | [full_name_class_mapping.py](../Backend/routes/file_workflow_routes/full_name_class_mapping.py) |
-| Session restoration, operation handling and metadata cache | [WorkspaceContext.jsx](../frontend/src/context/WorkspaceContext.jsx) |
+| Session restoration and operation handling | [WorkspaceContext.jsx](../frontend/src/context/WorkspaceContext.jsx) |
+| Workspace response normalization | [workspace.js](../frontend/src/utils/workspace.js) |
+| Metadata request cache | [useWorkspaceMetadata.js](../frontend/src/hooks/useWorkspaceMetadata.js) |
+| Cross-tab channel protocol | [cross-tab-broadcast-channel.js](../frontend/src/services/cross-tab-broadcast-channel.js) |
+| Cross-tab React lifecycle and fallback refresh | [useCrossTabWorkspaceUpdates.js](../frontend/src/hooks/useCrossTabWorkspaceUpdates.js) |
 | HTTP client and cookie inclusion | [api.js](../frontend/src/services/api.js) |
 | Email metadata consumer | [EmailMappingPage.jsx](../frontend/src/pages/EmailMapping/EmailMappingPage.jsx) |
 | Class metadata consumers | [FullNameClassMappingPage.jsx](../frontend/src/pages/FullNameClassMapping/FullNameClassMappingPage.jsx) |

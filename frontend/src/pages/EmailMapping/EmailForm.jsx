@@ -5,7 +5,9 @@ import { runEmailMapping } from '../../services/emailMappingApi';
 import { fileApi } from '../../services/fileApi';
 import { Alert, Button, Card, DownloadButton, Select } from '../../components/common/Controls';
 import { MappingResultCards } from '../../components/common/MappingResultCards';
+import { MappingSourceOption } from '../../components/common/MappingSourceOption';
 import { SectionHeader } from '../../components/common/Presentation';
+import { suggestedColumn } from '../../utils/columns';
 
 export function EmailForm({ schoolSource, admissionSource }) {
   const { workspace, id, busy, run, clearNotice } = useWorkspace();
@@ -15,13 +17,9 @@ export function EmailForm({ schoolSource, admissionSource }) {
   const source = inputSource === 'admission_not_matched' ? admissionSource : schoolSource;
   const columns = schoolSource?.columns || [];
   const suggestions = schoolSource?.suggestions || {};
-  const normalized = value => String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const suggestedEmail = columns.includes(suggestions.email_column)
-    ? suggestions.email_column
-    : columns.find(column => normalized(column).includes('email'));
-  const suggestedFirstName = columns.includes(suggestions.first_name_column)
-    ? suggestions.first_name_column
-    : columns.find(column => ['firstname', 'first', 'studentfirstname'].includes(normalized(column)));
+  const suggestedEmail = suggestedColumn(columns, suggestions.email_column, name => name.includes('email'));
+  const suggestedFirstName = suggestedColumn(columns, suggestions.first_name_column,
+    name => ['firstname', 'first', 'studentfirstname'].includes(name));
   const suggestedName = columns.includes(suggestions.full_name_column) ? suggestions.full_name_column : columns[0];
   const savedEmail = values.email_input_column === null ? '' : values.email_input_column;
   const email = savedEmail === '' ? '' : columns.includes(savedEmail) ? savedEmail : suggestedEmail || '';
@@ -42,10 +40,10 @@ export function EmailForm({ schoolSource, admissionSource }) {
           {[
             ['school_file', 'School file', schoolSource],
             ['admission_not_matched', 'Admission mapping — Not matched', admissionSource],
-          ].map(([value, label, metadata]) => <label key={value} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${inputSource === value ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-slate-200'}`}>
-            <input type="radio" name="email-mapping-source" value={value} checked={inputSource === value} onChange={() => update({ email_input_source: value })} />
-            <span>{label}<span className="mt-1 block text-xs text-slate-500">{metadata ? `${Number(metadata.total || 0).toLocaleString()} students` : 'Run Admission mapping first'}</span></span>
-          </label>)}
+          ].map(([value, label, metadata]) => <MappingSourceOption key={value}
+            name="email-mapping-source" value={value} label={label} selected={inputSource === value} disabled={!!busy}
+            detail={metadata ? `${Number(metadata.total || 0).toLocaleString()} students` : 'Run Admission mapping first'}
+            onSelect={nextValue => update({ email_input_source: nextValue })} />)}
         </div>
       </fieldset>
       {inputSource === 'admission_not_matched' && !admissionSource && <Alert type="warning">First run Admission mapping to use its Not matched students.</Alert>}

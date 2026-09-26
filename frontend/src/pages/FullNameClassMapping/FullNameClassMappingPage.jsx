@@ -6,6 +6,8 @@ import { useRequest } from '../../hooks/useRequest';
 import { runFullNameClassMapping } from '../../services/emailMappingApi';
 import { Alert, Button, Card, Loading, Select } from '../../components/common/Controls';
 import { MappingResultCards } from '../../components/common/MappingResultCards';
+import { MappingSourceOption } from '../../components/common/MappingSourceOption';
+import { suggestedColumn } from '../../utils/columns';
 
 export function FullNameClassMappingPage() {
   const { workspace } = useWorkspace();
@@ -32,10 +34,9 @@ function FullNameForm() {
     <fieldset disabled={!!busy}>
       <legend className="mb-3 text-sm font-semibold">Class mapping input</legend>
       <div className="grid gap-3 sm:grid-cols-3">
-        {sources.map(([value, label]) => <label key={value} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${source === value ? 'border-blue-400 bg-blue-50 text-blue-900' : 'border-slate-200'}`}>
-          <input type="radio" name="class-mapping-source" value={value} checked={source === value} onChange={() => { clearNotice(); setSelected(value); }} />
-          {label}
-        </label>)}
+        {sources.map(([value, label]) => <MappingSourceOption key={value}
+          name="class-mapping-source" value={value} label={label} selected={source === value} disabled={!!busy}
+          onSelect={nextValue => { clearNotice(); setSelected(nextValue); }} />)}
       </div>
     </fieldset>
     <div className="mt-4">
@@ -54,9 +55,10 @@ function SourceFields({ source }) {
   const total = source === 'school_file' ? request.data?.total
     : source === 'admission_not_matched' ? workspace.exports.admission['not_matched.xlsx']
     : workspace.exports.email['email_not_matched.xlsx'];
-  const normalized = value => String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const suggestedName = request.data?.suggestions?.full_name_column || columns.find(column => ['fullname', 'studentname', 'name'].includes(normalized(column)));
-  const suggestedClass = request.data?.suggestions?.class_number_column || columns.find(column => ['classnumber', 'class', 'grade'].includes(normalized(column)));
+  const suggestedName = request.data?.suggestions?.full_name_column
+    || suggestedColumn(columns, null, name => ['fullname', 'studentname', 'name'].includes(name));
+  const suggestedClass = request.data?.suggestions?.class_number_column
+    || suggestedColumn(columns, null, name => ['classnumber', 'class', 'grade'].includes(name));
   const name = values.full_name_class_name_column === '' ? '' : columns.includes(values.full_name_class_name_column) ? values.full_name_class_name_column : suggestedName || '';
   const classColumn = values.full_name_class_class_column === '' ? '' : columns.includes(values.full_name_class_class_column) ? values.full_name_class_class_column : suggestedClass || '';
   const update = settings => setDraft(previous => ({ ...previous, ...settings }));

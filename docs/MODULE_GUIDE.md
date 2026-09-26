@@ -35,11 +35,19 @@ existing `Backend/services` subfolders. Database queries remain in repositories;
 request/response models remain in schemas. Frontend pages, components, hooks and
 API clients retain their existing locations.
 
-`frontend/src/context/WorkspaceContext.jsx` normalizes workspace responses, sends
-revisions through mutation callbacks, refreshes after 409 conflicts and coordinates
-same-session tabs. `frontend/src/services/api.js` owns revision headers and error
-normalization. Email and full-name/class services expose direct named run functions;
-the obsolete object-style API wrapper is no longer supported.
+Frontend workspace responsibilities are split across focused modules:
+
+| Module | Responsibility |
+| --- | --- |
+| `frontend/src/context/WorkspaceContext.jsx` | Session restoration, mutation orchestration, 409 recovery and shared workspace state |
+| `frontend/src/utils/workspace.js` | Workspace response normalization and revision fingerprints |
+| `frontend/src/hooks/useWorkspaceMetadata.js` | Dependency-keyed metadata request caching |
+| `frontend/src/services/cross-tab-broadcast-channel.js` | `BroadcastChannel` protocol, publishing, compatibility fallback and cleanup |
+| `frontend/src/hooks/useCrossTabWorkspaceUpdates.js` | React subscription plus focus/visibility fallback refreshes |
+| `frontend/src/services/api.js` | Cookie-aware HTTP requests, revision headers and error normalization |
+
+Email and full-name/class services expose direct named run functions; the obsolete
+object-style API wrapper is no longer supported.
 
 ## Naming conventions
 

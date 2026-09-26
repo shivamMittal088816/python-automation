@@ -13,6 +13,7 @@ provides paginated previews, and exports mapping results as CSV or Excel files.
 - Preserves workflow state while users move between mapping pages.
 - Stores source and result bytes as content-addressed `.bin` snapshots.
 - Rejects stale concurrent edits with workspace revisions instead of overwriting them.
+- Synchronizes successful workspace changes between tabs using `BroadcastChannel`.
 - Expires inactive workflow sessions after 24 hours.
 
 Mapping is read-only with respect to the main SQL database: classifications are
@@ -181,6 +182,27 @@ the browser refreshes to the latest workspace state and asks the user to retry.
 Read-only requests do not advance the revision or rewrite the session manifest.
 Mapping responses include `X-Request-ID` and `Server-Timing` headers for tracing and
 latency monitoring.
+
+### Cross-tab synchronization
+
+Tabs that share the session cookie also share the active workflow. After a
+successful mutation, the initiating tab publishes a `workspace-changed` message on
+the `student-mapping-workspace` browser `BroadcastChannel`. Other open tabs respond
+by fetching `GET /session` and updating their React workspace state when the
+workspace ID or revision changed.
+
+The implementation is separated by responsibility:
+
+- `frontend/src/services/cross-tab-broadcast-channel.js` owns the channel name,
+  message protocol, browser-support fallback, publishing, and cleanup.
+- `frontend/src/hooks/useCrossTabWorkspaceUpdates.js` connects channel messages to
+  React and also refreshes when a tab becomes focused or visible.
+- `frontend/src/context/WorkspaceContext.jsx` decides when a successful operation
+  should be announced and applies refreshed workspace summaries.
+
+`BroadcastChannel` is an immediate-refresh optimization, not the consistency
+boundary. Browsers without that API still refresh on focus/visibility changes, and
+backend revision checks remain authoritative if a notification is delayed or lost.
 
 See [Session and data flow](docs/SESSION_AND_DATA_FLOW.md) for details.
 
