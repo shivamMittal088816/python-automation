@@ -1,5 +1,7 @@
 # Workflow session cookies
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 Workflow credentials are sent only in an HttpOnly cookie. Create a workspace with
 `POST /api/v1/mapping/session` and retrieve it with `GET /api/v1/mapping/session`.
 Other workflow endpoints retain their existing suffixes directly under

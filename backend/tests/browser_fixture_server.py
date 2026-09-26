@@ -13,6 +13,7 @@ import pandas as pd
 import uvicorn
 from app.api import file_workflow_state
 from app.routes.file_workflow_routes import email_mapping, file_inputs
+from app.routes import bulk_registration
 from app.main import create_app
 from app import main as backend_main
 
@@ -38,6 +39,12 @@ def fetch_email_dump(values):
 file_inputs.fetch_school_dump=fetch_school_dump
 email_mapping.fetch_email_dump=fetch_email_dump
 
+def fetch_bulk_school(index):
+    if index.strip() != '914':
+        raise bulk_registration.SchoolNotFoundError(f'No school found for index {index}.')
+    return {'school_index': '914', 'school_name': 'Test School'}
+
+bulk_registration.fetch_school = fetch_bulk_school
 app=create_app()
 if __name__=='__main__':
     uvicorn.run(app,host='127.0.0.1',port=8123)

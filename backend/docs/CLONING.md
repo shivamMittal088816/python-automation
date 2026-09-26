@@ -1,5 +1,7 @@
 # Clone, run, test, and deploy
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 ## Repository layout
 
 ```text
@@ -15,12 +17,17 @@ python-api/
 
 Use Python 3.12 and Node.js 22.12 or newer.
 
+The PowerShell examples use `D:\python-api` as the checkout location. Replace that
+absolute path if needed. If already cloned, skip `git clone`. Dependency setup is
+needed initially or after dependency updates; everyday startup only requires the
+two service commands in the [startup guide](RUNNING.md).
+
 ## Backend setup
 
 ```powershell
-git clone <repository-url>
-Set-Location python-api\backend
-Copy-Item .env.example .env
+git clone <repository-url> D:\python-api
+Set-Location D:\python-api\backend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv sync --locked
 ```
 
@@ -36,7 +43,7 @@ SESSION_COOKIE_SAMESITE=lax
 Start the API from `backend/`:
 
 ```powershell
-uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Open `http://127.0.0.1:8000/docs` for the API schema.
@@ -46,11 +53,14 @@ Open `http://127.0.0.1:8000/docs` for the API schema.
 In another terminal:
 
 ```powershell
-Set-Location python-api\frontend
-Copy-Item .env.example .env
-npm install
+Set-Location D:\python-api\frontend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
 npm run dev
 ```
+
+Open `http://127.0.0.1:5173` for mapping or `http://127.0.0.1:5173/bulk-reg`
+for the separate file-intake service. Keep both service terminals running.
 
 The local frontend environment should contain:
 
@@ -89,7 +99,7 @@ MAX_UPLOAD_BYTES=104857600
 Start the backend from `backend/`:
 
 ```text
-uv run uvicorn app.main:app --host 0.0.0.0 --port <PORT>
+uv run python -m uvicorn app.main:app --host 0.0.0.0 --port <PORT>
 ```
 
 Use exact comma-separated origins in `CORS_ORIGINS`; wildcard origins are rejected
@@ -106,14 +116,14 @@ locking is moved to a distributed lock.
 Backend:
 
 ```powershell
-Set-Location backend
+Set-Location D:\python-api\backend
 uv run python -m unittest discover -s tests -p "test_*.py"
 ```
 
 Frontend:
 
 ```powershell
-Set-Location frontend
+Set-Location D:\python-api\frontend
 npm test
 npm run build
 ```
@@ -124,6 +134,7 @@ Browser tests start an isolated fixture API and do not use production SQL data.
 
 | Problem | Resolution |
 |---|---|
+| `uv trampoline failed to canonicalize script path` | From `backend/`, use `uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000` to bypass the launcher left over from the folder move. |
 | CORS error | Add the exact frontend scheme, hostname, and port to backend `CORS_ORIGINS`, then restart the API. |
 | Session cookie is missing | Use HTTPS in production; verify `SESSION_COOKIE_SECURE` and `SESSION_COOKIE_SAMESITE`. |
 | API cannot be reached | Verify `VITE_PRODUCTION_API_BASE_URL`, rebuild the frontend, and check the backend health route. |

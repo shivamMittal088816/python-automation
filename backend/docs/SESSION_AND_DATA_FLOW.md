@@ -1,5 +1,7 @@
 # Session, storage, API and React data flow
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 Terminology: **Review students** means students who need checking; **Preview screen**
 means the screen used to view any result group. The app's exact status value remains
 `Review`; API paths, filenames and code identifiers retain their original names.

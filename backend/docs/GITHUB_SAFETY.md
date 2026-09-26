@@ -1,10 +1,13 @@
 # Publishing this repository safely
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 ## What belongs in Git
 
-Commit application source (`frontend/src/`, `backend/app/`, and `backend/app/scripts/`), tests,
-synthetic test fixtures, documentation, `.gitignore`, `.env.example`,
-`frontend/.env.example`, `pyproject.toml`, `uv.lock`, and frontend package/lock files.
+Commit application source (`frontend/src/` and `backend/app/`), tests, synthetic
+test fixtures, documentation, `.gitignore`, `backend/.env.example`,
+`frontend/.env.example`, `backend/pyproject.toml`, `backend/uv.lock`, and frontend
+package/lock files.
 
 Real credentials belong only in local `.env` files or your deployment's secret
 configuration. Frontend `VITE_*` values are browser-visible: never put database
@@ -23,8 +26,8 @@ available locally to send separately. Review any new images or JSON files before
 adding them, since source assets and configuration can legitimately use those formats.
 
 Database configuration already reads `DB_HOST`, `DB_PORT`, `DB_USER`,
-`DB_PASSWORD` and `DB_NAME` from the backend environment or the root `.env`.
-Keep actual values there and placeholders in `.env.example`. Database URL creation
+`DB_PASSWORD` and `DB_NAME` from `backend/.env` or the deployment environment.
+Keep actual values there and placeholders in `backend/.env.example`. Database URL creation
 uses SQLAlchemy `URL.create`, so special characters in passwords are preserved
 without embedding them in a manually constructed URL string.
 
@@ -66,7 +69,7 @@ Before making this repository public:
 
 ### Current rotation status
 
-Rotation has not been performed. The current root `.env` targets a local database
+Rotation has not been performed. The current `backend/.env` targets a local database
 and has an empty `DB_PASSWORD`; it does not identify a previously exposed remote
 account or password. Before changing a database account, identify the affected
 server/account and dependent applications. Changing an unrelated local password
@@ -82,7 +85,7 @@ After you initialize the new repository, run from its root:
 git status --short
 git diff --cached --name-status
 git ls-files -ci --exclude-standard
-git check-ignore .env frontend/.env storage/example.csv mapping.log
+git check-ignore backend/.env frontend/.env backend/storage/example.csv backend/mapping.log
 ```
 
 `git ls-files -ci --exclude-standard` should print nothing: otherwise some ignored

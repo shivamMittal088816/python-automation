@@ -1,12 +1,52 @@
-# Website test report — 25 September 2026
+# Website test report — 26 September 2026
+
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
 
 Reference: [Session and data flow](SESSION_AND_DATA_FLOW.md).
 
+## Debugging follow-up - 27 September 2026
+
+- Full backend suite: **159 tests passed**. Production frontend build,
+  startup-script syntax validation, and `git diff --check` passed.
+- Fixed unchanged IndexedDB focus refreshes replacing file objects and closing
+  clear-file confirmation dialogs. Cancel and Escape preserve the loaded file.
+- Fixed controls remaining disabled after a temporary storage read failure:
+  a successful refresh now restores workspace readiness.
+- The initial browser run passed 25 of 26 tests. The stale-revision test read the
+  session before initialization and sent `undefined`, producing HTTP 422. It now
+  waits for both workspaces and asserts a numeric revision before testing HTTP 409.
+- After the fixes, all **9 focused browser tests passed**, covering all bulk
+  registration tests and the corrected stale-revision test. This includes the
+  new storage-recovery regression and confirmation focus/Escape checks.
+- Live API verification: `GET /api/v1/bulk-reg/schools/914` returned HTTP 200,
+  the requested index, and a nonempty school name. No database writes were made.
+- Updated the database query inventory to include bulk registration school lookup.
+
+## Uncommitted-change debugging pass
+
+- Initial full-suite run: **153 backend tests** and **22 browser tests passed**.
+- After fixes: **11 focused backend tests** and **6 bulk-registration browser
+  tests passed**, including new XLSX, rapid-typing, unavailable BroadcastChannel,
+  and blocked-storage regressions. These focused counts overlap the full suite.
+- Final production frontend build and `git diff --check` passed.
+- Startup script returned HTTP 200 from both services on isolated ports 8017 and
+  5187, aligned the API prefix despite a conflicting inherited value, and cleaned
+  up both ports when one test service exited. Equal ports are rejected before launch.
+- Fixed rapid typing losing characters during asynchronous IndexedDB saves,
+  BroadcastChannel initialization failures, failed uploads clearing the previous
+  file, repeated row scans during XLSX export, missing bulk-response cache headers,
+  and dropped cookie settings in the alternate browser-test configuration.
+- Database school lookup was checked with fixtures; this pass does not certify
+  connectivity to a live school database. Bulk cross-tab storage is scoped to a
+  browser profile and origin, not a signed-in-user or server-session identifier.
+
 ## Outcome
 
-- **18 browser tests passed**, using a separate visible Edge browser and isolated fixture sessions.
+- **18 browser tests passed**, using isolated fixture sessions.
 - The production frontend build completed successfully.
-- **131 backend tests passed**.
+- **144 backend tests passed**.
+- The frontend successfully starts and communicates with the independently
+  deployed backend layout.
 - No stale UI data was found in the covered browser scenarios. A regression test was
   added for failed/successful SQL dump replacement and result invalidation.
 
@@ -37,8 +77,8 @@ readable and the wide results table remained inside its scroll container.
 - Frontend: `http://127.0.0.1:5178`.
 - Fixture API: `http://127.0.0.1:8123`.
 - Browser configuration: [playwright.site-audit.config.js](../../frontend/playwright.site-audit.config.js).
-- Interactive HTML report: [browser-report/index.html](../logs/site-audit/browser-report/index.html).
-- Screenshots: `logs/site-audit/browser-artifacts/`.
+- Optional interactive report: `frontend/test-results/site-audit/browser-report/`.
+- Optional screenshots and traces: `frontend/test-results/site-audit/browser-artifacts/`.
 
 Commands used:
 
@@ -46,8 +86,8 @@ Commands used:
 # From frontend/
 npx playwright test --config playwright.site-audit.config.js
 
-# From repository root, with TEMP/TMP pointed at the workspace .tmp folder
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+# From backend/
+uv run python -m unittest discover -s tests -p "test_*.py"
 ```
 
 The existing user session was not used. The browser fixture backend stores sessions
@@ -73,18 +113,18 @@ and the local browser application:
   index `22` dump.
 - The focused normalization and failed-fetch preservation tests passed.
 
-A later full backend-suite run passed all 131 tests.
+A later full backend-suite run passed all 144 tests.
 
-### Subsequent admission left-join verification
+### Current admission inner-join verification
 
-The current query retains school students (`user_type = '0'`) even when they have
-no `paid_users` record. Multiple distinct admissions remain separate dump rows.
+The current query includes school students (`user_type = '0'`) only when they have
+a `paid_users` record. Multiple distinct admissions remain separate dump rows.
 See [SQL dump selection and counts](MAPPING_WORKFLOW.md#sql-dump-selection-and-counts).
 
 The focused command passed all 7 tests:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest tests.test_admission_dump_service tests.test_dump_overview
+uv run python -m unittest tests.test_admission_dump_service tests.test_dump_overview
 ```
 
 The count test exercises 12 scenarios, including absent paid records, excluded

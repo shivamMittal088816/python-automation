@@ -1,5 +1,18 @@
 # Student mapping workflow
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
+## Clear loaded files
+
+Use **Clear file** beside a loaded school input or student dump, or on its file
+viewer page, then **Confirm** in the overlay. **Cancel** or Escape keeps the file
+and results unchanged. SQL-fetched dumps can also be cleared. Clearing removes the workspace
+snapshot, not the original disk file or database records. Clearing school or dump
+inputs invalidates admission, email, and full-name/class results and the generated
+email dump. Clearing only the email dump preserves admission results and clears
+email and full-name/class results. Changes synchronize across mapping tabs and
+use the existing workspace revision checks. Files can be loaded again afterward.
+
 The workspace maps school records to existing accounts through three independent mappings:
 **Admission Number**, **Email**, and **Full Name + Class**. A stage runs only when
 its mapping button is clicked; navigation, refresh, column selection, searching,

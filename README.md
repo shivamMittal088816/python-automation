@@ -1,5 +1,7 @@
 # Student Mapping
 
+Current startup commands for the updated folders: [Run the project](backend/docs/RUNNING.md).
+
 A React and FastAPI application for mapping school records by admission number,
 email, and full name plus class. The repository has two independently deployable
 applications:
@@ -39,27 +41,50 @@ longer builds or serves the frontend.
 
 ## Local development
 
+After dependency and environment setup, start both services with one command:
+
+```powershell
+Set-Location D:\python-api
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-project.ps1
+```
+
+Keep that terminal open; Ctrl+C stops both services. The script uses local HTTP
+settings without changing `.env` files and writes diagnostics to `logs/`.
+If existing servers occupy the default ports, stop them first or use
+`-BackendPort 8010 -FrontendPort 5180`. See the [startup guide](backend/docs/RUNNING.md).
+
+For manual startup:
+
+Use two PowerShell terminals. These commands assume the repository is located at
+`D:\python-api`; adjust the path if needed. Dependency installation is needed on
+first setup or after dependency updates. Existing `.env` files are preserved.
+
 Start the backend:
 
 ```powershell
-Set-Location backend
-Copy-Item .env.example .env
+Set-Location D:\python-api\backend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uv sync --locked
-uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 Start the frontend in another terminal:
 
 ```powershell
-Set-Location frontend
-Copy-Item .env.example .env
-npm install
+Set-Location D:\python-api\frontend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
 npm run dev
 ```
 
 Local defaults use `http://127.0.0.1:5173` for the website and
 `http://127.0.0.1:8000` for the API. For local HTTP only, set
 `SESSION_COOKIE_SECURE=false` in `backend/.env`.
+
+Open `http://127.0.0.1:5173/bulk-reg` for independent CSV/XLSX file intake with
+drag-and-drop, file browsing, backend-local paths, and a preview. Path loading
+requires `ALLOW_LOCAL_FILE_PATHS=true` in `backend/.env`. This page does not use
+mapping state or submit registrations, and needs no additional server.
 
 ## Deploy on separate domains
 
@@ -93,7 +118,7 @@ Deploy `frontend/dist/` to the frontend host and run the backend from its own
 folder with:
 
 ```text
-uv run uvicorn app.main:app --host 0.0.0.0 --port <PORT>
+uv run python -m uvicorn app.main:app --host 0.0.0.0 --port <PORT>
 ```
 
 The frontend host must rewrite client-side routes to `index.html`. The backend
@@ -117,14 +142,15 @@ schemas are kept separate.
 ## Verification
 
 ```powershell
-Set-Location backend
+Set-Location D:\python-api\backend
 uv run python -m unittest discover -s tests -p "test_*.py"
 
-Set-Location ..\frontend
+Set-Location D:\python-api\frontend
 npm test
 npm run build
 ```
 
-See [backend setup](backend/README.md), [frontend setup](frontend/README.md),
+See the [documentation index](backend/docs/README.md),
+[backend setup](backend/README.md), [frontend setup](frontend/README.md),
 [mapping workflow](backend/docs/MAPPING_WORKFLOW.md), and
 [session/data flow](backend/docs/SESSION_AND_DATA_FLOW.md).

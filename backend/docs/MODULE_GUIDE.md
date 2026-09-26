@@ -1,5 +1,7 @@
 # Workflow module guide
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 The backend and frontend are independently deployable folders. Mapping service
 rules remain in the service layer; the workflow HTTP and
 storage contracts now include workspace revisions and snapshot cleanup.

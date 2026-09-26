@@ -1,6 +1,8 @@
 # Database queries: implementation and execution flow
 
-This document covers all explicit database query types in the current Backend
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
+This document covers all explicit database query types in the current backend
 application, plus the optional schema initialization script. Test-fixture SQL and
 SQLAlchemy/PyMySQL internal connection or metadata operations are not application
 retrieval queries. The application uses MySQL through SQLAlchemy and PyMySQL.
@@ -10,13 +12,14 @@ retrieval queries. The application uses MySQL through SQLAlchemy and PyMySQL.
 | Query | Tables | Trigger / implementation | Guide |
 |---|---|---|---|
 | School name lookup | `users_schools` | Admission fetch: `fetch_school_dump()`, `SCHOOL_NAME_QUERY` | [Admission](#admission-dump) |
+| Bulk registration school lookup | `users_schools` | Verification and conversion: `app.services.bulk_registration.fetch_school()` | [Bulk registration](BULK_REGISTRATION.md) |
 | Admission dump SELECT | `users`, `paid_users` | Admission fetch: `fetch_school_dump()`, `SCHOOL_DUMP_QUERY` | [Admission](#admission-dump) |
 | Email lookup, repeated per batch | `users` | Email mapping: `fetch_email_dump()`, `QUERY` | [Email](#email-dump) |
 | Student browse SELECT, with optional cursor | `users` | `UserStudentRepository.get_students()` | [Student browsing](#student-browsing) |
 | `SELECT 1` | None | Application startup: `check_database_connection()` | [Connection and schema](#connection-and-schema) |
 | Generated schema checks / CREATE TABLE / CREATE INDEX | `students` | Optional `backend/app/scripts/init_db.py` | [Connection and schema](#connection-and-schema) |
 
-The first five entries are read-only runtime query types. The startup `SELECT 1`
+The first six entries are read-only runtime query types. The startup `SELECT 1`
 is a separate connection check. Only the optional initialization
 script creates database objects.
 
@@ -34,12 +37,16 @@ script creates database objects.
    not fetch database records in its mapping route.
 6. The student browsing endpoint independently pages through `users`; it is not
    the school-filtered admission dump.
+7. Bulk registration independently verifies school identity with
+   `SELECT school FROM users_schools WHERE school_id = :school_index`.
+   Verification, preview generation, and downloads each perform this lookup;
+   file intake and worksheet selection do not query SQL.
 
 ## Table roles
 
 | Table | Role |
 |---|---|
-| `users_schools` | School identity and name for admission-fetch validation |
+| `users_schools` | School identity and name for admission-fetch validation and bulk registration |
 | `users` | Existing accounts: student details, school, class, package and email |
 | `paid_users` | Admission numbers attached by `user_id` |
 | `students` | Separate ORM table created by the optional initialization script; not used by these retrieval queries |

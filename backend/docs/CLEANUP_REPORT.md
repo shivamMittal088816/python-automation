@@ -1,5 +1,7 @@
 # Post-migration cleanup report
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 ## 1. Final folder structure
 
 The current source layout is in [README.md](../README.md#project-structure).

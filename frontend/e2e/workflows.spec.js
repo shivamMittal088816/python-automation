@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 const school = fileURLToPath(new URL('./fixtures/school.csv', import.meta.url));

@@ -49,6 +49,11 @@ export async function request(path, { method = 'GET', body, params, signal, blob
       return field ? `${field}: ${message}` : message;
     }).join('; ') : cleanMessage(detail) || `Request failed (${response.status}).`);
     error.status = response.status;
+    const requestId = response.headers.get('X-Request-ID');
+    if (requestId && /^[A-Za-z0-9_.-]{1,64}$/.test(requestId)) {
+      error.requestId = requestId;
+      error.message += ` (HTTP ${response.status}; request ${requestId})`;
+    }
     throw error;
   }
   if (blob) return response;

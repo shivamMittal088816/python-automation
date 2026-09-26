@@ -43,14 +43,21 @@ export function WorkspaceProvider({ children }) {
     async function initialize() {
       setError('');
       const school = new URLSearchParams(location.search).get('school');
-      let data;
       try { sessionStorage.removeItem('studentMappingSession'); }
       catch { /* Cookie sessions continue to work when browser storage is unavailable. */ }
-      try { data = await admissionMappingApi.getSession(); }
-      catch (error) { if (![401, 404, 409].includes(error.status)) throw error; }
-      // The cookie identifies the active workspace; an old tab's school URL
-      // must not replace it when that tab reloads.
-      if (!data) { data = await admissionMappingApi.createSession(school); announce(); }
+      const restore = async () => {
+        if (!alive) return null;
+        let data;
+        try { data = await admissionMappingApi.getSession(); }
+        catch (error) { if (![401, 404, 409].includes(error.status)) throw error; }
+        // Recheck the cookie inside the shared lock: another fresh tab may have
+        // created it while this tab waited. Preserve the existing workspace.
+        if (!data && alive) { data = await admissionMappingApi.createSession(school); announce(); }
+        return data;
+      };
+      const data = navigator.locks
+        ? await navigator.locks.request('student-mapping-session-init', restore)
+        : await restore();
       if (alive) setWorkspace(normalizeWorkspace(data));
     }
     initialize().catch(error => alive && setError(error.message));

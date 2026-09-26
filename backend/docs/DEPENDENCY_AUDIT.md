@@ -1,5 +1,7 @@
 # Dependency modernization audit — 2026-09-18
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 Upgraded the project's dependencies while preserving the application. All direct
 Python dependencies and all direct frontend dependencies except React Router are
 at the latest stable releases returned by PyPI/npm on the audit date. React Router

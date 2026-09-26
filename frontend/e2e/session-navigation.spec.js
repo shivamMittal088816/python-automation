@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 
 test('reopening the root restores the session and displays the mapping page', async ({ page, context }) => {
   await page.goto('/');

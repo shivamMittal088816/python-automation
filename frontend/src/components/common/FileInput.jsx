@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ClearMappingFileButton } from './ClearMappingFileButton';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { fileApi } from '../../services/fileApi';
 import { Button, Input } from './Controls';
@@ -8,9 +9,13 @@ export function FileInput({ kind, label }) {
   const { workspace, busy, run } = useWorkspace();
   const [tab, setTab] = useState('Upload');
   const [path, setPath] = useState(workspace.files[kind]?.path || '');
+  useEffect(() => {
+    if (!workspace.files[kind]) setPath('');
+  }, [workspace.files[kind]]);
 
   const loadUpload = event => {
     const file = event.target.files[0];
+    event.target.value = '';
     if (file) run('Loading file…', revision => fileApi.upload(kind, file, revision));
   };
 
@@ -34,6 +39,6 @@ export function FileInput({ kind, label }) {
       <p className="text-xs leading-5 text-slate-500">Use a path on the computer running the backend. Load it again to read changes on disk.</p>
       <Button type="submit" disabled={!!busy}>Use file path</Button>
     </form>}
-    {workspace.files[kind] ? <LoadedFile name={workspace.files[kind].name} /> : <p className="text-xs text-slate-500">No file selected · CSV or XLSX</p>}
+    {workspace.files[kind] ? <div className="flex flex-wrap items-center justify-between gap-2"><LoadedFile name={workspace.files[kind].name} /><ClearMappingFileButton kind={kind} /></div> : <p className="text-xs text-slate-500">No file selected · CSV or XLSX</p>}
   </div>;
 }

@@ -1,6 +1,7 @@
 import { request } from './api';
 import { workspacePath } from './admissionMappingApi';
 export const fileApi = {
+  clear: (kind, revision) => request(`${workspacePath}/files/${kind}/clear`, { method: 'POST', revision }),
   upload: (kind, file, revision) => {
     const body = new FormData(); body.append('file', file);
     return request(`${workspacePath}/files/${kind}`, { method: 'POST', body, revision });

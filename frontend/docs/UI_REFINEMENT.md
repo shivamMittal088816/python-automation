@@ -1,5 +1,7 @@
 # React UI refinement
 
+Current startup commands for the updated folders: [Run the project](../../backend/docs/RUNNING.md).
+
 ## Follow-up: explicit mapping actions
 
 Page navigation actions now use a shared `ActionLink` with button styling, including Search dump, Back to mapping, overview, Preview screen, and stage navigation. Their link semantics and destinations remain unchanged.

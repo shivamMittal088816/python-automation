@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 import { fileURLToPath } from 'node:url';
 
 test('mapping dropdown edits make no requests and only a run saves the columns', async ({ page }) => {

@@ -1,5 +1,7 @@
 # Following the React and Python workflows
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 `frontend/` is the React frontend and `backend/app/` is the FastAPI application package. Python
 matching algorithms, SQL repositories, ORM and serialization remain the source of
 business behavior. The [repository README](../../README.md) contains the current source tree,
@@ -7,9 +9,12 @@ endpoint list, run commands and verification limits.
 
 ## Startup and dependency direction
 
-From `backend/`, run `uv run uvicorn app.main:app --reload --reload-dir app`. In
-another terminal, run `cd frontend`, `npm install`, then `npm run dev`. Open port
-5173.
+In terminal 1, run `Set-Location D:\python-api\backend`, then
+`uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000`.
+In terminal 2, run `Set-Location D:\python-api\frontend`, then `npm run dev`.
+Open `http://127.0.0.1:5173` for mapping or
+`http://127.0.0.1:5173/bulk-reg` for independent file intake. See the startup
+guide above for first-time dependency and environment setup.
 
 ```mermaid
 flowchart TD

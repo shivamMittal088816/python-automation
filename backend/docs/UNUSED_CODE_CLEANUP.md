@@ -1,5 +1,7 @@
 # Unused code cleanup
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 Removed code with no active application callers:
 
 - Retired `backend/app/api/file_workflow_storage.py` school snapshots, staging,

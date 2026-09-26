@@ -1,5 +1,7 @@
 # Frontend/backend deployment split
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 ## Result
 
 The repository now has two deployable application directories:
@@ -62,18 +64,25 @@ resulting third-party cookie.
 
 ## Commands
 
-```powershell
-Set-Location backend
-uv sync --locked
-uv run uvicorn app.main:app --reload
-uv run python -m unittest discover -s tests -p "test_*.py"
+After completing the [dependency and environment setup](RUNNING.md), start each
+service in its own PowerShell terminal.
 
-Set-Location ..\frontend
-npm install
-npm run dev
-npm test
-npm run build
+Terminal 1 (backend):
+
+```powershell
+Set-Location D:\python-api\backend
+uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+Terminal 2 (frontend):
+
+```powershell
+Set-Location D:\python-api\frontend
+npm run dev
+```
+
+Open `http://127.0.0.1:5173` or `http://127.0.0.1:5173/bulk-reg`.
+See [verification commands](RUNNING.md#verification-commands) for tests and builds.
 
 ## Verification baseline
 

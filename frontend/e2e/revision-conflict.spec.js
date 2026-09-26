@@ -1,18 +1,21 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 import { fileURLToPath } from 'node:url';
 
 const school = fileURLToPath(new URL('./fixtures/school.csv', import.meta.url));
 
 test('same-session tabs refresh and stale writes receive 409', async ({ page, context }) => {
   await page.goto('/admission_file_page');
+  await expect(page.getByLabel('Add school file')).toBeVisible();
   const second = await context.newPage();
   await second.goto('/admission_file_page');
+  await expect(second.getByLabel('Add school file')).toBeVisible();
   const staleRevision = await second.evaluate(async () => {
     const response = await fetch('http://127.0.0.1:8123/api/v1/mapping/session', {
       credentials: 'include',
     });
     return (await response.json()).revision;
   });
+  expect(Number.isInteger(staleRevision)).toBe(true);
 
   await page.getByLabel('Add school file').setInputFiles(school);
   await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();

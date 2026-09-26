@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 
 test('startup shimmer matches the responsive shell and disappears after session loading', async ({ page }) => {
   let release;

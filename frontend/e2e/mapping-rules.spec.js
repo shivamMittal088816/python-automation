@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 
 test('header help opens readable mapping rules without running mapping', async ({ page }) => {
   const runs = [];

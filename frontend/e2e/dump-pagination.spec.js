@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/browser-audit';
 
 test('dump pages all rows and searches beyond the visible page', async ({ page }) => {
   const csv = 'admission_number,user_firstname,user_name,user_edu_class,user_edu_major\n' +

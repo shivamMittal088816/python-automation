@@ -1,5 +1,7 @@
 # Error handling and production boundaries
 
+Current startup commands for the updated folders: [Run the project](RUNNING.md).
+
 ## Application guarantees
 
 The API converts expected failures into stable HTTP responses without returning

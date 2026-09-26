@@ -10,11 +10,29 @@ from app.repositories.admission_dump_service import fetch_school_dump
 from app.api.file_workflow_snapshots import add_snapshot
 from app.api.file_workflow_validation import fail
 from app.api.file_workflow_responses import summary
-from app.api.file_workflow_invalidation import clear_all_mappings
+from app.api.file_workflow_invalidation import clear_all_mappings, clear_email_and_class_mapping
+from app.api.file_workflow_constants import FILES
 
 
 router = APIRouter(tags=['Input files'])
 logger = logging.getLogger('uvicorn.error')
+
+
+@router.post('/files/{kind}/clear')
+def clear_file(session_id: SessionId, revision: WorkspaceRevision, kind: str):
+    if kind not in FILES:
+        fail('Unknown input file.')
+    with workspace(session_id, expected_revision=revision) as state:
+        state.pop(FILES[kind], None)
+        if kind == 'email_dump':
+            clear_email_and_class_mapping(state)
+        else:
+            clear_all_mappings(state)
+            settings = state.get('admission_settings', {})
+            settings.pop('admission_school_sheet' if kind == 'school' else 'admission_dump_sheet', None)
+            if kind == 'dump':
+                settings.pop('admission_dump_school_index', None)
+        return summary(state, session_id)
 
 
 @router.post('/files/{kind}')
