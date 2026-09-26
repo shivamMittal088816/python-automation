@@ -10,10 +10,11 @@ from urllib.parse import urlencode
 
 import pandas as pd
 from openpyxl import load_workbook
+from sqlalchemy.exc import SQLAlchemyError
 
 from Backend.main import create_app
 from Backend.api import file_workflow_state as state_store
-from Backend.routes.file_workflow_routes import email_mapping, file_inputs
+from Backend.routes.file_workflow_routes import email_mapping, file_inputs, full_name_class_mapping
 
 
 async def asgi_request(app, method, path, body=b'', headers=None):
@@ -576,6 +577,56 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.json('POST',self.endpoint('/admission-mapping/run'),expected=422)
         self.inputs()
         self.json('GET',self.endpoint('/table-previews/school?columns=missing'),expected=422)
+
+    def test_upload_limits_and_malformed_workbooks_return_safe_errors(self):
+        boundary='mapping-test-boundary'
+        body=(f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="large.csv"\r\n'
+              'Content-Type: text/csv\r\n\r\n12345\r\n'
+              f'--{boundary}--\r\n').encode()
+        with patch.object(file_inputs.settings,'MAX_UPLOAD_BYTES',4):
+            status,_,response=asyncio.run(asgi_request(
+                self.app,'POST','/api/v1'+self.endpoint('/files/school'),body,
+                [(b'content-type',f'multipart/form-data; boundary={boundary}'.encode()),
+                 (b'x-workspace-revision',b'0')]))
+        self.assertEqual(status,413)
+        self.assertIn('exceeds',response.decode())
+
+        self.upload('school','broken.xlsx',b'not an Excel workbook')
+        response=self.json('GET',self.endpoint('/table-previews/school'),expected=422)
+        self.assertIn('valid CSV or XLSX',response['detail'])
+        self.assertNotIn('not an Excel workbook',str(response))
+
+    def test_mapping_failures_are_classified_without_internal_details(self):
+        self.inputs()
+        with patch.object(email_mapping,'fetch_email_dump',side_effect=ValueError('private parser detail')):
+            response=self.json('POST',self.endpoint('/email-mapping/run'),{
+                'email_column':'email','name_column':'first_name'},expected=422)
+        self.assertNotIn('private parser detail',str(response))
+        with patch.object(email_mapping,'fetch_email_dump',side_effect=SQLAlchemyError('private database detail')):
+            response=self.json('POST',self.endpoint('/email-mapping/run'),{
+                'email_column':'email','name_column':'first_name'},expected=503)
+        self.assertNotIn('private database detail',str(response))
+        with patch.object(full_name_class_mapping,'map_by_full_name_class',
+                          side_effect=ValueError('private mapping detail')):
+            response=self.json('POST',self.endpoint('/full-name-class-mapping/run'),{
+                'name_column':'full_name','class_column':'classNumber'},expected=422)
+        self.assertNotIn('private mapping detail',str(response))
+
+    def test_corrupt_final_result_and_database_errors_are_safe(self):
+        self.mapped()
+        with state_store.workspace(self.id) as state:
+            state['admission_exports']['matched.xlsx']={'data':b'broken workbook','count':1}
+        status,_,body=asyncio.run(asgi_request(
+            self.app,'GET','/api/v1'+self.endpoint('/downloads/final-results')))
+        self.assertEqual(status,500)
+        self.assertNotIn(b'broken workbook',body)
+
+        with patch('Backend.routes.student_mapping.UserStudentRepository.get_students',
+                   side_effect=SQLAlchemyError('private database detail')):
+            status,_,body=asyncio.run(asgi_request(
+                self.app,'GET','/api/v1/mapping/students'))
+        self.assertEqual(status,503)
+        self.assertNotIn(b'private database detail',body)
 
     def test_download_conversion_escapes_formula_cells(self):
         self.upload('dump','dump.csv',b'value\n=1+1\n')

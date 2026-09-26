@@ -2,6 +2,7 @@
 from io import BytesIO
 from pathlib import Path
 import tempfile
+import logging
 import pandas as pd
 from Backend.api.file_workflow_constants import FILES
 from Backend.api.file_workflow_validation import fail
@@ -9,6 +10,7 @@ from Backend.services.admission_mapping.admission_file_mapping import read_file
 
 
 ROOT = Path(__file__).resolve().parents[2]
+logger = logging.getLogger('uvicorn.error')
 
 
 def read_snapshot(snapshot, sheet=None):
@@ -21,8 +23,9 @@ def read_snapshot(snapshot, sheet=None):
             file.write(snapshot['data'])
         try:
             return read_file(path, sheet)
-        except (ValueError, OSError, ImportError) as exc:
-            fail(f'Could not read this file: {exc}')
+        except Exception:
+            logger.exception('Failed to parse a saved mapping file.')
+            fail('Could not read this file. Check that it is a valid CSV or XLSX file.')
     finally:
         if path is not None:
             path.unlink(missing_ok=True)

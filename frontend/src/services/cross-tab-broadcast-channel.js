@@ -9,17 +9,27 @@ export function createWorkspaceBroadcastChannel(onWorkspaceChanged) {
     };
   }
 
-  const channel = new BroadcastChannel(WORKSPACE_CHANNEL_NAME);
+  let channel;
+  try {
+    channel = new BroadcastChannel(WORKSPACE_CHANNEL_NAME);
+  } catch {
+    return {
+      announceWorkspaceChanged() {},
+      close() {},
+    };
+  }
   channel.onmessage = event => {
     if (event.data === WORKSPACE_CHANGED_MESSAGE) onWorkspaceChanged();
   };
 
   return {
     announceWorkspaceChanged() {
-      channel.postMessage(WORKSPACE_CHANGED_MESSAGE);
+      try { channel.postMessage(WORKSPACE_CHANGED_MESSAGE); }
+      catch { /* Focus and visibility refreshes remain available as a fallback. */ }
     },
     close() {
-      channel.close();
+      try { channel.close(); }
+      catch { /* The channel may already be unavailable or closed. */ }
     },
   };
 }

@@ -44,7 +44,10 @@ def full_name_map(session_id: SessionId,revision: WorkspaceRevision,payload: Ful
             fail('Choose the full name and Class Number columns.')
         signature=(payload.source,hashlib.sha256(source['data']).hexdigest(),
             hashlib.sha256(state['saved_admission_dump']['data']).hexdigest(),payload.name_column,payload.class_column,'account_unique_all_dump_rows_v5')
-        result=map_by_full_name_class(school,dump,payload.name_column,payload.class_column)
+        try:
+            result=map_by_full_name_class(school,dump,payload.name_column,payload.class_column)
+        except (ValueError, KeyError, OSError):
+            fail('Could not map these files. Check the selected full-name and class columns.')
         values.update(full_name_class_input_source=payload.source,
                       full_name_class_name_column=payload.name_column,full_name_class_class_column=payload.class_column)
         state['full_name_class_exports']=result

@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from Backend.services.admission_mapping.admission_workbook import build_workbook
 from Backend.services.final_results_workbook import (
     FINAL_RESULT_SHEETS,
+    FinalResultsUnavailable,
     build_final_results_workbook,
     final_results_available,
     final_results_filename,
@@ -39,7 +40,7 @@ class FinalResultsWorkbookTests(unittest.TestCase):
         ])
         self.state.clear()
         self.assertFalse(final_results_available(self.state))
-        with self.assertRaisesRegex(ValueError, 'Run at least one mapping'):
+        with self.assertRaisesRegex(FinalResultsUnavailable, 'Run at least one mapping'):
             build_final_results_workbook(self.state)
 
     def test_filename_uses_sanitized_school_identity(self):

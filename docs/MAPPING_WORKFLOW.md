@@ -87,8 +87,11 @@ Email and Class results; rerunning Email clears Class results.
 | React context cache | Avoids repeated metadata calls until a dependency changes or the page refreshes. |
 
 School and Dump accept CSV/XLSX upload; local-path loading supports the same
-formats only when `ALLOW_LOCAL_FILE_PATHS` is enabled. XLSX files expose worksheet
-selection. Dump can alternatively be fetched from SQL by numeric school index.
+formats only when `ALLOW_LOCAL_FILE_PATHS` is enabled. Both input methods enforce
+`MAX_UPLOAD_BYTES`, which defaults to **100 MB** (`104857600` bytes), against the
+complete file. There is no separate row-count limit. XLSX files expose worksheet
+selection. Dump can alternatively be fetched from SQL by numeric school index;
+SQL-fetched dumps are database results and do not use the file-upload size limit.
 SQL fetches select school students with an inner `JOIN` to paid admission records.
 Students without a paid record are excluded. See [selection and counts](#sql-dump-selection-and-counts).
 For SQL dumps, missing cells become empty text and records that are completely
@@ -578,8 +581,10 @@ new session instead.
 
 ### 9. Final mapping-results workbook
 
-After any mapping produces its result groups, the sidebar enables **Download mapping
-results**. `GET /api/v1/mapping/downloads/final-results` resolves the currently
+After any mapping produces its result groups, the sidebar **Exports** section enables
+**Download mapping results**. This position keeps the combined workbook separate
+from downloads for an individual preview group.
+`GET /api/v1/mapping/downloads/final-results` resolves the currently
 available snapshots referenced by session state and returns
 `automation-<school-index>-<school-name>.xlsx`. Characters that are unsafe in a
 download filename are replaced. If the saved dump has no school name, the school

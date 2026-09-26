@@ -2,6 +2,7 @@
 # The cached settings object is shared by imports throughout the API.
 
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from functools import lru_cache
 
 
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
     ALLOW_LOCAL_FILE_PATHS: bool = True
+    MAX_UPLOAD_BYTES: int = Field(default=100 * 1024 * 1024, gt=0)
     SESSION_COOKIE_SECURE: bool = True
     SERVE_FRONTEND: bool = False
 

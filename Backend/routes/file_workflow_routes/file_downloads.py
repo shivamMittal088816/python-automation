@@ -11,7 +11,9 @@ from Backend.utils.workbook_operations import convert_dump
 from Backend.api.file_workflow_constants import FILES, STAGES
 from Backend.api.file_workflow_validation import fail
 from Backend.api.file_workflow_snapshots import read_snapshot
-from Backend.services.final_results_workbook import build_final_results_workbook, final_results_filename
+from Backend.services.final_results_workbook import (
+    FinalResultsUnavailable, build_final_results_workbook, final_results_filename,
+)
 
 
 router = APIRouter(tags=['File downloads'])
@@ -23,11 +25,11 @@ def download_final_results(session_id: SessionId):
     with workspace(session_id, persist=False) as state:
         try:
             data = build_final_results_workbook(state)
-        except ValueError as exc:
+        except FinalResultsUnavailable as exc:
             fail(str(exc), 409)
         except Exception:
             logger.exception('Failed to build the final mapping-results workbook.')
-            fail('Could not prepare the final mapping results workbook.')
+            fail('Could not prepare the final mapping results workbook.', 500)
         name = final_results_filename(state)
         return Response(data, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                         headers={'Content-Disposition': f"attachment; filename*=UTF-8''{quote(name)}"})

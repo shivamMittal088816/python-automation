@@ -20,11 +20,14 @@ logger = logging.getLogger('uvicorn.error')
 @router.post('/files/{kind}')
 def upload_file(session_id: SessionId, revision: WorkspaceRevision, kind: str, file: UploadFile = File(...)):
     try:
-        data = file.file.read()
-    except (OSError, ValueError) as exc:
-        fail(f'Could not read the uploaded file: {exc}')
+        data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
+    except (OSError, ValueError):
+        logger.exception('Failed to read an uploaded %s file.', kind)
+        fail('Could not read the uploaded file. Choose the file again and retry.')
     if not data:
         fail('The uploaded file is empty.')
+    if len(data) > settings.MAX_UPLOAD_BYTES:
+        fail(f'The uploaded file exceeds the {settings.MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.', 413)
     with workspace(session_id, expected_revision=revision) as state:
         previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
         changed = (not previous or previous.get('data') != data
@@ -44,9 +47,14 @@ def load_path(session_id: SessionId,revision: WorkspaceRevision,kind: str,payloa
         fail('Could not load file: Enter a CSV or XLSX file path.')
     path=Path(value).expanduser()
     try:
+        if path.stat().st_size > settings.MAX_UPLOAD_BYTES:
+            fail(f'The selected file exceeds the {settings.MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.', 413)
         data=path.read_bytes()
-    except OSError as exc:
-        fail(f'Could not load file: {exc}')
+    except OSError:
+        logger.exception('Failed to read a local %s file path.', kind)
+        fail('Could not load the selected file. Check that it exists and is readable.')
+    if not data:
+        fail('The selected file is empty.')
     with workspace(session_id, expected_revision=revision) as state:
         previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
         changed = (not previous or previous.get('data') != data

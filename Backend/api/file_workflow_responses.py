@@ -31,9 +31,12 @@ def summary(state, session_id):
     error = None
     try:
         config = admission_configuration(state)
-    except (ValueError, KeyError, OSError, HTTPException) as exc:
+    except HTTPException as exc:
         config = None
-        error = exc.detail if isinstance(exc,HTTPException) else f'Could not map these files: {exc}'
+        error = exc.detail
+    except (ValueError, KeyError, OSError):
+        config = None
+        error = 'Could not inspect the mapping configuration. Check the selected files and sheets.'
     ready = bool(email_input_signature(state))
     return {'workspace_id':state['workspace_id'],'revision':int(state.get('revision',0)),'files':{kind:{key:state[field][key] for key in state[field] if key!='data'} | {'sheets':sheets(state[field]), 'version':hashlib.sha256(state[field]['data']).hexdigest()} for kind,field in FILES.items() if state.get(field)},
         'settings':state.get('admission_settings',{}),'configuration':config,'configuration_error':error,

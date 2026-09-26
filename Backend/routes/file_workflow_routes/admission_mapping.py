@@ -1,4 +1,6 @@
 """Admission mapping endpoints for the mapping API."""
+import logging
+
 from Backend.api.session_cookie import SessionId, WorkspaceRevision
 from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
@@ -12,6 +14,7 @@ from Backend.api.file_workflow_invalidation import clear_email_and_class_mapping
 
 
 router = APIRouter(tags=['Admission mapping'])
+logger = logging.getLogger('uvicorn.error')
 
 
 @router.post('/admission-mapping/run')
@@ -37,7 +40,8 @@ def admission_map(session_id: SessionId, revision: WorkspaceRevision, payload: A
             clear_email_and_class_mapping(state)
         except (ValueError,KeyError,OSError) as exc:
             state.pop('admission_exports',None)
-            fail(f'Could not map these files: {exc}')
+            logger.warning('Admission mapping rejected invalid input: %s', exc)
+            fail('Could not map these files. Check the selected files, sheets, and columns.')
         result = summary(state,session_id)
         saved_state.clear()
         saved_state.update(state)

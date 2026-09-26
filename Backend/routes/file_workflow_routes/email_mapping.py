@@ -2,6 +2,7 @@
 from Backend.api.session_cookie import SessionId, WorkspaceRevision
 import logging
 from fastapi import APIRouter
+from sqlalchemy.exc import SQLAlchemyError
 from Backend.api.file_workflow_state import workspace
 from Backend.schemas.file_workflow import EmailInput
 from Backend.repositories.email_dump_service import fetch_email_dump
@@ -37,9 +38,12 @@ def email_map(session_id: SessionId,revision: WorkspaceRevision,payload: EmailIn
         try:
             dump=fetch_email_dump(school[payload.email_column])
             result=map_by_email(school,dump,payload.email_column,'user_email',payload.name_column,school_index=school_index)
-        except Exception:
-            logger.exception('Failed to fetch or map the email dump.')
+        except (SQLAlchemyError, ConnectionError, TimeoutError):
+            logger.exception('Failed to fetch the email dump from the database.')
             fail('Could not fetch or map the email dump. Check the database connection and try again.',503)
+        except (ValueError, KeyError, OSError) as exc:
+            logger.warning('Email mapping rejected invalid input: %s', exc)
+            fail('Could not map these files. Check the selected email and name columns.')
         values.update(email_input_source=payload.source,email_input_column=payload.email_column,
                       email_first_name_column=payload.name_column)
         state['saved_email_dump']={'name':'email_dump.csv','data':dump.to_csv(index=False).encode('utf-8')}

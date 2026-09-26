@@ -9,7 +9,7 @@ export function useRequest(load, dependencies) {
     // component state.
     let active = true;
     setState({ data: null, loading: true, error: '' });
-    load(undefined).then(data => {
+    Promise.resolve().then(() => load(undefined)).then(data => {
       if (active) setState({ data, loading: false, error: '' });
     }).catch(error => {
       if (active) setState({ data: null, loading: false, error: error.message });

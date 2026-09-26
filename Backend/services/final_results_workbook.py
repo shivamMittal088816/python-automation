@@ -19,6 +19,10 @@ FINAL_RESULT_SHEETS = (
 )
 
 
+class FinalResultsUnavailable(ValueError):
+    """Raised when the workspace has no mapping results to export yet."""
+
+
 def _filename_part(value, fallback):
     cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', str(value or '')).strip(' .-')
     return (cleaned or fallback)[:120]
@@ -39,15 +43,18 @@ def final_results_available(state):
 def build_final_results_workbook(state):
     """Return an XLSX containing each final result group in an independent sheet."""
     if not final_results_available(state):
-        raise ValueError('Run at least one mapping before downloading mapping results.')
+        raise FinalResultsUnavailable('Run at least one mapping before downloading mapping results.')
+
+    sheets = []
+    for stage, filename, sheet_name in FINAL_RESULT_SHEETS:
+        snapshot = state.get(stage, {}).get(filename)
+        if snapshot:
+            rows = pd.read_excel(BytesIO(snapshot['data']), dtype=str, keep_default_na=False)
+            sheets.append((sheet_name, rows))
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for stage, filename, sheet_name in FINAL_RESULT_SHEETS:
-            snapshot = state.get(stage, {}).get(filename)
-            if not snapshot:
-                continue
-            rows = pd.read_excel(BytesIO(snapshot['data']), dtype=str, keep_default_na=False)
+        for sheet_name, rows in sheets:
             rows.to_excel(writer, sheet_name=sheet_name, index=False)
             # Uploaded values that resemble formulas must remain literal text.
             for cells in writer.sheets[sheet_name].iter_rows():

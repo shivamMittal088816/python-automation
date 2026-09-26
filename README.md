@@ -14,6 +14,7 @@ provides paginated previews, and exports mapping results as CSV or Excel files.
 - Stores source and result bytes as content-addressed `.bin` snapshots.
 - Rejects stale concurrent edits with workspace revisions instead of overwriting them.
 - Synchronizes successful workspace changes between tabs using `BroadcastChannel`.
+- Downloads all currently available mapping groups in one multi-sheet Excel workbook.
 - Expires inactive workflow sessions after 24 hours.
 
 Mapping is read-only with respect to the main SQL database: classifications are
@@ -151,12 +152,36 @@ School file + student dump
 1. Load a school file.
 2. Upload a dump or fetch it using the school index.
 3. Select the relevant columns and run admission mapping.
-4. Review and download the generated result groups.
+4. Review the generated result groups.
 5. Optionally process remaining records through email or full-name/class mapping.
+6. Use **Download mapping results** in the sidebar to download all currently
+   available groups as separate sheets in one Excel workbook.
 
 Students without admission numbers cannot participate in admission-number matching
 and are classified for follow-up rather than silently removed. A failed SQL fetch
 does not replace the currently loaded dump or its existing results.
+
+### Input file limits
+
+Browser uploads and files loaded through a backend file path accept CSV or XLSX
+files up to **100 MB** (`MAX_UPLOAD_BYTES=104857600`). The limit applies to the
+complete file, not to each worksheet. There is currently no separate row-count
+limit, so the number of accepted records depends on the file size and available
+server memory. SQL dumps fetched by school index do not pass through this upload
+limit.
+
+### Download all mapping results
+
+The sidebar download becomes available as soon as at least one mapping stage has
+completed. It includes only the stages currently available:
+
+- Admission: `Admission Matched`, `Admission Review`, and `Admission Not Matched`.
+- Email: `Email Matched` and `Email Review`.
+- Full Name + Class: `Class Matched`, `Class Review`, and `Final Not Matched`.
+
+The workbook is named
+`automation-<school-index>-<school-name>.xlsx`. Each result group remains in its
+own worksheet because mapping stages have different output columns.
 
 See [Mapping workflow](docs/MAPPING_WORKFLOW.md) for matching rules and data flow.
 
@@ -243,7 +268,7 @@ npm.cmd test
 npm.cmd run build
 ```
 
-The current verified baseline is 133 backend tests and 18 browser tests passing,
+The current verified baseline is 140 backend tests and 18 browser tests passing,
 with a successful production frontend build. Browser tests use synthetic fixtures
 and isolated workflow storage rather than production data.
 
@@ -256,3 +281,4 @@ and isolated workflow storage rather than production data.
 - [Automated dump query](docs/AUTOMATED_DUMP_RETRIEVAL_QUERY.md)
 - [Website test report](docs/WEBSITE_TEST_REPORT.md)
 - [GitHub publishing safety](docs/GITHUB_SAFETY.md)
+- [Error handling and production boundaries](docs/ERROR_HANDLING.md)

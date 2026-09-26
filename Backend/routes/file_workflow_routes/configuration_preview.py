@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from Backend.api.file_workflow_state import workspace
 from Backend.schemas.file_workflow import AdmissionRunInput
 from Backend.api.file_workflow_configuration import admission_configuration
+from Backend.api.file_workflow_validation import fail
 
 
 router = APIRouter(tags=['Mapping sessions'])
@@ -15,5 +16,8 @@ def configuration_preview(session_id: SessionId, payload: AdmissionRunInput):
         state = dict(saved)
         state['admission_settings'] = dict(saved.get('admission_settings', {}))
         state['admission_settings'].update(payload.model_dump(exclude_unset=True))
-        config = admission_configuration(state)
+        try:
+            config = admission_configuration(state)
+        except (ValueError, KeyError, OSError):
+            fail('Could not preview this configuration. Check the selected files, sheets, and columns.')
         return {'configuration': config, 'settings': state['admission_settings']}

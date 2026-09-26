@@ -73,7 +73,8 @@ The schemas are not merged, and the download is available after any stage comple
 Start with `pages/AdmissionMapping/AdmissionMappingForm.jsx`:
 
 1. `FileInput` posts browser uploads as FormData or sends an explicit backend file
-   path. The server snapshots bytes and reads CSV/XLSX using the existing reader.
+   path. Both methods accept CSV/XLSX files up to `MAX_UPLOAD_BYTES`, which defaults
+   to 100 MB. The server snapshots bytes and reads CSV/XLSX using the existing reader.
    Unique parse staging files are removed afterward; source paths remain untouched.
 2. SQL dump fetch calls the existing `admission_dump_service.fetch_school_dump()`.
    It validates school identity, selects `users` for the school with `user_type = '0'`,
