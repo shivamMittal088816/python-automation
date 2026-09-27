@@ -4,7 +4,14 @@ const defaultHost = import.meta.env.DEV
 const configuredHost = import.meta.env.PROD
   ? import.meta.env.VITE_PRODUCTION_API_BASE_URL
   : import.meta.env.VITE_API_BASE_URL;
-const host = (configuredHost || defaultHost).replace(/\/$/, '');
+const apiHost = new URL(configuredHost || defaultHost);
+const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+// Local aliases are different cookie sites. Keep an explicitly configured
+// development port, but use the same loopback hostname as the browser.
+if (import.meta.env.DEV && loopbackHosts.has(apiHost.hostname) && loopbackHosts.has(window.location.hostname)) {
+  apiHost.hostname = window.location.hostname;
+}
+const host = apiHost.toString().replace(/\/$/, '');
 const prefix = (import.meta.env.VITE_API_PREFIX || '/api/v1').replace(/^\/?/, '/').replace(/\/$/, '');
 export const API_BASE_URL = `${host}${prefix}`;
 

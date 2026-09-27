@@ -72,10 +72,10 @@ class RequestDiagnosticsTests(unittest.TestCase):
             (SchoolNotFoundError('No school found.'), 404),
             (SQLAlchemyError('private SQL details'), 503),
         ):
-            with self.subTest(status=expected), patch('app.routes.bulk_registration.fetch_school', side_effect=exception):
+            with self.subTest(status=expected), patch('app.routes.bulk_registration.school_routes.fetch_school', side_effect=exception):
                 status, headers, body = self.request('/api/v1/bulk-reg/schools/914')
-            self.assert_diagnostics(status, headers, expected)
-            self.assertNotIn(b'private SQL details', body)
+                self.assert_diagnostics(status, headers, expected)
+                self.assertNotIn(b'private SQL details', body)
 
     def test_framework_validation_and_missing_session_are_traced(self):
         for method, path, body, expected in (

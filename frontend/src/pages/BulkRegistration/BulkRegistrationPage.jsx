@@ -5,15 +5,12 @@ import { RegistrationFileInput } from './components/RegistrationFileInput';
 import { RegistrationDefaults } from './components/RegistrationDefaults';
 import { RegistrationActions } from './components/RegistrationActions';
 import { RegistrationPreviews } from './components/RegistrationPreviews';
+import { ConfirmResetBulkRegistration } from './components/ConfirmResetBulkRegistration';
 import './bulk-registration.css';
 
 export function BulkRegistrationPage() {
   const workflow = useBulkRegistration();
   const { error, storageError, working, ready, busy, edit } = workflow;
-
-  function reset() {
-    edit({ path: '', file: null, source: null, schoolIndex: '', school: null, output: null });
-  }
 
   return (
     <main className="bulk-page">
@@ -41,7 +38,7 @@ export function BulkRegistrationPage() {
             <RegistrationFileInput
               path={workflow.path} file={workflow.file} busy={busy}
               load={workflow.load} upload={workflow.upload}
-              selectSheet={workflow.selectSheet} edit={edit}
+              selectSheet={workflow.selectSheet} edit={edit} clearFile={workflow.clearWorkspace}
             />
           </div>
           <RegistrationDefaults />
@@ -53,9 +50,12 @@ export function BulkRegistrationPage() {
           schoolValid={workflow.schoolValid} source={workflow.source}
           busy={busy} output={workflow.output} convert={workflow.convert}
         />
-        <RegistrationPreviews file={workflow.file} output={workflow.output} />
+        <RegistrationPreviews
+          file={workflow.file} output={workflow.output} busy={busy}
+          onOutputPage={workflow.showOutputPage}
+        />
         <footer className="bulk-footer">
-          <button className="bulk-text-button" disabled={busy} onClick={reset}>Reset bulk registration</button>
+          <ConfirmResetBulkRegistration disabled={busy} onConfirm={() => workflow.clearWorkspace(true)} />
           <span>Shared across tabs on this browser</span>
           <span>File conversion only &middot; No registrations submitted</span>
         </footer>

@@ -1,0 +1,56 @@
+"""Pure helpers retained for tests and supported non-HTTP callers."""
+from io import BytesIO
+from math import ceil
+
+from fastapi import HTTPException, UploadFile
+from fastapi.responses import Response
+
+from app.config.settings import settings
+from app.routes.bulk_registration.conversion_routes import OUTPUT_PREVIEW_PAGE_SIZE
+from app.routes.bulk_registration.file_reading import preview_file, read_frame, read_path
+from app.routes.bulk_registration.models import FilePathInput
+from app.routes.bulk_registration.school_routes import get_school
+from app.services.bulk_registration import convert_frame, export_frame
+from app.services.bulk_registration_storage import delete_workspace
+
+
+def upload_file(file: UploadFile, sheet=None):
+    data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
+    return preview_file(file.filename or '', data, sheet)
+
+
+def load_path(payload: FilePathInput):
+    name, data = read_path(payload.path)
+    return preview_file(name, data, payload.sheet)
+
+
+def convert_file(school_index, file_format='preview', file=None, path=None, sheet=None, page=1):
+    if (file is None) == (path is None):
+        raise HTTPException(400, 'Provide either an uploaded file or a file path.')
+    if file is not None:
+        name = file.filename or ''
+        data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
+    else:
+        name, data = read_path(path)
+    school = get_school(school_index)
+    output = convert_frame(read_frame(name, data, sheet), school)
+    if file_format == 'preview':
+        total_pages = max(1, ceil(len(output) / OUTPUT_PREVIEW_PAGE_SIZE))
+        if page < 1 or page > total_pages:
+            raise HTTPException(400, 'The requested preview page does not exist.')
+        start = (page - 1) * OUTPUT_PREVIEW_PAGE_SIZE
+        preview = output.iloc[start:start + OUTPUT_PREVIEW_PAGE_SIZE]
+        return {'name': name, 'row_count': len(output), 'columns': list(output.columns),
+                'rows': preview.values.tolist(), 'school': school, 'page': page,
+                'page_size': OUTPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages}
+    filename = f'bulk-registration-{school_index}.{file_format}'
+    exported = export_frame(output, file_format)
+    media_type = ('text/csv' if file_format == 'csv' else
+                  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return Response(exported, media_type=media_type,
+                    headers={'Content-Disposition': f'attachment; filename="{filename}"',
+                             'Cache-Control': 'no-store'})
+
+
+def clear_workspace(workspace_id):
+    delete_workspace(workspace_id)

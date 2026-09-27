@@ -1,0 +1,50 @@
+"""Cookie lookup, revision checks, and browser-safe workspace responses."""
+from hashlib import sha256
+from fastapi import HTTPException, Request, Response
+
+from app.config.settings import settings
+from app.services.bulk_registration_storage import create_workspace, load_workspace
+
+
+BULK_COOKIE = '__Host-bulk-registration' if settings.SESSION_COOKIE_SECURE else 'bulk_registration_workspace'
+
+
+def set_workspace_cookie(response, workspace_id):
+    response.set_cookie(BULK_COOKIE, workspace_id, httponly=True,
+                        secure=settings.SESSION_COOKIE_SECURE,
+                        samesite=settings.SESSION_COOKIE_SAMESITE, path='/')
+
+
+def workspace_for(request: Request, response: Response, *, allow_create=False):
+    workspace_id = request.cookies.get(BULK_COOKIE)
+    try:
+        state = load_workspace(workspace_id) if workspace_id else None
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+        state = None
+    if state is None:
+        # Only explicit initialization may replace the cookie. Delayed reads
+        # and mutations must never replace a workspace created by a reset.
+        if not allow_create:
+            raise HTTPException(409, 'Bulk registration workspace expired or was reset. Reload and try again.')
+        workspace_id = create_workspace()
+        state = load_workspace(workspace_id)
+        set_workspace_cookie(response, workspace_id)
+    return workspace_id, state
+
+
+def require_revision(state, expected_revision):
+    if expected_revision != int(state.get('revision', 0)):
+        raise HTTPException(409, 'Bulk registration changed in another tab or request. Reload and try again.')
+
+
+def workspace_summary(state):
+    return {
+        # A stable identity for reset detection, without exposing the cookie token.
+        'workspace_id': sha256(state['workspace_id'].encode()).hexdigest(),
+        'revision': int(state.get('revision', 0)), 'path': state.get('path', ''),
+        'file': state.get('file'), 'source': {'stored': True} if state.get('input') else None,
+        'schoolIndex': state.get('school_index', ''), 'school': state.get('school'),
+        'output': state.get('output'),
+    }

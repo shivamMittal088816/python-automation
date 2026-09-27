@@ -11,8 +11,10 @@ test('mapping runs only after an explicit start action, never on navigation or r
   });
   await page.goto('/admission_file_page');
   await page.getByLabel('Add school file').setInputFiles(school);
+  await expect(page.getByTestId('school-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
   await page.getByLabel('Add dump file').setInputFiles(dump);
+  await expect(page.getByTestId('dump-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
@@ -280,7 +282,7 @@ test('SQL dump replacement preserves results on failure and invalidates them on 
   await page.getByLabel('Fetch from SQL', { exact: true }).check();
   await page.getByLabel('School index', { exact: true }).fill('999999');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();
-  await expect(page.getByRole('alert')).toHaveText('No school found for index 999999.');
+  await expect(page.getByRole('alert')).toContainText('No school found for index 999999.');
   await expect(page.getByText('Loaded: dump.csv', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
 

@@ -7,6 +7,7 @@ import { Icon, LoadedFile } from './Presentation';
 
 export function FileInput({ kind, label }) {
   const { workspace, busy, run } = useWorkspace();
+  const savedFile = workspace.files[kind];
   const [tab, setTab] = useState('Upload');
   const [path, setPath] = useState(workspace.files[kind]?.path || '');
   useEffect(() => {
@@ -28,17 +29,24 @@ export function FileInput({ kind, label }) {
     <div role="tablist" aria-label={`${label} file source`} className="inline-flex rounded-lg bg-slate-100 p-1">
       {['Upload', 'File path'].map(name => <button type="button" role="tab" aria-selected={tab === name} key={name} onClick={() => setTab(name)} className={`min-h-9 rounded-md px-5 py-1.5 text-sm font-medium transition-colors ${tab === name ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>{name}</button>)}
     </div>
-    {tab === 'Upload' ? <label className={`relative flex flex-col items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-4 py-7 text-center transition-colors focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-100 ${busy ? 'opacity-50' : 'hover:border-blue-400 hover:bg-blue-50/40'}`}>
-      <span className="mb-3 rounded-lg bg-white p-2.5 text-blue-700 shadow-sm"><Icon name="upload" /></span>
-      <span className="text-sm font-semibold text-slate-800">Add {label} file</span>
-      <span aria-hidden="true" className="mt-1 text-sm text-slate-500">Click to browse your files</span>
-      <span aria-hidden="true" className="mt-3 text-xs text-slate-400">CSV or XLSX · Maximum file size 100 MB</span>
+    {tab === 'Upload' ? <label className={`relative flex flex-col items-center rounded-xl border-2 px-4 py-7 text-center transition-colors focus-within:ring-2 ${savedFile ? 'border-solid border-emerald-300 bg-emerald-50/70 focus-within:border-emerald-600 focus-within:ring-emerald-100' : 'border-dashed border-slate-300 bg-slate-50/70 focus-within:border-blue-600 focus-within:ring-blue-100'} ${busy ? 'opacity-50' : savedFile ? 'hover:border-emerald-400 hover:bg-emerald-50' : 'hover:border-blue-400 hover:bg-blue-50/40'}`}>
+      {savedFile ? <>
+        <span className="mb-3 rounded-lg bg-white p-2.5 text-emerald-700 shadow-sm"><Icon name="check" /></span>
+        <span role="status" className="text-sm font-semibold text-emerald-800">File uploaded successfully</span>
+        <span className="mt-1 max-w-full break-all text-sm font-medium text-slate-700">{savedFile.name}</span>
+        <span aria-hidden="true" className="mt-3 text-xs text-emerald-700">Click to replace with another CSV or XLSX file</span>
+      </> : <>
+        <span className="mb-3 rounded-lg bg-white p-2.5 text-blue-700 shadow-sm"><Icon name="upload" /></span>
+        <span className="text-sm font-semibold text-slate-800">Add {label} file</span>
+        <span aria-hidden="true" className="mt-1 text-sm text-slate-500">Click to browse your files</span>
+        <span aria-hidden="true" className="mt-3 text-xs text-slate-400">CSV or XLSX · Maximum file size 100 MB</span>
+      </>}
       <input aria-label={`Add ${label} file`} disabled={!!busy} type="file" accept=".csv,.xlsx" className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed" onChange={loadUpload} />
     </label> : <form className="space-y-3" onSubmit={loadPath}>
       <Input label="File path" value={path} onChange={event => setPath(event.target.value)} placeholder="C:\Users\USER\Downloads\students.xlsx" />
       <p className="text-xs leading-5 text-slate-500">Use a path on the computer running the backend. Load it again to read changes on disk.</p>
       <Button type="submit" disabled={!!busy}>Use file path</Button>
     </form>}
-    {workspace.files[kind] ? <div className="flex flex-wrap items-center justify-between gap-2"><LoadedFile name={workspace.files[kind].name} /><ClearMappingFileButton kind={kind} /></div> : <p className="text-xs text-slate-500">No file selected · CSV or XLSX</p>}
+    {savedFile ? <div className="flex flex-wrap items-center justify-between gap-2"><LoadedFile name={savedFile.name} /><ClearMappingFileButton kind={kind} /></div> : <p className="text-xs text-slate-500">No file selected · CSV or XLSX</p>}
   </div>;
 }

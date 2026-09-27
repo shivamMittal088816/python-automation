@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ConfirmClearFile } from '../../../components/common/ConfirmClearFile';
 
-export function RegistrationFileInput({ path, file, busy, load, upload, selectSheet, edit }) {
+export function RegistrationFileInput({ path, file, busy, load, upload, selectSheet, edit, clearFile }) {
   const [dragging, setDragging] = useState(false);
 
   return (
@@ -14,14 +14,25 @@ export function RegistrationFileInput({ path, file, busy, load, upload, selectSh
         </div>
         <span className="bulk-format">CSV / XLSX</span>
       </div>
-      <label onDragOver={event => { event.preventDefault(); if (!busy) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={event => { event.preventDefault(); setDragging(false); upload(event.dataTransfer.files); }} className={`bulk-drop ${dragging ? 'is-dragging' : ''} ${busy ? 'is-disabled' : ''}`}>
-        <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" />
-        </svg>
-        <span>
-          <strong>Drag and drop your file here</strong>
-          <span className="bulk-drop-hint">or click to browse &middot; CSV or XLSX</span>
-        </span>
+      <label onDragOver={event => { event.preventDefault(); if (!busy) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={event => { event.preventDefault(); setDragging(false); upload(event.dataTransfer.files); }} className={`bulk-drop ${dragging ? 'is-dragging' : ''} ${busy ? 'is-disabled' : ''} ${file ? 'has-file' : ''}`}>
+        {file ? <>
+          <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          <span className="bulk-drop-file">
+            <strong>File uploaded successfully</strong>
+            <span>{file.name}</span>
+            <span className="bulk-drop-hint">{file.row_count} rows &middot; Click or drop another file to replace it</span>
+          </span>
+        </> : <>
+          <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5" />
+          </svg>
+          <span>
+            <strong>Drag and drop your file here</strong>
+            <span className="bulk-drop-hint">or click to browse &middot; CSV or XLSX</span>
+          </span>
+        </>}
         <input type="file" aria-label="Upload registration file" accept=".csv,.xlsx" disabled={busy} onChange={event => { upload(event.target.files); event.target.value = ''; }} />
         </label>
         <form className="bulk-inline-form bulk-path" onSubmit={event => { event.preventDefault(); load('/bulk-reg/files/path', { path }); }}>
@@ -38,7 +49,7 @@ export function RegistrationFileInput({ path, file, busy, load, upload, selectSh
               <span role="status">{file.row_count} rows &middot; {file.columns.length} columns &middot; File loaded</span>
             </div>
             <ConfirmClearFile file={file} disabled={busy} className="bulk-text-button"
-              onConfirm={() => edit({ file: null, source: null, output: null })} />
+              onConfirm={() => clearFile()} />
           </div>}
           {!!file?.sheets?.length && <div className="bulk-field bulk-sheet-field">
             <label htmlFor="bulk-working-sheet">Working sheet</label>

@@ -7,19 +7,8 @@ from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
 from sqlalchemy import text
 
-
-OUTPUT_HEADERS = [
-    'FIRST NAME', 'LAST NAME', 'FULL NAME', 'Class Number', 'CLASS', 'Section',
-    'EMAIL', 'PASSWORD', 'CONTACT', 'GENDER', 'Gender Number', 'Category',
-    'USER TYPE', 'SCHOOL', 'School Number', 'user_subscription_date',
-    'user_package', 'user_activated', 'user_subscribed', 'user_name',
-    'admission_number', 'house', 'section_index', 'year',
-]
-FIXED_VALUES = {
-    'user_subscription_date': '2026-04-01 00:00:00',
-    'user_package': '14', 'user_activated': '1', 'user_subscribed': '1',
-    'year': '2026',
-}
+from app.mappings.bulk_registration import FIXED_VALUES, OUTPUT_HEADERS, class_id, gender_number
+from app.mappings.bulk_registration.password import generate_password
 
 
 class SchoolNotFoundError(ValueError):
@@ -49,6 +38,11 @@ def convert_frame(frame, school):
     if unknown:
         raise ValueError('Unrecognized input headers: ' + ', '.join(unknown))
     output = frame.reindex(columns=OUTPUT_HEADERS, fill_value='').fillna('').copy()
+    output['CLASS'] = output['Class Number'].map(class_id)
+    output['Gender Number'] = output['GENDER'].map(gender_number)
+    # The web preview and CSV need calculated values because neither can run
+    # Excel formulas. XLSX export replaces these values with the real formula.
+    output['PASSWORD'] = [generate_password() for _ in range(len(output))]
     for column, value in FIXED_VALUES.items():
         output[column] = value
     output['School Number'] = school['school_index']
@@ -59,7 +53,7 @@ def convert_frame(frame, school):
 def export_frame(frame, file_format):
     if file_format == 'csv':
         return frame.to_csv(index=False).encode('utf-8-sig')
-    # Write literal text to preserve identifiers and avoid interpreting formulas.
+    # Write literal text to preserve identifiers and final generated passwords.
     if len(frame) > 1_048_575:
         raise ValueError('Too many rows for XLSX. Download CSV instead.')
     workbook = Workbook(write_only=True)

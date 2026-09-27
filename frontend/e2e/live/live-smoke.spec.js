@@ -7,7 +7,7 @@ const schoolIndex = process.env.LIVE_SCHOOL_INDEX || '914';
 test('live SQL verification, conversion, download, errors and cross-tab clearing', async ({ page, context }) => {
   await page.goto('/bulk-reg');
   await page.getByLabel('School index', { exact: true }).fill(schoolIndex);
-  const verified = page.waitForResponse(response => response.url().includes(`/bulk-reg/schools/${schoolIndex}`));
+  const verified = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/bulk-reg/school'));
   await page.getByRole('button', { name: 'Verify school index' }).click();
   const response = await verified;
   expect(response.status()).toBe(200);
@@ -35,6 +35,7 @@ test('live SQL verification, conversion, download, errors and cross-tab clearing
   expect((await invalid).status()).toBe(400);
   await expect(page.getByRole('alert')).toContainText('HTTP 400; request');
   await page.getByRole('button', { name: 'Reset bulk registration' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
 });
 
 test('live mapping with synthetic files, page navigation and cross-tab invalidation', async ({ page, context }) => {

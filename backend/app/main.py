@@ -95,10 +95,10 @@ def create_app():
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
-        allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_credentials=True,
         allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID"],
-        expose_headers=["Content-Disposition", "X-Request-ID", "Server-Timing"],
+        expose_headers=["Content-Disposition", "X-Request-ID", "X-Workspace-Revision", "Server-Timing"],
     )
 
     return app

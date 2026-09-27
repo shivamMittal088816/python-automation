@@ -60,17 +60,24 @@ test('delayed generation and double clicks cannot restore a file cleared in anot
   const second = await context.newPage();
   await second.goto('/bulk-reg');
   await expect(second.getByRole('button', { name: 'Clear file', exact: true })).toBeVisible();
-  let release, calls = 0;
+  let release, captured, calls = 0;
   const gate = new Promise(resolve => { release = resolve; });
+  const completed = new Promise(resolve => { captured = resolve; });
   await page.route('**/bulk-reg/convert', async route => {
     calls += 1;
     const response = await route.fetch();
+    captured();
     await gate;
     await route.fulfill({ response });
   });
   const started = page.waitForRequest('**/bulk-reg/convert');
   await page.getByRole('button', { name: 'Generate preview' }).evaluate(button => { button.click(); button.click(); });
   await started;
+  await completed;
+  // Conversion has committed, although its response has not reached the first tab.
+  // Refresh the second tab to clear using the current server revision.
+  await second.reload();
+  await expect(output(second)).toBeVisible();
   await second.getByRole('button', { name: 'Clear file', exact: true }).click();
   await second.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Clear file', exact: true })).toHaveCount(0);
@@ -99,7 +106,7 @@ test('server errors display HTTP status and request ID and permit retry', async 
   await page.goto('/bulk-reg');
   await page.getByLabel('School index', { exact: true }).fill('914');
   for (const status of [400, 404, 413, 422, 500, 503]) {
-    await page.route('**/bulk-reg/schools/914', route => route.fulfill({
+    await page.route('**/bulk-reg/school', route => route.fulfill({
       status, headers: { 'X-Request-ID': `audit-${status}`, 'Access-Control-Expose-Headers': 'X-Request-ID' },
       json: { detail: 'Verification unavailable' },
     }));
@@ -107,7 +114,7 @@ test('server errors display HTTP status and request ID and permit retry', async 
     await expect(page.getByRole('alert')).toContainText(`HTTP ${status}; request audit-${status}`);
     await expect(page.getByLabel('School name fetched')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Generate preview' })).toBeDisabled();
-    await page.unroute('**/bulk-reg/schools/914');
+    await page.unroute('**/bulk-reg/school');
   }
   await page.getByRole('button', { name: 'Verify school index' }).click();
   await expect(page.getByLabel('School name fetched')).toHaveValue('Test School');

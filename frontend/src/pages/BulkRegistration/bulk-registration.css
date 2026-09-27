@@ -41,6 +41,9 @@
 .bulk-drop input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 .bulk-drop:focus-within { outline: 2px solid #087f72; outline-offset: 3px; }
 .bulk-drop:hover, .bulk-drop.is-dragging { border-color: #14796c; background: #eaf5f0; }
+.bulk-drop.has-file { justify-content: flex-start; border-style: solid; border-color: #62a99c; background: #edf8f4; color: #187263; }
+.bulk-drop-file { min-width: 0; }
+.bulk-drop-file > span:not(.bulk-drop-hint) { display: block; max-width: 100%; margin-top: 5px; color: #284d49; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
 .bulk-drop.is-disabled { opacity: .5; }
 .bulk-hint { font-size: 11px; line-height: 1.6; color: #6a7c88; margin-top: 8px; }
 .bulk-file-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e8edef; margin-top: 14px; padding-top: 12px; }
@@ -76,6 +79,13 @@
 .bulk-table-scroll th { position: sticky; top: 0; background: #f0f5f6; font-weight: 600; color: #44616b; }
 .bulk-table-scroll th, .bulk-table-scroll td { padding: 9px 12px; white-space: nowrap; border-bottom: 1px solid #e8eef0; }
 .bulk-table-scroll tbody tr:nth-child(even) { background: #f8fafb; }
+.bulk-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 12px; }
+.bulk-pagination span { color: #637583; font-size: 11px; font-variant-numeric: tabular-nums; }
+.bulk-missing-sections { margin-top: 14px; padding: 14px; border: 1px solid #efcf9c; border-radius: 8px; background: #fff8e8; }
+.bulk-missing-sections h3 { color: #7b4d12; font-size: 13px; font-weight: 700; }
+.bulk-missing-sections p { margin-top: 5px; color: #795d35; font-size: 11px; }
+.bulk-missing-sections table { width: 100%; margin-top: 10px; text-align: left; font-size: 12px; }
+.bulk-missing-sections th, .bulk-missing-sections td { padding: 7px 8px; border-top: 1px solid #eeddbd; }
 .bulk-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 10px; color: #70828c; margin-top: 20px; }
 @media (max-width: 760px) {
   .bulk-page { padding: 20px 14px; }

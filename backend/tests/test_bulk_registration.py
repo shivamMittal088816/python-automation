@@ -7,9 +7,10 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 from fastapi import HTTPException
 
-from app.routes.bulk_registration import FilePathInput, load_path, preview_file
+from app.routes.bulk_registration import FilePathInput, load_path, preview_file, upload_file, clear_workspace
 from app.routes.bulk_registration import convert_file, get_school
 from app.services.bulk_registration import OUTPUT_HEADERS, FIXED_VALUES, convert_frame, export_frame, fetch_school
+from app.mappings.bulk_registration.section import apply_section_ids
 from fastapi import UploadFile
 
 
@@ -27,14 +28,14 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(selected['rows'], [['Ada', '001']])
         with self.assertRaises(HTTPException):
             preview_file('input.xlsx', data.getvalue(), 'Missing')
-        with patch('app.routes.bulk_registration.fetch_school', return_value={'school_index': '42', 'school_name': 'Test'}):
+        with patch('app.routes.bulk_registration.school_routes.fetch_school', return_value={'school_index': '42', 'school_name': 'Test'}):
             uploaded = UploadFile(filename='input.xlsx', file=BytesIO(data.getvalue()))
             result = convert_file('42', 'preview', uploaded, None, 'Students')
             self.assertEqual(result['rows'][0][0], 'Ada')
             with TemporaryDirectory() as directory:
                 path = Path(directory) / 'input.xlsx'
                 path.write_bytes(data.getvalue())
-                with patch('app.routes.bulk_registration.settings.ALLOW_LOCAL_FILE_PATHS', True):
+                with patch('app.routes.bulk_registration.file_reading.settings.ALLOW_LOCAL_FILE_PATHS', True):
                     self.assertEqual(load_path(FilePathInput(path=str(path), sheet='Students'))['sheet'], 'Students')
                     result = convert_file('42', 'csv', None, str(path), 'Students')
                     self.assertIn(b'Ada', result.body)
@@ -54,7 +55,7 @@ class BulkRegistrationTests(unittest.TestCase):
         workbook.close()
 
     def test_invalid_source_does_not_query_database(self):
-        with patch('app.routes.bulk_registration.fetch_school') as fetch:
+        with patch('app.routes.bulk_registration.school_routes.fetch_school') as fetch:
             with self.assertRaises(HTTPException) as error:
                 convert_file('42', 'preview', None, None)
             self.assertEqual(error.exception.status_code, 400)
@@ -73,11 +74,54 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(output['School Number'].tolist(), ['42'] * 2)
         for column, value in FIXED_VALUES.items():
             self.assertEqual(output[column].tolist(), [value] * 2)
-        for format in ('csv', 'xlsx'):
-            data = BytesIO(export_frame(output, format))
-            restored = (pd.read_csv(data, dtype=str, keep_default_na=False) if format == 'csv'
-                        else pd.read_excel(data, dtype=str, keep_default_na=False))
-            pd.testing.assert_frame_equal(restored, output)
+        for password in output['PASSWORD']:
+            self.assertRegex(password, r'^[1-9][0-9]{4}[1-9]$')
+
+        restored_csv = pd.read_csv(BytesIO(export_frame(output, 'csv')), dtype=str, keep_default_na=False)
+        pd.testing.assert_frame_equal(restored_csv, output)
+
+        from openpyxl import load_workbook
+        workbook = load_workbook(BytesIO(export_frame(output, 'xlsx')), read_only=True, data_only=False)
+        password_column = OUTPUT_HEADERS.index('PASSWORD') + 1
+        self.assertEqual(workbook.active.cell(2, password_column).value, output.iloc[0]['PASSWORD'])
+        self.assertEqual(workbook.active.cell(2, password_column).data_type, 's')
+        workbook.close()
+
+    def test_gender_number_is_derived_from_gender_header(self):
+        frame = pd.DataFrame({
+            'Gender Number': ['99', '99', '99', '99', '99'],
+            'GENDER': ['Male', ' Female ', 'OTHERS', '', 'Unknown'],
+        })
+
+        output = convert_frame(frame, {'school_index': '42', 'school_name': 'Test School'})
+
+        self.assertEqual(output['GENDER'].tolist(), ['Male', ' Female ', 'OTHERS', '', 'Unknown'])
+        self.assertEqual(output['Gender Number'].tolist(), ['1', '2', '3', '', ''])
+
+    def test_class_id_is_derived_from_class_number_header(self):
+        class_names = [
+            'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI',
+            'Class VII', 'Class VIII', 'Class IX', 'Class X', 'Class XI', 'Class XII',
+            'Other', 'Nursery', 'LKG', 'UKG', 'Passed Out', 'KG', 'Pre Nursery',
+            'Pre Primary', 'Pre School', 'Play Group', '', 'Unknown',
+        ]
+        frame = pd.DataFrame({'Class Number': class_names, 'CLASS': ['99'] * len(class_names)})
+
+        output = convert_frame(frame, {'school_index': '42', 'school_name': 'Test School'})
+
+        self.assertEqual(output['Class Number'].tolist(), class_names)
+        self.assertEqual(output['CLASS'].tolist(), [str(value) for value in range(22)] + ['', ''])
+
+    def test_section_ids_are_mapped_and_missing_sections_are_reported(self):
+        output = convert_frame(
+            pd.DataFrame({'Section': [' A ', 'c', 'New Section', 'new  section', '']}),
+            {'school_index': '42', 'school_name': 'Test School'},
+        )
+
+        missing = apply_section_ids(output, [(1, 'A'), (2, 'C')])
+
+        self.assertEqual(output['section_index'].tolist(), ['1', '2', '', '', ''])
+        self.assertEqual(missing, ['New Section'])
 
     def test_unknown_header_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Unrecognized input headers'):
@@ -87,7 +131,7 @@ class BulkRegistrationTests(unittest.TestCase):
         data = b'FIRST NAME,admission_number\nAda,001\n'
         def uploaded():
             return UploadFile(filename='students.csv', file=BytesIO(data))
-        with patch('app.routes.bulk_registration.fetch_school', return_value={'school_index': '42', 'school_name': 'My School'}):
+        with patch('app.routes.bulk_registration.school_routes.fetch_school', return_value={'school_index': '42', 'school_name': 'My School'}):
             response = convert_file('42', 'preview', uploaded(), None)
             self.assertEqual(response['columns'], OUTPUT_HEADERS)
             self.assertEqual(response['rows'][0][13:15], ['My School', '42'])
@@ -97,10 +141,68 @@ class BulkRegistrationTests(unittest.TestCase):
             with TemporaryDirectory() as directory:
                 path = Path(directory) / 'students.csv'
                 path.write_bytes(data)
-                with patch('app.routes.bulk_registration.settings.ALLOW_LOCAL_FILE_PATHS', True):
+                with patch('app.routes.bulk_registration.file_reading.settings.ALLOW_LOCAL_FILE_PATHS', True):
                     response = convert_file('42', 'preview', None, str(path))
                     self.assertEqual(response['rows'][0][20], '001')
                     self.assertEqual(response['rows'][0][13], 'My School')
+
+    def test_output_preview_is_paginated(self):
+        rows = ''.join(f'Student {index},{index:03d}\n' for index in range(1, 46))
+        data = ('FIRST NAME,admission_number\n' + rows).encode()
+
+        with patch('app.routes.bulk_registration.school_routes.fetch_school', return_value={'school_index': '42', 'school_name': 'My School'}):
+            first = convert_file('42', 'preview', UploadFile(filename='students.csv', file=BytesIO(data)), None)
+            third = convert_file('42', 'preview', UploadFile(filename='students.csv', file=BytesIO(data)), None, None, 3)
+
+        self.assertEqual((first['page'], first['page_size'], first['total_pages']), (1, 20, 3))
+        self.assertEqual(len(first['rows']), 20)
+        self.assertEqual(first['rows'][0][0], 'Student 1')
+        self.assertEqual(len(third['rows']), 5)
+        self.assertEqual(third['rows'][0][0], 'Student 41')
+
+        with patch('app.routes.bulk_registration.school_routes.fetch_school', return_value={'school_index': '42', 'school_name': 'My School'}):
+            with self.assertRaises(HTTPException) as error:
+                convert_file('42', 'preview', UploadFile(filename='students.csv', file=BytesIO(data)), None, None, 4)
+        self.assertEqual(error.exception.status_code, 400)
+
+    def test_input_and_outputs_are_persisted_as_manifest_snapshots(self):
+        import json
+        import app.services.bulk_registration_storage as storage
+
+        with TemporaryDirectory() as directory, patch.object(storage, 'ROOT', Path(directory)):
+            workspace_id = storage.create_workspace()
+            storage.save_input(workspace_id, {'name': 'students.csv', 'sheet': None},
+                               b'FIRST NAME,GENDER\nAda,Female\n')
+            folder = Path(directory) / workspace_id
+            manifest = json.loads((folder / 'state.json').read_text(encoding='utf-8'))
+            self.assertTrue((folder / manifest['input']['file']).is_file())
+
+            storage.save_output(workspace_id, 'preview', {'name': 'preview.csv'}, b'preview')
+            storage.save_output(workspace_id, 'xlsx', {'name': 'output.xlsx'}, b'xlsx')
+            manifest = json.loads((folder / 'state.json').read_text(encoding='utf-8'))
+            self.assertEqual(set(manifest['outputs']), {'preview', 'xlsx'})
+            for reference in manifest['outputs'].values():
+                self.assertTrue((folder / reference['file']).is_file())
+            clear_workspace(workspace_id)
+            self.assertFalse(folder.exists())
+
+    def test_bulk_workspaces_expire_after_24_hours_of_inactivity(self):
+        import os
+        import time
+        import app.services.bulk_registration_storage as storage
+
+        with TemporaryDirectory() as directory, patch.object(storage, 'ROOT', Path(directory)):
+            workspace_id = storage.create_workspace()
+            folder = Path(directory) / workspace_id
+            manifest = folder / 'state.json'
+            expired = time.time() - storage.WORKSPACE_TTL_SECONDS - 1
+            os.utime(manifest, (expired, expired))
+
+            with self.assertRaises(HTTPException) as error:
+                storage.load_workspace(workspace_id)
+
+            self.assertEqual(error.exception.status_code, 404)
+            self.assertFalse(folder.exists())
 
     def test_school_verification(self):
         from sqlalchemy.exc import SQLAlchemyError
@@ -143,7 +245,7 @@ class BulkRegistrationTests(unittest.TestCase):
             self.assertEqual(error.exception.status_code, 400)
 
     def test_size_limit(self):
-        with patch('app.routes.bulk_registration.settings.MAX_UPLOAD_BYTES', 2):
+        with patch('app.routes.bulk_registration.file_reading.settings.MAX_UPLOAD_BYTES', 2):
             with self.assertRaises(HTTPException) as error:
                 preview_file('data.csv', b'name\nStudent')
             self.assertEqual(error.exception.status_code, 413)
@@ -152,9 +254,9 @@ class BulkRegistrationTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / 'students.csv'
             path.write_text('id,name\n001,Student', encoding='utf-8')
-            with patch('app.routes.bulk_registration.settings.ALLOW_LOCAL_FILE_PATHS', True):
+            with patch('app.routes.bulk_registration.file_reading.settings.ALLOW_LOCAL_FILE_PATHS', True):
                 self.assertEqual(load_path(FilePathInput(path=str(path)))['row_count'], 1)
-            with patch('app.routes.bulk_registration.settings.ALLOW_LOCAL_FILE_PATHS', False):
+            with patch('app.routes.bulk_registration.file_reading.settings.ALLOW_LOCAL_FILE_PATHS', False):
                 with self.assertRaises(HTTPException) as error:
                     load_path(FilePathInput(path=str(path)))
                 self.assertEqual(error.exception.status_code, 403)

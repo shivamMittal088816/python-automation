@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
-import { request } from '../../services/api';
+import { bulkRegistrationApi } from '../../services/bulkRegistrationApi';
 import { useBulkRegistrationWorkspace } from '../../hooks/useBulkRegistrationWorkspace';
 
 export function useBulkRegistration() {
-  const { state, ready, storageError, update } = useBulkRegistrationWorkspace();
+  const { state, ready, storageError, replace, edit: editState, refresh, beginOperation } = useBulkRegistrationWorkspace();
   const { path, file, source, schoolIndex, school, output } = state;
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
@@ -13,65 +13,67 @@ export function useBulkRegistration() {
 
   function edit(patch) {
     setError('');
-    update(patch, undefined, true).catch(err => setError(err.message));
+    editState(patch);
   }
 
-  async function load(endpoint, body, preserveOutput = false) {
+  async function handleError(err) {
+    setError(err.message);
+    if (err.status === 409) await refresh();
+  }
+
+  async function runMutation(operation, committed = []) {
     if (pending.current || !ready) return;
     pending.current = true; setWorking(true); setError('');
+    const origin = beginOperation();
     try {
-      const revision = await update({}, state.revision);
-      const result = await request(endpoint, { method: 'POST', body });
-      await update({ file: result, output: preserveOutput && output ? { ...output, sheet: output.sheet !== undefined ? output.sheet : file?.sheet ?? null } : null, source: body instanceof FormData ? { file: body.get('file') } : { path: body.path } }, revision);
-    } catch (err) { setError(err.message); }
+      const result = await operation(state.revision);
+      replace(result, { origin, committed });
+    } catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
 
   async function verifySchool(event) {
     event.preventDefault();
-    if (pending.current || !ready) return;
-    pending.current = true; setWorking(true); setError('');
-    try {
-      const revision = await update({ school: null, output: null }, state.revision);
-      const result = await request(`/bulk-reg/schools/${encodeURIComponent(schoolIndex.trim())}`);
-      await update({ school: result }, revision);
-    } catch (err) { setError(err.message); }
-    finally { pending.current = false; setWorking(false); }
+    await runMutation(revision => bulkRegistrationApi.verifySchool(schoolIndex.trim(), revision),
+      ['schoolIndex', 'school', 'output']);
   }
 
   function selectSheet(sheet) {
     if (!source || busy) return;
-    if (source.file) {
-      const body = new FormData();
-      body.append('file', source.file);
-      body.append('sheet', sheet);
-      load('/bulk-reg/files', body, true);
-    } else load('/bulk-reg/files/path', { path: source.path, sheet }, true);
+    runMutation(revision => bulkRegistrationApi.selectSheet(sheet, revision));
   }
 
-  async function convert(format = 'preview') {
+  async function convert(format = 'preview', page = 1) {
     if (pending.current || !schoolValid || !source || !ready) return;
     pending.current = true; setWorking(true); setError('');
+    const origin = beginOperation();
     try {
-      const revision = await update({}, state.revision);
-      const body = new FormData();
-      body.append('school_index', schoolIndex.trim());
-      body.append('file_format', format);
-      const selectedSheet = format === 'preview' ? file?.sheet : output?.sheet !== undefined ? output.sheet : file?.sheet;
-      if (selectedSheet != null) body.append('sheet', selectedSheet);
-      if (source.file) body.append('file', source.file); else body.append('path', source.path);
-      const result = await request('/bulk-reg/convert', { method: 'POST', body, blob: format !== 'preview' });
-      if (format === 'preview') await update({ output: { ...result, sheet: selectedSheet ?? null }, school: result.school }, revision);
+      const selectedSheet = format === 'preview'
+        ? (page === 1 ? file?.sheet : output?.sheet !== undefined ? output.sheet : file?.sheet)
+        : output?.sheet !== undefined ? output.sheet : file?.sheet;
+      const result = await bulkRegistrationApi.convert({
+        schoolIndex: schoolIndex.trim(), format, page, sheet: selectedSheet, revision: state.revision,
+      });
+      if (format === 'preview') replace(result, { origin });
       else {
         const blob = await result.blob();
-        await update({}, revision);
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a'); link.href = url;
         link.download = `bulk-registration-${schoolIndex.trim()}.${format}`;
         document.body.appendChild(link); link.click(); link.remove();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+        await refresh();
       }
-    } catch (err) { setError(err.message); }
+    } catch (err) { await handleError(err); }
+    finally { pending.current = false; setWorking(false); }
+  }
+
+  async function showOutputPage(page) {
+    if (pending.current || !ready) return;
+    pending.current = true; setWorking(true); setError('');
+    const origin = beginOperation();
+    try { replace(await bulkRegistrationApi.outputPage(page), { origin, announce: false }); }
+    catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
 
@@ -80,13 +82,27 @@ export function useBulkRegistration() {
     if (files.length !== 1 || !/\.(csv|xlsx)$/i.test(files[0].name)) {
       setError('Choose one CSV or XLSX file.'); return;
     }
-    const body = new FormData(); body.append('file', files[0]);
-    load('/bulk-reg/files', body);
+    runMutation(revision => bulkRegistrationApi.uploadFile(files[0], revision), ['path']);
+  }
+
+  async function clearWorkspace(resetAll = false) {
+    if (pending.current || !ready) return;
+    pending.current = true; setWorking(true); setError('');
+    const origin = beginOperation();
+    try {
+      const result = await (resetAll
+        ? bulkRegistrationApi.resetWorkspace(state.revision)
+        : bulkRegistrationApi.clearFile(state.revision));
+      replace(result, { origin, reset: resetAll, committed: ['path'] });
+    } catch (err) { await handleError(err); }
+    finally { pending.current = false; setWorking(false); }
   }
 
   return {
     path, file, source, schoolIndex, school, output,
     ready, storageError, working, busy, error, schoolValid,
-    edit, load, verifySchool, selectSheet, convert, upload,
+    edit,
+    load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
+    verifySchool, selectSheet, convert, showOutputPage, upload, clearWorkspace,
   };
 }

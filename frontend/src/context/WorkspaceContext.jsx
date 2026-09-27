@@ -22,14 +22,24 @@ export function WorkspaceProvider({ children }) {
   workspaceRef.current = workspace;
   const operationActive = useRef(false);
   const readSequence = useRef(0);
+  const refreshPending = useRef(false);
+  function publish(data) {
+    const next = normalizeWorkspace(data);
+    workspaceRef.current = next;
+    setWorkspace(next);
+  }
   const refreshWorkspace = async () => {
-    if (operationActive.current || !workspaceRef.current) return;
+    if (operationActive.current || !workspaceRef.current) {
+      refreshPending.current = true;
+      return;
+    }
+    refreshPending.current = false;
     const sequence = ++readSequence.current;
     try {
       const latest = await admissionMappingApi.getSession();
       if (sequence !== readSequence.current || operationActive.current) return;
       if (workspaceFingerprint(latest) !== workspaceFingerprint(workspaceRef.current)) {
-        setWorkspace(normalizeWorkspace(latest));
+        publish(latest);
         setNotice({ type: 'info', text: 'Workspace updated from another tab. Review your selections before running mapping.' });
       }
     } catch (error) {
@@ -55,10 +65,16 @@ export function WorkspaceProvider({ children }) {
         if (!data && alive) { data = await admissionMappingApi.createSession(school); announce(); }
         return data;
       };
-      const data = navigator.locks
+      let data = navigator.locks
         ? await navigator.locks.request('student-mapping-session-init', restore)
         : await restore();
-      if (alive) setWorkspace(normalizeWorkspace(data));
+      // Broadcasts received during restoration invalidate that snapshot, even
+      // though no workspace has been published yet. Drain them before rendering.
+      while (alive && refreshPending.current) {
+        refreshPending.current = false;
+        data = await admissionMappingApi.getSession();
+      }
+      if (alive) publish(data);
     }
     initialize().catch(error => alive && setError(error.message));
     return () => { alive = false; };
@@ -70,7 +86,7 @@ export function WorkspaceProvider({ children }) {
     setBusy(label); setNotice(null);
     try {
       const perform = async () => {
-        const data = await action(workspaceRef.current.revision); setWorkspace(normalizeWorkspace(data)); announce();
+        const data = await action(workspaceRef.current.revision); publish(data); announce();
         if (data.message) setNotice({ type: data.message_type || 'success', text: data.message });
         return data;
       };
@@ -78,7 +94,7 @@ export function WorkspaceProvider({ children }) {
     } catch (error) {
       if (error.status === 409) {
         try {
-          setWorkspace(normalizeWorkspace(await admissionMappingApi.getSession()));
+          publish(await admissionMappingApi.getSession());
           setNotice({ type: 'warning', text: 'The workspace changed in another tab. Review the updated files and selections, then try again.' });
         } catch (reloadError) {
           setNotice({ type: 'error', text: reloadError.message });
@@ -89,7 +105,7 @@ export function WorkspaceProvider({ children }) {
         try {
           const school = new URLSearchParams(location.search).get('school');
           const replacement = await admissionMappingApi.createSession(school);
-          setWorkspace(normalizeWorkspace(replacement));
+          publish(replacement);
           announce();
           setNotice({ type: 'warning', text: 'Your previous session expired or became unavailable. A new session has been created.' });
           return null;
@@ -99,9 +115,12 @@ export function WorkspaceProvider({ children }) {
         }
       }
       setNotice({ type: 'error', text: error.message });
-      try { setWorkspace(normalizeWorkspace(await admissionMappingApi.getSession())); } catch { /* Keep the original operation error visible. */ }
+      try { publish(await admissionMappingApi.getSession()); } catch { /* Keep the original operation error visible. */ }
       return null;
-    } finally { operationActive.current = false; setBusy(''); }
+    } finally {
+      operationActive.current = false; setBusy('');
+      if (refreshPending.current) await refreshWorkspace();
+    }
   }
   if (!workspace) return error
     ? <main className="mx-auto max-w-xl p-8"><Alert type="error">{error}</Alert><Button onClick={() => { setError(''); setRevision(value => value + 1); }}>Retry</Button></main>

@@ -15,7 +15,9 @@ export function RegistrationDefaults() {
           </tr>
         </thead>
         <tbody>{[
-          ['Subscription date', '2026-04-01 00:00:00'], ['Package', '14'], ['Activated', '1'], ['Subscribed', '1'], ['Year', '2026'],
+          ['Category', '0'], ['User type', 'Student'],
+          ['Subscription date', '2026-04-01 00:00:00'], ['Package', '14'],
+          ['Activated', '1'], ['Subscribed', '1'], ['Year', '2026'],
           ].map(([label, value]) => <tr key={label}>
             <th scope="row">{label}</th>
             <td>{value}</td>
