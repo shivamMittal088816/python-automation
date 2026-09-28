@@ -1,6 +1,8 @@
 """Fixed output schema and conversion rules, independent of mapping state."""
 from io import BytesIO
 from itertools import chain
+import re
+import unicodedata
 
 import pandas as pd
 from openpyxl import Workbook
@@ -9,6 +11,9 @@ from sqlalchemy import text
 
 from app.mappings.bulk_registration import FIXED_VALUES, OUTPUT_HEADERS, class_id, gender_number
 from app.mappings.bulk_registration.password import generate_password
+from app.services.verification_records import attach_failed_records, blank_value_stage
+from app.services.email_verification.database_duplicates import find_database_duplicates as find_email_database_duplicates
+from app.services.email_verification.preview_duplicates import find_preview_duplicates as find_email_preview_duplicates
 from app.services.verify_username.database_duplicates import find_database_duplicates
 from app.services.verify_username.first_name_match import find_first_name_mismatches
 from app.services.verify_username.preview_duplicates import find_preview_duplicates
@@ -65,15 +70,34 @@ def blank_first_name_records(frame):
     """Return identifying details for rows that cannot support username generation."""
     blank = frame['FIRST NAME'].astype(str).str.strip().eq('')
     records = []
-    for position, (_, row) in enumerate(frame.loc[blank].iterrows(), start=1):
+    source_rows = frame.attrs.get('source_row_numbers', range(2, len(frame) + 2))
+    for position, (_, row) in enumerate(frame.iterrows()):
+        if not blank.iloc[position]:
+            continue
         records.append({
-            'record': position,
+            'row_number': int(source_rows[position]),
             'last_name': str(row['LAST NAME']),
             'full_name': str(row['FULL NAME']),
             'admission_number': str(row['admission_number']),
             'status': 'Provide FIRST NAME for user_name generation',
         })
     return records
+
+
+def blank_full_name_records(frame):
+    """Identify students with empty or whitespace-only full names."""
+    blank = frame['FULL NAME'].fillna('').astype(str).str.strip().eq('')
+    source_rows = frame.attrs.get('source_row_numbers', range(2, len(frame) + 2))
+    return [
+        {
+            'row_number': int(source_rows[position]),
+            'admission_number': str(row['admission_number']),
+            'first_name': str(row['FIRST NAME']),
+            'last_name': str(row['LAST NAME']),
+            'status': 'Needs full name',
+        }
+        for position, (_, row) in enumerate(frame.iterrows()) if blank.iloc[position]
+    ]
 
 
 def apply_available_usernames(frame, usernames):
@@ -88,9 +112,28 @@ def apply_available_usernames(frame, usernames):
     frame.loc[frame.index.difference(indexes), 'user_name'] = ''
 
 
+def _email_component(value):
+    """Keep lowercase ASCII letters and digits for generated email components."""
+    normalized = unicodedata.normalize('NFKD', str(value)).encode('ascii', 'ignore').decode()
+    return re.sub(r'[^a-z0-9]+', '', normalized.casefold())
+
+
+def fill_blank_emails(frame, school_name):
+    """Generate email addresses only where the uploaded EMAIL value is blank."""
+    blank_emails = frame['EMAIL'].astype(str).str.strip().eq('')
+    usernames = frame['user_name'].fillna('').map(_email_component)
+    can_generate = blank_emails & usernames.ne('')
+    if not can_generate.any():
+        return
+    domain = _email_component(school_name)
+    if not domain:
+        raise ValueError('The school name cannot be used to generate email addresses.')
+    frame.loc[can_generate, 'EMAIL'] = usernames[can_generate] + '@' + domain + '.com'
+
+
 def verify_generated_usernames(frame, existing_usernames):
     """Report preview uniqueness, database availability, and prefix integrity."""
-    records = frame.loc[frame['user_name'].astype(str).str.strip().ne('')]
+    records = frame.loc[frame['user_name'].fillna('').astype(str).str.strip().ne('')]
     normalized = records['user_name'].astype(str).str.strip()
     preview_duplicates = find_preview_duplicates(normalized)
     existing = find_database_duplicates(normalized, existing_usernames)
@@ -116,11 +159,31 @@ def verify_generated_usernames(frame, existing_usernames):
             'issues': prefix_mismatches,
         },
     ]
+    stages.append(blank_value_stage(frame, 'user_name', 'usernames'))
+    attach_failed_records(frame, stages, 'user_name')
     return {
         'passed': all(stage['passed'] for stage in stages),
-        'checked_usernames': len(normalized),
+        'checked_usernames': len(frame),
         'stages': stages,
     }
+
+
+def verify_output_emails(frame, existing_emails):
+    """Check all output emails for missing values and duplicates."""
+    emails = frame['EMAIL'].fillna('').astype(str).str.strip().str.lower()
+    emails = emails.loc[emails.ne('')]
+    preview_duplicates = find_email_preview_duplicates(emails)
+    database_duplicates = find_email_database_duplicates(emails, existing_emails)
+    stages = [
+        {'id': 'preview_duplicates', 'title': 'No duplicate emails in preview',
+         'passed': not preview_duplicates, 'issues': preview_duplicates},
+        {'id': 'database_duplicates', 'title': 'No preview emails already exist in database',
+         'passed': not database_duplicates, 'issues': database_duplicates},
+    ]
+    stages.append(blank_value_stage(frame, 'EMAIL', 'emails'))
+    attach_failed_records(frame, stages, 'EMAIL')
+    return {'passed': all(stage['passed'] for stage in stages),
+            'checked_emails': len(frame), 'stages': stages}
 
 
 def export_frame(frame, file_format):

@@ -8,7 +8,15 @@ export function useBulkRegistration() {
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
   const [error, setError] = useState('');
-  const [usernameVerification, setUsernameVerification] = useState(null);
+  const [usernameVerificationResult, setUsernameVerification] = useState(null);
+  const [emailVerificationResult, setEmailVerificationResult] = useState(null);
+  const verificationKey = `${state.workspace_id}:${state.revision}`;
+  const currentVerificationKey = useRef(verificationKey);
+  currentVerificationKey.current = verificationKey;
+  const emailVerification = emailVerificationResult?.key === verificationKey
+    ? emailVerificationResult.verification : null;
+  const usernameVerification = usernameVerificationResult?.key === verificationKey
+    ? usernameVerificationResult.verification : null;
   const schoolValid = school?.school_index === schoolIndex.trim();
   const pending = useRef(false);
 
@@ -93,7 +101,25 @@ export function useBulkRegistration() {
   async function verifyUsernames() {
     if (pending.current || !output || !ready) return;
     pending.current = true; setWorking(true); setError('');
-    try { setUsernameVerification(await bulkRegistrationApi.verifyUsernames()); }
+    setUsernameVerification(null);
+    const key = verificationKey;
+    try {
+      const verification = await bulkRegistrationApi.verifyUsernames();
+      if (currentVerificationKey.current === key) setUsernameVerification({ key, verification });
+    }
+    catch (err) { await handleError(err); }
+    finally { pending.current = false; setWorking(false); }
+  }
+
+  async function verifyEmails() {
+    if (pending.current || !output || !ready) return;
+    pending.current = true; setWorking(true); setError('');
+    setEmailVerificationResult(null);
+    const key = verificationKey;
+    try {
+      const verification = await bulkRegistrationApi.verifyEmails();
+      if (currentVerificationKey.current === key) setEmailVerificationResult({ key, verification });
+    }
     catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
@@ -120,10 +146,10 @@ export function useBulkRegistration() {
   }
 
   return {
-    path, file, source, schoolIndex, school, output, usernameVerification,
+    path, file, source, schoolIndex, school, output, usernameVerification, emailVerification,
     ready, storageError, working, busy, error, schoolValid,
     edit,
     load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
-    verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyUsernames, upload, clearWorkspace,
+    verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyUsernames, verifyEmails, upload, clearWorkspace,
   };
 }

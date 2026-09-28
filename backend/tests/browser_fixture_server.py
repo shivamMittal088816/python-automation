@@ -49,6 +49,8 @@ def fetch_bulk_school(index):
 
 school_routes.fetch_school = fetch_bulk_school
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
+conversion_routes.fetch_existing_emails = lambda emails: {'existing@testschool.com'} & set(emails)
+conversion_routes.fetch_existing_usernames = lambda usernames: {'ada001'} & set(usernames)
 conversion_routes.fetch_available_usernames = lambda names: [
     f'{str(name).strip().lower()}{index:03d}' for index, name in enumerate(names, start=1)
 ]

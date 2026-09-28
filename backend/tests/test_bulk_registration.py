@@ -11,7 +11,7 @@ from app.routes.bulk_registration import FilePathInput, load_path, preview_file,
 from app.routes.bulk_registration import convert_file, get_school
 from app.services.bulk_registration import (
     OUTPUT_HEADERS, FIXED_VALUES, apply_available_usernames, blank_first_name_records,
-    convert_frame, export_frame, fetch_school, verify_generated_usernames,
+    convert_frame, export_frame, fetch_school, fill_blank_emails, verify_generated_usernames,
 )
 from app.mappings.bulk_registration.section import apply_section_ids
 from app.repositories.username_repository import fetch_available_usernames, fetch_existing_usernames
@@ -123,7 +123,7 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(output.attrs['source_row_numbers'], [5, 6, 4, 2, 3])
 
         self.assertEqual(blank_first_name_records(output), [{
-            'record': 1,
+            'row_number': 3,
             'last_name': '',
             'full_name': '',
             'admission_number': '005',
@@ -180,15 +180,83 @@ class BulkRegistrationTests(unittest.TestCase):
             {'first_name': 'Cara', 'username': 'wrong001', 'username_prefix': 'wrong'},
         ])
 
+        self.assertEqual(result['stages'][0]['failed_records']['columns'], ['Preview row', *OUTPUT_HEADERS])
+        self.assertEqual(result['stages'][0]['failed_records']['rows'], [
+            [1, *output.iloc[0].tolist()], [2, *output.iloc[1].tolist()],
+        ])
+        self.assertEqual(result['stages'][1]['failed_records']['rows'], result['stages'][0]['failed_records']['rows'])
+        # Alice shares Bob's duplicate username but passes the first-name check.
+        self.assertEqual(result['stages'][2]['failed_records']['rows'], [
+            [2, *output.iloc[1].tolist()], [3, *output.iloc[2].tolist()],
+        ])
+
         passed = verify_generated_usernames(
             output.assign(user_name=['alice001', 'bob001', 'cara001']), set(),
         )
         self.assertTrue(passed['passed'])
+        self.assertTrue(all(stage['failed_records']['row_count'] == 0 for stage in passed['stages']))
 
         missing_suffix = verify_generated_usernames(
             output.assign(user_name=['alice', 'bob001', 'cara001']), set(),
         )
         self.assertFalse(missing_suffix['stages'][2]['passed'])
+
+    def test_username_verification_reports_blank_values_with_full_records(self):
+        frame = pd.DataFrame({'FIRST NAME': ['Ada', '', 'Bob', 'Cara'],
+                              'user_name': ['ada001', '', ' \t ', None],
+                              'admission_number': ['001', '002', '003', '004']})
+        result = verify_generated_usernames(frame, set())
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['checked_usernames'], 4)
+        self.assertEqual(len(result['stages']), 4)
+        stage = result['stages'][-1]
+        self.assertEqual(stage['issues'], [2, 3, 4])
+        self.assertEqual(stage['failed_records']['rows'], [
+            [2, '', '', '002'], [3, 'Bob', ' \t ', '003'], [4, 'Cara', '', '004'],
+        ])
+        self.assertTrue(all(stage['passed'] for stage in result['stages'][:-1]))
+
+    def test_blank_emails_are_generated_from_username_and_school_name(self):
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': ['Ada', 'Bob', 'Cara'],
+            'EMAIL': ['', ' supplied@example.org ', ''],
+        }), {'school_index': '42', 'school_name': 'Samsidh International School, Fatehabad'})
+        apply_available_usernames(output, ['ADA001', 'bob001', 'Cara001'])
+
+        fill_blank_emails(output, 'Samsidh International School, Fatehabad')
+
+        self.assertEqual(output['EMAIL'].tolist(), [
+            'ada001@samsidhinternationalschoolfatehabad.com',
+            ' supplied@example.org ',
+            'cara001@samsidhinternationalschoolfatehabad.com',
+        ])
+
+    def test_generated_emails_remove_spaces_and_punctuation_from_both_components(self):
+        frame = pd.DataFrame({
+            'EMAIL': ['', '', '', ''],
+            'user_name': [' Jo.HN-_ 001! ', 'ÉVA\t002', 'A@B\\003', '!!!'],
+        })
+
+        fill_blank_emails(frame, " St. Mary's École - School! ")
+
+        self.assertEqual(frame['EMAIL'].tolist(), [
+            'john001@stmarysecoleschool.com',
+            'eva002@stmarysecoleschool.com',
+            'ab003@stmarysecoleschool.com',
+            '',
+        ])
+        for email in frame['EMAIL'][:3]:
+            self.assertRegex(email, r'^[a-z0-9]+@[a-z0-9]+\.com$')
+
+    def test_email_generation_leaves_blank_when_username_is_unavailable(self):
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': [''], 'EMAIL': [''],
+        }), {'school_index': '42', 'school_name': 'École Test'})
+        apply_available_usernames(output, [])
+
+        fill_blank_emails(output, 'École Test')
+
+        self.assertEqual(output['EMAIL'].tolist(), [''])
 
 
     def test_gender_number_is_derived_from_gender_header(self):
@@ -216,6 +284,72 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(output['Class Number'].tolist(), class_names)
         self.assertEqual(output['CLASS'].tolist(), [str(value) for value in range(22)] + ['', ''])
 
+    def test_blank_full_names_report_source_rows_and_skip_present_names(self):
+        from app.services.bulk_registration import blank_full_name_records
+        from app.routes.bulk_registration.conversion_routes import paginated_summary
+
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': ['Zoe', 'Ada', 'Bob', 'Cara'],
+            'LAST NAME': ['Smith', 'Jones', '', ''],
+            'FULL NAME': ['', ' \t ', 'Bob B', None],
+            'admission_number': ['001', '002', '003', '004'],
+        }), {'school_index': '42', 'school_name': 'Test School'})
+        records = blank_full_name_records(output)
+        self.assertEqual([record['row_number'] for record in records], [3, 5, 2])
+        self.assertEqual([record['admission_number'] for record in records], ['002', '004', '001'])
+        self.assertEqual(records[0], {'row_number': 3, 'admission_number': '002',
+                                     'first_name': 'Ada', 'last_name': 'Jones', 'status': 'Needs full name'})
+        self.assertEqual(paginated_summary('input.csv', output, {}, None, 1, [])['blank_full_name_records'], records)
+
+    def test_unknown_genders_report_students_with_original_source_rows(self):
+        from app.mappings.bulk_registration.gender import missing_gender_records
+        from app.routes.bulk_registration.conversion_routes import paginated_summary
+
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': ['Zoe', 'Ada', 'Bob', 'Cara', 'Dan', 'Eve'],
+            'LAST NAME': ['Smith', '', '', '', '', ''],
+            'FULL NAME': ['', 'Ada Jones', '', '', '', ''],
+            'admission_number': ['001', '002', '003', '004', '005', '006'],
+            'GENDER': ['Unknown', 'F', ' MALE ', 'female', 'OTHERS', ' '],
+        }), {'school_index': '42', 'school_name': 'Test School'})
+        expected = [
+            {'gender': 'F', 'full_name': 'Ada Jones', 'admission_number': '002',
+             'row_number': 3, 'status': 'Gender not exist'},
+            {'gender': '', 'full_name': 'Eve', 'admission_number': '006',
+             'row_number': 7, 'status': 'Gender is blank'},
+            {'gender': 'Unknown', 'full_name': 'Zoe Smith', 'admission_number': '001',
+             'row_number': 2, 'status': 'Gender not exist'},
+        ]
+        self.assertEqual(missing_gender_records(output), expected)
+        self.assertEqual(paginated_summary('input.csv', output, {}, None, 1, [])['missing_genders'], expected)
+        restored = pd.read_csv(BytesIO(export_frame(output, 'csv')), dtype=str, keep_default_na=False)
+        self.assertEqual(paginated_summary('input.csv', restored, {}, None, 1, [], [], expected)['missing_genders'], expected)
+
+    def test_unknown_classes_report_students_with_original_source_rows(self):
+        from app.mappings.bulk_registration.class_name import missing_class_records
+        from app.routes.bulk_registration.conversion_routes import paginated_summary
+
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': ['Zoe', 'Ada', 'Bob', 'Cara', 'Dan'],
+            'LAST NAME': ['Smith', '', '', '', ''],
+            'FULL NAME': ['', 'Ada Jones', '', '', ''],
+            'admission_number': ['001', '002', '003', '004', '005'],
+            'Class Number': ['Class XIII', 'Unknown', ' CLASS I ', '', 'Other'],
+        }), {'school_index': '42', 'school_name': 'Test School'})
+        expected = [
+            {'class_name': 'Unknown', 'full_name': 'Ada Jones', 'admission_number': '002',
+             'row_number': 3, 'status': 'Class not exist'},
+            {'class_name': '', 'full_name': 'Cara', 'admission_number': '004',
+             'row_number': 5, 'status': 'Class is blank'},
+            {'class_name': 'Class XIII', 'full_name': 'Zoe Smith', 'admission_number': '001',
+             'row_number': 2, 'status': 'Class not exist'},
+        ]
+        self.assertEqual(missing_class_records(output), expected)
+        summary = paginated_summary('input.csv', output, {}, None, 1, [])
+        self.assertEqual(summary['missing_classes'], expected)
+        restored = pd.read_csv(BytesIO(export_frame(output, 'csv')), dtype=str, keep_default_na=False)
+        self.assertEqual(paginated_summary('input.csv', restored, {}, None, 1, [], expected)['missing_classes'], expected)
+
     def test_section_ids_are_mapped_and_missing_sections_are_reported(self):
         output = convert_frame(
             pd.DataFrame({
@@ -233,6 +367,7 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(missing, [
             {'section': 'New Section', 'full_name': 'Cara C', 'row_number': 4},
             {'section': 'new section', 'full_name': 'Dan D', 'row_number': 5},
+            {'section': '', 'full_name': 'Eve E', 'row_number': 6},
         ])
 
     def test_unknown_header_rejected(self):
@@ -247,6 +382,7 @@ class BulkRegistrationTests(unittest.TestCase):
             response = convert_file('42', 'preview', uploaded(), None)
             self.assertEqual(response['columns'], OUTPUT_HEADERS)
             self.assertEqual(response['rows'][0][13:15], ['My School', '42'])
+            self.assertEqual(response['rows'][0][6], 'ada001@myschool.com')
             response = convert_file('42', 'xlsx', uploaded(), None)
             self.assertEqual(response.status_code, 200)
             self.assertIn('bulk-registration-42.xlsx', response.headers['content-disposition'])

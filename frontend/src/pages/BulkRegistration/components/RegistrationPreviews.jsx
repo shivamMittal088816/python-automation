@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export function RegistrationPreviews({ file, output, busy, onOutputPage, onInputPage, usernameVerification, onVerifyUsernames }) {
+export function RegistrationPreviews({ file, output, busy, onOutputPage, onInputPage, usernameVerification, onVerifyUsernames, emailVerification, onVerifyEmails }) {
   const inputPage = file?.page || 1;
   const inputPageSize = file?.page_size || 20;
   const inputTotalPages = file?.total_pages || Math.max(1, Math.ceil((file?.row_count || 0) / inputPageSize));
@@ -9,21 +9,48 @@ export function RegistrationPreviews({ file, output, busy, onOutputPage, onInput
     {output && <>
       <section className="bulk-card bulk-output-summary" aria-labelledby="output-summary-title">
         <div><p className="bulk-card-eyebrow">Generated output</p><h2 id="output-summary-title">{output.sheet || 'Registration records'}</h2><p>{output.row_count} rows prepared across 24 columns.</p></div>
-        <div className="bulk-preview-actions"><span className="bulk-badge"><span aria-hidden="true">&#10003;</span> Ready to export</span><button className="bulk-button bulk-verify-button" disabled={busy} onClick={onVerifyUsernames}>Verify usernames</button></div>
+        <div className="bulk-preview-actions"><span className="bulk-badge"><span aria-hidden="true">&#10003;</span> Ready to export</span><button className="bulk-button bulk-verify-button" disabled={busy} onClick={onVerifyUsernames}>Verify usernames</button><button className="bulk-button bulk-verify-button" disabled={busy} onClick={onVerifyEmails}>Verify emails</button></div>
       </section>
 
       {usernameVerification && <UsernameVerification verification={usernameVerification} />}
+      {emailVerification && <UsernameVerification verification={emailVerification} kind="email" />}
 
       {!!output.blank_first_name_records?.length && <section className="bulk-card bulk-quality-card is-error" aria-labelledby="missing-first-names-title">
         <QualityHeading icon="!" eyebrow="Action required" title="Records with blank first names" count={output.blank_first_name_records.length} id="missing-first-names-title" />
-        <p className="bulk-quality-description">Add a first name to the source file, then generate the preview again. A first name is required to generate a username.</p>
-        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Records with blank first names"><table><thead><tr><th scope="col">Record</th><th scope="col">Admission number</th><th scope="col">Last name</th><th scope="col">Full name</th><th scope="col">Status</th></tr></thead><tbody>{output.blank_first_name_records.map(record => <tr key={`${record.record}-${record.admission_number}`}><td>{record.record}</td><td>{record.admission_number || '\u2014'}</td><td>{record.last_name || '\u2014'}</td><td>{record.full_name || '\u2014'}</td><td><span className="bulk-status-pill is-failed">Needs first name</span></td></tr>)}</tbody></table></div>
+        <div className="bulk-name-warning">
+          <span className="bulk-name-warning-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 4h.01" /></svg>
+          </span>
+          <div className="bulk-name-warning-copy">
+            <h3>First name required to generate a username</h3>
+            <p>Students listed below cannot receive a username until their first name is provided.</p>
+          </div>
+        </div>
+        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Records with blank first names"><table><thead><tr><th scope="col">Row</th><th scope="col">Admission number</th><th scope="col">Last name</th><th scope="col">Full name</th><th scope="col">Status</th></tr></thead><tbody>{output.blank_first_name_records.map(record => <tr key={`${record.row_number}-${record.admission_number}`}><td>{record.row_number}</td><td>{record.admission_number || '\u2014'}</td><td>{record.last_name || '\u2014'}</td><td>{record.full_name || '\u2014'}</td><td><span className="bulk-status-pill is-failed">Needs first name</span></td></tr>)}</tbody></table></div>
+      </section>}
+
+      {!!output.blank_full_name_records?.length && <section className="bulk-card bulk-quality-card is-error" aria-labelledby="missing-full-names-title">
+        <QualityHeading icon="!" eyebrow="Action required" title="Records with blank full names" count={output.blank_full_name_records.length} id="missing-full-names-title" />
+        <p className="bulk-quality-description">Add a full name to the source file, then generate the preview again.</p>
+        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Records with blank full names"><table><thead><tr><th scope="col">Row</th><th scope="col">Admission number</th><th scope="col">First name</th><th scope="col">Last name</th><th scope="col">Status</th></tr></thead><tbody>{output.blank_full_name_records.map(record => <tr key={`${record.row_number}-${record.admission_number}`}><td>{record.row_number}</td><td>{record.admission_number || '\u2014'}</td><td>{record.first_name || '\u2014'}</td><td>{record.last_name || '\u2014'}</td><td><span className="bulk-status-pill is-failed">{record.status}</span></td></tr>)}</tbody></table></div>
       </section>}
 
       {!!output.missing_sections?.length && <section className="bulk-card bulk-quality-card is-warning" aria-labelledby="missing-sections-title">
         <QualityHeading icon="!" eyebrow="Database update needed" title="Sections not found" count={output.missing_sections.length} id="missing-sections-title" />
-        <p className="bulk-quality-description">Insert these values into <code>users_sections</code>, then generate the preview again.</p>
-        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Sections not found in the database"><table><thead><tr><th scope="col">Row</th><th scope="col">Student full name</th><th scope="col">Missing section</th><th scope="col">Status</th></tr></thead><tbody>{output.missing_sections.map(record => <tr key={`${record.row_number}-${record.section}`}><td>{record.row_number}</td><td>{record.full_name || '\u2014'}</td><td>{record.section}</td><td><span className="bulk-status-pill is-warning">Insert required</span></td></tr>)}</tbody></table></div>
+        <p className="bulk-quality-description">Fill in blank sections in the source file. Add unknown sections to <code>users_sections</code>, then generate the preview again.</p>
+        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Sections not found in the database"><table><thead><tr><th scope="col">Row</th><th scope="col">Student full name</th><th scope="col">Missing section</th><th scope="col">Status</th></tr></thead><tbody>{output.missing_sections.map(record => <tr key={`${record.row_number}-${record.section}`}><td>{record.row_number}</td><td>{record.full_name || '\u2014'}</td><td>{record.section || 'Blank'}</td><td><span className="bulk-status-pill is-warning">{record.section ? 'Insert required' : 'Section is blank'}</span></td></tr>)}</tbody></table></div>
+      </section>}
+
+      {!!output.missing_classes?.length && <section className="bulk-card bulk-quality-card is-warning" aria-labelledby="missing-classes-title">
+        <QualityHeading icon="!" eyebrow="Class mapping needed" title="Classes not found" count={output.missing_classes.length} id="missing-classes-title" />
+        <p className="bulk-quality-description">These classes are blank or not in the built-in class mapping. Correct the class names in the source file, then generate the preview again.</p>
+        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Classes not found in the built-in mapping"><table><thead><tr><th scope="col">Row</th><th scope="col">Admission number</th><th scope="col">Student full name</th><th scope="col">Missing class</th><th scope="col">Status</th></tr></thead><tbody>{output.missing_classes.map(record => <tr key={`${record.row_number}-${record.class_name}`}><td>{record.row_number}</td><td>{record.admission_number || '\u2014'}</td><td>{record.full_name || '\u2014'}</td><td>{record.class_name || 'Blank'}</td><td><span className="bulk-status-pill is-warning">{record.status}</span></td></tr>)}</tbody></table></div>
+      </section>}
+
+      {!!output.missing_genders?.length && <section className="bulk-card bulk-quality-card is-warning" aria-labelledby="missing-genders-title">
+        <QualityHeading icon="!" eyebrow="Gender mapping needed" title="Genders not found" count={output.missing_genders.length} id="missing-genders-title" />
+        <p className="bulk-quality-description">These genders are blank or not in the predefined mapping (Male, Female, Others). Correct the gender values in the source file, then generate the preview again.</p>
+        <div className="bulk-exception-table-scroll" tabIndex={0} role="region" aria-label="Genders not found in the predefined mapping"><table><thead><tr><th scope="col">Row</th><th scope="col">Admission number</th><th scope="col">Student full name</th><th scope="col">Unmapped gender</th><th scope="col">Status</th></tr></thead><tbody>{output.missing_genders.map(record => <tr key={`${record.row_number}-${record.gender}`}><td>{record.row_number}</td><td>{record.admission_number || '\u2014'}</td><td>{record.full_name || '\u2014'}</td><td>{record.gender || 'Blank'}</td><td><span className="bulk-status-pill is-warning">{record.status}</span></td></tr>)}</tbody></table></div>
       </section>}
 
       <details open className="bulk-card bulk-preview-records" role="region" aria-label="Output preview">
@@ -63,13 +90,23 @@ function PageJump({ idPrefix, page, totalPages, busy, onGo }) {
   </form>;
 }
 
-function UsernameVerification({ verification }) {
+function UsernameVerification({ verification, kind = 'username' }) {
+  const email = kind === 'email';
   return <details open className={`bulk-card bulk-username-verification ${verification.passed ? 'is-passed' : 'is-failed'}`}>
     <summary className="bulk-verification-heading">
-      <div><p className="bulk-card-eyebrow">Three-stage validation</p><h2>Username verification</h2><p>{verification.checked_usernames} generated usernames checked against the preview and database.</p></div>
+      <div><p className="bulk-card-eyebrow">{verification.stages.length}-stage validation</p><h2>{email ? 'Email verification' : 'Username verification'}</h2><p>{email ? verification.checked_emails : verification.checked_usernames} student records checked for blank values and against the preview and database.</p></div>
       <div className="bulk-verification-controls"><span className={`bulk-verification-result ${verification.passed ? 'is-passed' : 'is-failed'}`}><span aria-hidden="true">{verification.passed ? '\u2713' : '!'}</span> {verification.passed ? 'All checks passed' : 'Review required'}</span><span className="bulk-collapse-chevron" aria-hidden="true">&#8964;</span></div>
     </summary>
-    <div className="bulk-verification-stages">{verification.stages.map((stage, index) => <article className={`bulk-verification-stage ${stage.passed ? 'is-passed' : 'is-failed'}`} key={stage.id}><div className="bulk-stage-number">{String(index + 1).padStart(2, '0')}</div><div className="bulk-stage-copy"><h3>{stage.title}</h3><p>{stage.passed ? 'No issues found' : formatVerificationIssues(stage)}</p></div><span className={`bulk-status-pill ${stage.passed ? 'is-passed' : 'is-failed'}`}>{stage.passed ? 'Passed' : 'Failed'}</span></article>)}</div>
+    <div className="bulk-verification-stages">{verification.stages.map((stage, index) => <article className={`bulk-verification-stage ${stage.passed ? 'is-passed' : 'is-failed'}`} key={stage.id}>
+      <div className="bulk-stage-number">{String(index + 1).padStart(2, '0')}</div>
+      <div className="bulk-stage-copy"><h3>{stage.title}</h3><p>{stage.passed ? 'No issues found' : formatVerificationIssues(stage)}</p></div>
+      <span className={`bulk-status-pill ${stage.passed ? 'is-passed' : 'is-failed'}`}>{stage.passed ? 'Passed' : 'Failed'}</span>
+      {!stage.passed && stage.failed_records?.row_count > 0 && <details className="bulk-failed-records">
+        <summary>Preview students who failed ({stage.failed_records.row_count})</summary>
+        <p className="bulk-hint">Complete student records for this check. Preview row refers to the full generated output.</p>
+        <PreviewTable data={stage.failed_records} />
+      </details>}
+    </article>)}</div>
   </details>;
 }
 
@@ -78,6 +115,7 @@ function QualityHeading({ icon, eyebrow, title, count, id }) {
 }
 
 function formatVerificationIssues(stage) {
+  if (stage.id === 'blank_values') return `${stage.issues.length} student records have a blank value. Preview the students below.`;
   if (stage.id === 'first_name_match') return stage.issues.map(issue => `${issue.username} does not match ${issue.first_name || 'blank first name'}`).join(', ');
   return stage.issues.join(', ');
 }

@@ -70,6 +70,32 @@ names receive successive available values. The resulting values replace `user_na
 in the preview and both downloads. Blank-first-name records retain a blank username
 and appear in a warning table because a first name is required for username generation.
 
+Uploaded nonblank `EMAIL` values are preserved exactly. After username allocation,
+blank email values are generated as `username@schoolname.com`. Both the username
+and school name are normalized to lowercase ASCII letters and digits, removing
+spaces and punctuation and folding accented letters to ASCII. Only the separator
+`@` and the dot in `.com` remain as punctuation. A row without a usable normalized
+username keeps a blank email. The school name is validated for email generation
+only when at least one blank email has a usable username.
+
+Use **Verify emails** after generating output to run three checks across all saved
+output rows: duplicate emails within the preview, and preview emails already in
+`users.user_email`, and blank email values. Both generated and supplied emails are checked;
+comparisons ignore surrounding whitespace and letter case. Each stage lists its
+duplicates. The database lookup uses a parameterized `WHERE LOWER(TRIM(u.user_email)) IN (...)`
+query. Verification results are cleared when the workspace revision changes.
+
+Username verification also checks for blank usernames, for a total of four stages.
+Both blank-value checks include empty strings, whitespace-only values, and nulls.
+Their failed-record tables include every affected student. Verification counts
+include all output rows; duplicate checks continue to compare nonblank values only.
+
+Each failed username or email check offers **Preview students who failed**.
+Expand it to see every matching student's complete output record, with a
+one-based preview row number referring to the full generated output. Duplicate
+checks include every student sharing the duplicate value. The username
+first-name check includes only records whose own first name fails the check.
+
 After preview generation, **Verify usernames** runs three checks against the saved
 output: usernames must be unique within the preview, none may already exist in
 `users.user_name`, and removing the trailing numeric suffix must reproduce the

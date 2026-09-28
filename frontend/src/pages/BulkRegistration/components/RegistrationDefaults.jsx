@@ -4,6 +4,7 @@ export function RegistrationDefaults() {
       <div className="bulk-defaults-title">
         <span className="bulk-eyebrow">OUTPUT SETTINGS</span>
         <span className="bulk-format">2026</span>
+        <button type="button" className="bulk-button bulk-secondary" disabled title="Modify output values — coming soon">Modify</button>
       </div>
       <table>
         <caption>Predefined output values<span>Applied automatically to every row.</span>

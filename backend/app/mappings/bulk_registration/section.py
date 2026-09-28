@@ -20,7 +20,7 @@ def apply_section_ids(output, database_sections):
         display = ' '.join(str(value or '').split())
         normalized = normalize_section(display)
         indexes.append(lookup.get(normalized, ''))
-        if normalized and normalized not in lookup:
+        if normalized not in lookup:
             row = output.iloc[position]
             full_name = str(row['FULL NAME']).strip() or ' '.join(
                 part for part in (str(row['FIRST NAME']).strip(), str(row['LAST NAME']).strip()) if part

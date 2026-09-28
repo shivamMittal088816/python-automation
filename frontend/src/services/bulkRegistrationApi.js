@@ -60,6 +60,10 @@ export const bulkRegistrationApi = {
     return request('/bulk-reg/output/verify-usernames');
   },
 
+  verifyEmails() {
+    return request('/bulk-reg/output/verify-emails');
+  },
+
   clearFile(revision) {
     return request('/bulk-reg/file', { method: 'DELETE', revision });
   },

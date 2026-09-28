@@ -44,6 +44,130 @@ test('bulk registration loads files independently of mapping', async ({ page }) 
   expect(mappingRequests).toEqual([]);
 });
 
+test('email verification reports preview and database duplicates and clears on regeneration', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Verify school index' }).click();
+  await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await page.getByLabel('Upload registration file').setInputFiles({
+    name: 'emails.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('FIRST NAME,EMAIL\nAda,duplicate@testschool.com\nBob,duplicate@testschool.com\nCara,existing@testschool.com'),
+  });
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  await page.getByRole('button', { name: 'Verify emails', exact: true }).click();
+  const verification = page.locator('details').filter({ has: page.getByRole('heading', { name: 'Email verification', exact: true }) });
+  await expect(verification).toContainText('3 student records');
+  await expect(verification.locator('article')).toHaveCount(3);
+  await expect(verification.locator('article').nth(0)).toContainText('duplicate@testschool.com');
+  await expect(verification.locator('article').nth(1)).toContainText('existing@testschool.com');
+  await expect(verification.getByText('Failed', { exact: true })).toHaveCount(2);
+  const duplicateStage = verification.locator('article').nth(0);
+  await duplicateStage.getByText('Preview students who failed (2)', { exact: true }).click();
+  await expect(duplicateStage.getByRole('columnheader')).toHaveCount(25);
+  await expect(duplicateStage.getByRole('cell', { name: 'Ada', exact: true })).toBeVisible();
+  await expect(duplicateStage.getByRole('cell', { name: 'Bob', exact: true })).toBeVisible();
+  await expect(duplicateStage.getByRole('cell', { name: 'Cara', exact: true })).toHaveCount(0);
+  const databaseStage = verification.locator('article').nth(1);
+  await databaseStage.getByText('Preview students who failed (1)', { exact: true }).click();
+  await expect(databaseStage.getByRole('cell', { name: 'Cara', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Verify usernames', exact: true }).click();
+  const usernames = page.locator('details.bulk-username-verification').filter({ has: page.getByRole('heading', { name: 'Username verification', exact: true }) });
+  await usernames.getByText('Preview students who failed (1)', { exact: true }).click();
+  await expect(usernames.getByRole('columnheader')).toHaveCount(25);
+  await expect(usernames.getByRole('cell', { name: 'Ada', exact: true })).toBeVisible();
+  await expect(usernames.getByRole('cell', { name: 'Bob', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  await expect(verification).toHaveCount(0);
+  await expect(usernames).toHaveCount(0);
+});
+
+test('unknown classes show student records and status after reload', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Verify school index' }).click();
+  await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await page.getByLabel('Upload registration file').setInputFiles({
+    name: 'classes.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('FIRST NAME,LAST NAME,Class Number,admission_number\nZoe,Smith,Class XIII,001\nAda,Jones,Class I,002'),
+  });
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  const missing = page.getByRole('region', { name: 'Classes not found in the built-in mapping', exact: true });
+  await expect(missing.getByRole('cell', { name: 'Zoe Smith', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Class not exist', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: '001', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Ada Jones', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(missing.getByRole('cell', { name: 'Class XIII', exact: true })).toBeVisible();
+});
+
+test('unknown genders show student records and status after reload', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Verify school index' }).click();
+  await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await page.getByLabel('Upload registration file').setInputFiles({
+    name: 'genders.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('FIRST NAME,LAST NAME,GENDER,admission_number\nZoe,Smith,Unknown,001\nAda,Jones,Female,002\nBob,Brown, ,003'),
+  });
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  const missing = page.getByRole('region', { name: 'Genders not found in the predefined mapping', exact: true });
+  await expect(missing.getByRole('cell', { name: 'Zoe Smith', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Gender not exist', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Gender is blank', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Bob Brown', exact: true })).toBeVisible();
+  for (const [label, status] of [
+    ['Classes not found in the built-in mapping', 'Class is blank'],
+    ['Sections not found in the database', 'Section is blank'],
+  ]) {
+    const table = page.getByRole('region', { name: label, exact: true });
+    await expect(table.getByRole('cell', { name: status, exact: true })).toHaveCount(3);
+    await expect(table.getByRole('cell', { name: 'Blank', exact: true })).toHaveCount(3);
+  }
+  await expect(missing.getByRole('cell', { name: '001', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Ada Jones', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(missing.getByRole('cell', { name: 'Unknown', exact: true })).toBeVisible();
+});
+
+test('blank full names show source rows and student details after reload', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Verify school index' }).click();
+  await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await page.getByLabel('Upload registration file').setInputFiles({
+    name: 'names.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('FIRST NAME,LAST NAME,FULL NAME,admission_number\nZoe,Smith,,001\nAda,Jones,Ada Jones,002'),
+  });
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  const missing = page.getByRole('region', { name: 'Records with blank full names', exact: true });
+  await expect(missing.getByRole('cell', { name: 'Zoe', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Needs full name', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: '2', exact: true })).toBeVisible();
+  await expect(missing.getByRole('cell', { name: 'Ada', exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(missing.getByRole('cell', { name: '001', exact: true })).toBeVisible();
+});
+
+test('blank usernames and emails fail verification and show student records', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('School index', { exact: true }).fill('914');
+  await page.getByRole('button', { name: 'Verify school index' }).click();
+  await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await page.getByLabel('Upload registration file').setInputFiles({
+    name: 'blank-values.csv', mimeType: 'text/csv',
+    buffer: Buffer.from('FIRST NAME,FULL NAME,admission_number\n,Missing Name,001'),
+  });
+  await page.getByRole('button', { name: 'Generate preview' }).click();
+  for (const kind of ['usernames', 'emails']) {
+    await page.getByRole('button', { name: `Verify ${kind}`, exact: true }).click();
+    const stage = page.locator('article').filter({ has: page.getByRole('heading', { name: `No blank ${kind} in preview`, exact: true }) });
+    await expect(stage.getByText('Failed', { exact: true })).toBeVisible();
+    await stage.getByText('Preview students who failed (1)', { exact: true }).click();
+    await expect(stage.getByRole('cell', { name: 'Missing Name', exact: true })).toBeVisible();
+    await expect(stage.getByRole('columnheader')).toHaveCount(25);
+  }
+});
+
 test('bulk registration recovers after a temporary storage read failure', async ({ page }) => {
   await page.goto('/bulk-reg');
   await expect(page.getByLabel('School index', { exact: true })).toBeEnabled();
@@ -75,6 +199,7 @@ test('verified school details, preview fixed output and download', async ({ page
   await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda') });
   await page.getByRole('button', { name: 'Generate preview' }).click();
   await expect(page.getByRole('region', { name: 'Output preview', exact: true }).getByRole('cell', { name: '2026', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Output preview', exact: true }).getByRole('cell', { name: 'ada001@testschool.com', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: 'Test School', exact: true })).toBeVisible();
   await expect(page.getByRole('cell', { name: '914', exact: true })).toBeVisible();
   const download = page.waitForEvent('download');

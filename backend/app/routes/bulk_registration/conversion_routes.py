@@ -9,14 +9,17 @@ from openpyxl.utils.exceptions import IllegalCharacterError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.mappings.bulk_registration.section import apply_section_ids
+from app.mappings.bulk_registration.class_name import missing_class_records
+from app.mappings.bulk_registration.gender import missing_gender_records
 from app.repositories.section_repository import fetch_sections
+from app.repositories.email_repository import fetch_existing_emails
 from app.repositories.username_repository import fetch_available_usernames, fetch_existing_usernames
 from app.routes.bulk_registration.file_reading import read_frame
 from app.routes.bulk_registration.school_routes import get_school
 from app.routes.bulk_registration.workspace_access import require_revision, workspace_for, workspace_summary
 from app.services.bulk_registration import (
-    apply_available_usernames, blank_first_name_records, convert_frame, export_frame,
-    verify_generated_usernames,
+    apply_available_usernames, blank_first_name_records, convert_frame, export_frame, fill_blank_emails,
+    verify_generated_usernames, verify_output_emails, blank_full_name_records,
 )
 from app.services.bulk_registration_storage import read_snapshot, save_workspace, workspace_locked
 
@@ -26,7 +29,7 @@ OUTPUT_PREVIEW_PAGE_SIZE = 20
 Revision = Annotated[int, Header(alias='X-Workspace-Revision', ge=0)]
 
 
-def paginated_summary(name, output, school, sheet, page, missing_sections):
+def paginated_summary(name, output, school, sheet, page, missing_sections, missing_classes=None, missing_genders=None):
     if page < 1:
         raise HTTPException(400, 'Preview page must be 1 or greater.')
     total_pages = max(1, ceil(len(output) / OUTPUT_PREVIEW_PAGE_SIZE))
@@ -38,7 +41,10 @@ def paginated_summary(name, output, school, sheet, page, missing_sections):
             'rows': preview.values.tolist(), 'school': school, 'page': page,
             'page_size': OUTPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages, 'sheet': sheet,
             'missing_sections': missing_sections,
-            'blank_first_name_records': blank_first_name_records(output)}
+            'missing_classes': missing_class_records(output) if missing_classes is None else missing_classes,
+            'missing_genders': missing_gender_records(output) if missing_genders is None else missing_genders,
+            'blank_first_name_records': blank_first_name_records(output),
+            'blank_full_name_records': blank_full_name_records(output)}
 
 
 def read_authoritative_output(workspace_id, state):
@@ -48,6 +54,8 @@ def read_authoritative_output(workspace_id, state):
         output = pd.read_csv(BytesIO(data), dtype=str, keep_default_na=False)
     except Exception as exc:
         raise HTTPException(409, 'Saved bulk registration output is unreadable. Generate the preview again.') from exc
+    if 'source_row_numbers' in metadata:
+        output.attrs['source_row_numbers'] = metadata['source_row_numbers']
     return metadata, output
 
 
@@ -61,6 +69,8 @@ def get_output_page(request: Request, response: Response, page: int = 1):
     summary = paginated_summary(
         metadata.get('source_name', ''), output, metadata.get('school'),
         metadata.get('sheet'), page, metadata.get('missing_sections', []),
+        metadata.get('missing_classes'),
+        metadata.get('missing_genders'),
     )
     visible_state = dict(state)
     visible_state['output'] = summary
@@ -80,6 +90,21 @@ def verify_output_usernames(request: Request, response: Response):
     except SQLAlchemyError as exc:
         raise HTTPException(503, 'Could not verify usernames. Check the database connection and try again.') from exc
     return verify_generated_usernames(output, existing)
+
+
+@router.get('/output/verify-emails')
+@workspace_locked
+def verify_output_email_addresses(request: Request, response: Response):
+    workspace_id, state = workspace_for(request, response)
+    if not state.get('output'):
+        raise HTTPException(409, 'Generate the output preview before verifying emails.')
+    _, output = read_authoritative_output(workspace_id, state)
+    emails = output['EMAIL'].fillna('').astype(str).str.strip().str.lower().tolist()
+    try:
+        existing = fetch_existing_emails(emails)
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, 'Could not verify emails. Check the database connection and try again.') from exc
+    return verify_output_emails(output, existing)
 
 
 @router.post('/convert')
@@ -109,6 +134,7 @@ def convert_workspace_file(
                 output['FIRST NAME'].astype(str).str.strip().ne(''), 'FIRST NAME'
             ].tolist()
             apply_available_usernames(output, fetch_available_usernames(first_names))
+            fill_blank_emails(output, school['school_name'])
         except SQLAlchemyError as exc:
             raise HTTPException(503, 'Could not verify sections or allocate usernames. Check the database connection and try again.') from exc
         except ValueError as exc:
@@ -121,6 +147,9 @@ def convert_workspace_file(
             'source_name': name, 'school_index': school['school_index'],
             'school': school, 'sheet': sheet, 'row_count': len(output),
             'missing_sections': missing_sections,
+            'missing_classes': summary['missing_classes'],
+            'missing_genders': summary['missing_genders'],
+            'source_row_numbers': output.attrs['source_row_numbers'],
         }
         save_workspace(workspace_id, state, {
             '_output_authoritative': (metadata, export_frame(output, 'csv')),
