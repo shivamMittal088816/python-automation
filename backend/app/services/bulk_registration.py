@@ -41,11 +41,14 @@ def convert_frame(frame, school):
     if unknown:
         raise ValueError('Unrecognized input headers: ' + ', '.join(unknown))
     output = frame.reindex(columns=OUTPUT_HEADERS, fill_value='').fillna('').copy()
+    output['_source_row_number'] = range(2, len(output) + 2)
     first_names = output['FIRST NAME'].astype(str).str.strip().str.casefold()
     output = (output.assign(_first_name_blank=first_names.eq(''), _first_name_sort=first_names)
                     .sort_values(['_first_name_blank', '_first_name_sort'], kind='stable')
                     .drop(columns=['_first_name_blank', '_first_name_sort'])
                     .reset_index(drop=True))
+    source_row_numbers = output.pop('_source_row_number').tolist()
+    output.attrs['source_row_numbers'] = source_row_numbers
     output['CLASS'] = output['Class Number'].map(class_id)
     output['Gender Number'] = output['GENDER'].map(gender_number)
     # The web preview and CSV need calculated values because neither can run

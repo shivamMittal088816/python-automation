@@ -81,6 +81,15 @@ export function useBulkRegistration() {
     finally { pending.current = false; setWorking(false); }
   }
 
+  async function showInputPage(page) {
+    if (pending.current || !source || !ready) return;
+    pending.current = true; setWorking(true); setError('');
+    const origin = beginOperation();
+    try { replace(await bulkRegistrationApi.inputPage(page), { origin, announce: false }); }
+    catch (err) { await handleError(err); }
+    finally { pending.current = false; setWorking(false); }
+  }
+
   async function verifyUsernames() {
     if (pending.current || !output || !ready) return;
     pending.current = true; setWorking(true); setError('');
@@ -115,6 +124,6 @@ export function useBulkRegistration() {
     ready, storageError, working, busy, error, schoolValid,
     edit,
     load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
-    verifySchool, selectSheet, convert, showOutputPage, verifyUsernames, upload, clearWorkspace,
+    verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyUsernames, upload, clearWorkspace,
   };
 }

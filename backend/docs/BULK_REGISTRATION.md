@@ -83,7 +83,8 @@ Pre Nursery = 18, Pre Primary = 19, Pre School = 20, and Play Group = 21.
 Every distinct nonblank `Section` is checked against `users_sections.section`.
 Matching ignores capitalization, repeated spaces, and surrounding spaces. A match
 writes its `section_id` into `section_index`. The preview lists missing sections in
-a warning table so they can be inserted into `users_sections`; their
+a warning table with the affected student's full name and original spreadsheet row
+number so they can be corrected or inserted into `users_sections`; their
 `section_index` remains blank until the database contains them.
 
 The verified index and fetched name override school values in every input row.

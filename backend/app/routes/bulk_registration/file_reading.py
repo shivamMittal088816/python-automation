@@ -1,5 +1,6 @@
 """CSV/XLSX validation, parsing, path loading, and input previews."""
 from io import BytesIO
+from math import ceil
 from pathlib import Path
 
 import pandas as pd
@@ -40,11 +41,20 @@ def read_frame(name: str, data: bytes, sheet: str | None = None, allow_empty_she
     return frame
 
 
-def preview_file(name: str, data: bytes, sheet: str | None = None):
+INPUT_PREVIEW_PAGE_SIZE = 20
+
+
+def preview_file(name: str, data: bytes, sheet: str | None = None, page: int = 1):
     frame = read_frame(name, data, sheet, allow_empty_sheet=True)
+    total_pages = max(1, ceil(len(frame) / INPUT_PREVIEW_PAGE_SIZE))
+    if page < 1 or page > total_pages:
+        raise HTTPException(400, 'The requested input preview page does not exist.')
+    start = (page - 1) * INPUT_PREVIEW_PAGE_SIZE
+    preview = frame.iloc[start:start + INPUT_PREVIEW_PAGE_SIZE]
     return {'name': name, 'size_bytes': len(data), 'row_count': len(frame),
             'columns': [str(column) for column in frame.columns],
-            'rows': frame.head(20).fillna('').values.tolist(),
+            'rows': preview.fillna('').values.tolist(), 'page': page,
+            'page_size': INPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages,
             'sheets': frame.attrs['sheets'], 'sheet': frame.attrs['sheet']}
 
 

@@ -52,6 +52,10 @@ export const bulkRegistrationApi = {
     return request('/bulk-reg/output', { params: { page } });
   },
 
+  inputPage(page) {
+    return request('/bulk-reg/files/input', { params: { page } });
+  },
+
   verifyUsernames() {
     return request('/bulk-reg/output/verify-usernames');
   },

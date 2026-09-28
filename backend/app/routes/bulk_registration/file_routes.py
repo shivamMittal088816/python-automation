@@ -14,6 +14,20 @@ router = APIRouter()
 Revision = Annotated[int, Header(alias='X-Workspace-Revision', ge=0)]
 
 
+@router.get('/files/input')
+@workspace_locked
+def get_input_page(request: Request, response: Response, page: int = 1):
+    workspace_id, state = workspace_for(request, response)
+    if not state.get('input'):
+        raise HTTPException(409, 'Load an input file first.')
+    metadata, data = read_snapshot(workspace_id, state['input'])
+    visible_state = dict(state)
+    visible_state['file'] = preview_file(
+        metadata.get('name', ''), data, metadata.get('sheet'), page,
+    )
+    return workspace_summary(visible_state)
+
+
 @router.post('/files')
 @workspace_locked
 def upload_workspace_file(request: Request, response: Response, expected_revision: Revision,

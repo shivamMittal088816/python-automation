@@ -120,6 +120,7 @@ class BulkRegistrationTests(unittest.TestCase):
 
         self.assertEqual(output['FIRST NAME'].tolist(), ['alice', 'ALICE', ' Bob ', 'charlie', ''])
         self.assertEqual(output['admission_number'].tolist(), ['004', '001', '002', '003', '005'])
+        self.assertEqual(output.attrs['source_row_numbers'], [5, 6, 4, 2, 3])
 
         self.assertEqual(blank_first_name_records(output), [{
             'record': 1,
@@ -217,14 +218,22 @@ class BulkRegistrationTests(unittest.TestCase):
 
     def test_section_ids_are_mapped_and_missing_sections_are_reported(self):
         output = convert_frame(
-            pd.DataFrame({'Section': [' A ', 'c', 'New Section', 'new  section', '']}),
+            pd.DataFrame({
+                'FIRST NAME': ['Ada', 'Bob', 'Cara', 'Dan', 'Eve'],
+                'LAST NAME': ['Lovelace', '', '', '', ''],
+                'FULL NAME': ['', 'Bob B', 'Cara C', 'Dan D', 'Eve E'],
+                'Section': [' A ', 'c', 'New Section', 'new  section', ''],
+            }),
             {'school_index': '42', 'school_name': 'Test School'},
         )
 
         missing = apply_section_ids(output, [(1, 'A'), (2, 'C')])
 
         self.assertEqual(output['section_index'].tolist(), ['1', '2', '', '', ''])
-        self.assertEqual(missing, ['New Section'])
+        self.assertEqual(missing, [
+            {'section': 'New Section', 'full_name': 'Cara C', 'row_number': 4},
+            {'section': 'new section', 'full_name': 'Dan D', 'row_number': 5},
+        ])
 
     def test_unknown_header_rejected(self):
         with self.assertRaisesRegex(ValueError, 'Unrecognized input headers'):
@@ -334,6 +343,9 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(result['row_count'], 25)
         self.assertEqual(len(result['rows']), 20)
         self.assertEqual(result['rows'][0], ['001', 'Student'])
+        self.assertEqual((result['page'], result['page_size'], result['total_pages']), (1, 20, 2))
+        second = preview_file('students.csv', b'id,name\n' + b'001,Student\n' * 25, page=2)
+        self.assertEqual(len(second['rows']), 5)
 
     def test_xlsx(self):
         source = BytesIO()

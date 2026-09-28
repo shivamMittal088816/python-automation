@@ -9,11 +9,17 @@ test('bulk registration loads files independently of mapping', async ({ page }) 
   await page.goto('/bulk-reg');
   await expect(page.getByRole('heading', { name: 'Bulk registration', exact: true })).toBeVisible();
   await expect(page.getByLabel('Upload registration file')).toBeEnabled();
-  await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from('id,name\n001,Student') });
-  await expect(page.getByText('File uploaded successfully', { exact: true })).toBeVisible();
+  const rows = Array.from({ length: 25 }, (_, index) => `${String(index + 1).padStart(3, '0')},Student ${index + 1}`).join('\n');
+  await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from(`id,name\n${rows}`) });
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
   await expect(page.getByText('students.csv', { exact: true }).first()).toBeVisible();
   await page.locator('summary').filter({ hasText: 'Input preview' }).click();
   await expect(page.getByRole('cell', { name: '001' })).toBeVisible();
+  const inputPages = page.getByRole('navigation', { name: 'Input preview pages' });
+  await expect(inputPages).toContainText('Rows 1–20 of 25');
+  await inputPages.getByRole('button', { name: 'Next' }).click();
+  await expect(page.getByRole('cell', { name: '021' })).toBeVisible();
+  await expect(inputPages).toContainText('Rows 21–25 of 25');
   await page.getByRole('button', { name: 'Clear file' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   // Returning to the tab refreshes shared browser metadata without changing the loaded file.
@@ -23,13 +29,14 @@ test('bulk registration loads files independently of mapping', async ({ page }) 
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await expect(page.getByRole('cell', { name: '001' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '021' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear file' }).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).not.toBeVisible();
-  await expect(page.getByRole('cell', { name: '001' })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '021' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear file' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
+  await page.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
   await page.getByLabel('File path', { exact: true }).fill(resolve('e2e/fixtures/school.csv'));
   await page.getByRole('button', { name: 'Load file', exact: true }).click();
   await page.locator('summary').filter({ hasText: 'Input preview' }).click();
@@ -89,12 +96,12 @@ test('bulk registration syncs files, verification and output across tabs and rel
   await page.getByRole('button', { name: 'Verify school index' }).click();
   await expect(page.getByLabel('School name fetched')).toHaveValue('Test School');
   await page.getByLabel('Upload registration file').setInputFiles({ name: 'shared.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda') });
-  await expect(page.getByText('File loaded', { exact: false })).toBeVisible();
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
   const second = await context.newPage();
   await second.goto('/bulk-reg');
   await expect(second.getByLabel('School index', { exact: true })).toHaveValue('914');
   await expect(second.getByLabel('School name fetched')).toHaveValue('Test School');
-  await expect(second.getByText('File loaded', { exact: false })).toBeVisible();
+  await expect(second.getByText('File ready', { exact: true })).toBeVisible();
   await second.getByRole('button', { name: 'Generate preview' }).click();
   await expect(page.getByRole('region', { name: 'Output preview', exact: true })).toBeVisible();
   await second.reload();
@@ -106,6 +113,7 @@ test('bulk registration syncs files, verification and output across tabs and rel
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(second.getByRole('region', { name: 'Output preview', exact: true })).toHaveCount(0);
   await expect(second.getByRole('button', { name: 'Generate preview' })).toBeDisabled();
+  await second.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
   await second.getByLabel('File path', { exact: true }).fill('C:\\data\\shared.csv');
   // Unsubmitted drafts belong to the editing tab; persisted files are shared.
   await expect(page.getByLabel('File path', { exact: true })).toHaveValue('');
@@ -155,6 +163,7 @@ test('focus preserves drafts and restores committed changes without BroadcastCha
   await page.goto('/bulk-reg');
   await page.getByLabel('School index', { exact: true }).pressSequentially('1234567890');
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('1234567890');
+  await page.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
   await page.getByLabel('File path', { exact: true }).pressSequentially('C:\\data\\students.csv');
   await expect(page.getByLabel('File path', { exact: true })).toHaveValue('C:\\data\\students.csv');
   const refreshed = page.waitForResponse('**/bulk-reg/workspace');
@@ -172,7 +181,7 @@ test('focus preserves drafts and restores committed changes without BroadcastCha
   await page.reload();
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('914');
   await second.getByLabel('Upload registration file').setInputFiles({ name: 'shared.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda') });
-  await expect(second.getByText('File uploaded successfully', { exact: true })).toBeVisible();
+  await expect(second.getByText('File ready', { exact: true })).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByText('shared.csv', { exact: true }).first()).toBeVisible();
 });
@@ -209,7 +218,7 @@ test('a delayed workspace refresh cannot undo successful verification', async ({
   await expect(page.getByLabel('School name fetched')).toHaveValue('Test School');
   // The revision must also remain current, otherwise this mutation receives 409.
   await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda') });
-  await expect(page.getByText('File uploaded successfully', { exact: true })).toBeVisible();
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
@@ -242,7 +251,7 @@ test('successful verification recovers from an overlapping failed refresh', asyn
   await page.getByLabel('Upload registration file').setInputFiles({
     name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda'),
   });
-  await expect(page.getByText('File uploaded successfully', { exact: true })).toBeVisible();
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
 });
 
 test('Excel working sheet controls preview, download and cross-tab state', async ({ page, context }) => {
