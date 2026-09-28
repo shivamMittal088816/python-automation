@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Student Mapping — Current Architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1340,
+      720
+    ]
+  },
+  "components": [
+    {
+      "id": "browser-ui",
+      "type": "frontend",
+      "label": "React workspace UI",
+      "sublabel": "Pages, previews, downloads",
+      "pos": [
+        40,
+        80
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "http-client",
+      "type": "frontend",
+      "label": "API service layer",
+      "sublabel": "fetch + workspace revision",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "api-routes",
+      "type": "backend",
+      "label": "FastAPI routers",
+      "sublabel": "/api/v1/mapping + /bulk-reg",
+      "pos": [
+        380,
+        300
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "sql-access",
+      "type": "backend",
+      "label": "SQL access",
+      "sublabel": "Repositories + school lookup",
+      "pos": [
+        720,
+        300
+      ],
+      "size": [
+        230,
+        76
+      ]
+    },
+    {
+      "id": "mysql-store",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "Existing student / school data",
+      "pos": [
+        1060,
+        300
+      ],
+      "size": [
+        230,
+        76
+      ]
+    },
+    {
+      "id": "workspace-files",
+      "type": "backend",
+      "label": "Workspace & file I/O",
+      "sublabel": "Sessions, CSV/XLSX, exports",
+      "pos": [
+        380,
+        80
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "local-storage",
+      "type": "database",
+      "label": "Backend filesystem",
+      "sublabel": "Manifests, snapshots, staging",
+      "pos": [
+        720,
+        80
+      ],
+      "size": [
+        230,
+        76
+      ]
+    },
+    {
+      "id": "mapping-services",
+      "type": "backend",
+      "label": "Mapping services",
+      "sublabel": "Admission / Email / Name+Class",
+      "pos": [
+        380,
+        560
+      ],
+      "size": [
+        250,
+        76
+      ]
+    },
+    {
+      "id": "bulk-conversion",
+      "type": "backend",
+      "label": "Bulk registration",
+      "sublabel": "Conversion + section mapping",
+      "pos": [
+        720,
+        560
+      ],
+      "size": [
+        230,
+        76
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Browser · React frontend",
+      "wraps": [
+        "browser-ui",
+        "http-client"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "region",
+      "label": "Python backend · modules in one FastAPI application",
+      "wraps": [
+        "api-routes",
+        "sql-access",
+        "workspace-files",
+        "mapping-services",
+        "bulk-conversion"
+      ],
+      "pad": 30
+    }
+  ],
+  "connections": [
+    {
+      "id": "ui-actions",
+      "from": "browser-ui",
+      "to": "http-client",
+      "label": "Actions",
+      "variant": "emphasis",
+      "labelAt": [
+        150,
+        228
+      ]
+    },
+    {
+      "id": "browser-http",
+      "from": "http-client",
+      "to": "api-routes",
+      "label": "HTTP + cookie",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lookup-dispatch",
+      "from": "api-routes",
+      "to": "sql-access",
+      "label": "Lookups",
+      "variant": "emphasis"
+    },
+    {
+      "id": "mysql-queries",
+      "from": "sql-access",
+      "to": "mysql-store",
+      "label": "SQL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "workspace-access",
+      "from": "api-routes",
+      "to": "workspace-files",
+      "label": "Load / save",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "snapshot-persistence",
+      "from": "workspace-files",
+      "to": "local-storage",
+      "label": "File I/O"
+    },
+    {
+      "id": "mapping-execution",
+      "from": "api-routes",
+      "to": "mapping-services",
+      "label": "Run mapping",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "bulk-execution",
+      "from": "api-routes",
+      "to": "bulk-conversion",
+      "label": "Convert",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "bulk-lookups",
+      "from": "bulk-conversion",
+      "to": "sql-access",
+      "label": "School / sections",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Browser interaction",
+      "items": [
+        "React Router pages; shared mapping context; separate bulk workspace.",
+        "Cookie credentials + X-Workspace-Revision; cross-tab refresh notifications.",
+        "Read-only Matched / Review / Not Matched previews; CSV/XLSX downloads."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Mapping and file processing",
+      "items": [
+        "Routes read frames, run Python mapping, then persist grouped workbooks.",
+        "Email can use school or Admission misses; Name+Class also accepts Email misses.",
+        "pandas/openpyxl parse and export; combined results workbook built on download."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Persistence and scope",
+      "items": [
+        "Separate mapping / bulk disk workspaces; 24-hour idle expiry and process-local locks.",
+        "Mapping uses state.json + hash-named .bin snapshots; parser staging is removed.",
+        "SQLAlchemy/PyMySQL reads; no inferred cloud topology or runtime Archify service."
+      ]
+    }
+  ]
+}

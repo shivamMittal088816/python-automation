@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "D:\\python-api\\diagrams\\dataflow\\specs\\dataflow.json",
+  "output": "D:\\python-api\\diagrams\\dataflow\\output\\dataflow.html",
+  "specification": {
+    "sha256": "b1ad5ac5c89dcfc4f6dfbe592ff1bb931ffede19c4168ff500c67a2b687f7c01",
+    "bytes": 41783
+  },
+  "artifact": {
+    "sha256": "c009c3b76ef49ed5ed9940fbb3f7750ff2fd765014cbf764456d0daae30970f4",
+    "bytes": 951809
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "standard",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -2,6 +2,8 @@
 
 Current startup commands for the updated folders: [Run the project](backend/docs/RUNNING.md).
 
+Architecture diagram tooling: [Archify commands](backend/docs/ARCHIFY.md).
+
 A React and FastAPI application for mapping school records by admission number,
 email, and full name plus class. The repository has two independently deployable
 applications:

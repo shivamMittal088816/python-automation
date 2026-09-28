@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "D:\\python-api\\diagrams\\dataflow\\student-mapping\\specs\\student-mapping-dataflow.json",
+  "output": "D:\\python-api\\diagrams\\dataflow\\student-mapping\\output\\student-mapping-dataflow.html",
+  "specification": {
+    "sha256": "e1ac63b2b94e335f3dc213d0afd4e96e7d3aa96af63ff88092ef319a487fbb61",
+    "bytes": 64114
+  },
+  "artifact": {
+    "sha256": "35f1269805fb7c42efc7d718730c7c25c63f4fe65a9806264b0f24bf1ea7aee8",
+    "bytes": 1008020
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "standard",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

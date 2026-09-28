@@ -1,0 +1,1872 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Student Mapping Data Flow",
+    "locale": "en",
+    "quality_profile": "standard",
+    "viewBox": [
+      1080,
+      4900
+    ]
+  },
+  "stages": [
+    {
+      "label": "Input data"
+    },
+    {
+      "label": "Read / validate"
+    },
+    {
+      "label": "Transform / lookup"
+    },
+    {
+      "label": "Classify / generate"
+    },
+    {
+      "label": "Output data"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "upload",
+      "type": "frontend",
+      "label": "01 · Student Input Files",
+      "sublabel": "School + optional dump",
+      "tag": "CSV / XLSX",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "accept",
+      "type": "backend",
+      "label": "Validate Student Files",
+      "sublabel": "Suffix, size, nonempty",
+      "tag": "Invalid file: reject",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "sheets",
+      "type": "backend",
+      "label": "Selected Student Worksheets",
+      "sublabel": "Saved choice or first sheet",
+      "tag": "School and dump separately",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "parse",
+      "type": "backend",
+      "label": "Read Student Cells as Text",
+      "sublabel": "CSV / Excel → DataFrames",
+      "tag": "Leading zeros kept; blanks → empty",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "tables",
+      "type": "database",
+      "label": "School and Reference Records",
+      "sublabel": "Original school columns; text cells",
+      "tag": "Example: admission_number=\"00001\"",
+      "stage": 4,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "school-id",
+      "type": "frontend",
+      "label": "02 · School Index",
+      "sublabel": "User-entered school index",
+      "tag": "Numeric school ID",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "school-check",
+      "type": "backend",
+      "label": "Verified School Identity",
+      "sublabel": "Look up school name",
+      "tag": "Unknown school: reject",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "reference-query",
+      "type": "backend",
+      "label": "Existing Student Records",
+      "sublabel": "Existing school accounts from MySQL",
+      "tag": "Example: user_id=\"900001\"",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "reference-clean",
+      "type": "backend",
+      "label": "Normalize Reference Records",
+      "sublabel": "Full name + generated_col",
+      "tag": "Nulls → empty; exact dedupe",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "reference",
+      "type": "database",
+      "label": "Student Reference Records",
+      "sublabel": "Student accounts for reference lookup",
+      "tag": "Example: user_name=\"demo_alpha\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "config-input",
+      "type": "external",
+      "label": "03 · Student Columns",
+      "sublabel": "Parsed school + reference",
+      "tag": "Tables from 01–02",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "columns",
+      "type": "backend",
+      "label": "Admission Column Mapping",
+      "sublabel": "School choices; dump aliases",
+      "tag": "Admission / username / first name",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "validate-columns",
+      "type": "backend",
+      "label": "Validate Mapping Columns",
+      "sublabel": "Require selected headers",
+      "tag": "Reject reserved mapping_* fields",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "dedupe",
+      "type": "backend",
+      "label": "Remove Identical Student Rows",
+      "sublabel": "Keep first exact whole row",
+      "tag": "Count duplicates / dropped rows",
+      "stage": 3,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "admission-input",
+      "type": "external",
+      "label": "Admission Mapping Input",
+      "sublabel": "Deduplicated school rows + reference",
+      "tag": "Example: first_name=\"Alpha\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "admission-data",
+      "type": "external",
+      "label": "04 · Admission Input",
+      "sublabel": "Input from 03 + reference",
+      "tag": "School and dump values",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "admission-normalize",
+      "type": "backend",
+      "label": "Normalized Student Records",
+      "sublabel": "Trim admission; lowercase first name",
+      "tag": "Example: first_name=\"alpha\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "admission-index",
+      "type": "backend",
+      "label": "Admission Reference Lookup",
+      "sublabel": "Admission key to account and row",
+      "tag": "Example key: \"00001\"",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "admission-classify",
+      "type": "backend",
+      "label": "Match Admission + First Name",
+      "sublabel": "Admission + first name",
+      "tag": "Ordered rules in Admission card",
+      "stage": 3,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "admission-audit",
+      "type": "external",
+      "label": "Admission Classified Records",
+      "sublabel": "Original row + mapping_* evidence",
+      "tag": "Example: mapping_dump_count=1",
+      "stage": 4,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "admission-check-input",
+      "type": "external",
+      "label": "05 · Admission Results",
+      "sublabel": "Classified rows from 04",
+      "tag": "Original school columns retained",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1040
+    },
+    {
+      "id": "admission-unique",
+      "type": "backend",
+      "label": "Review Duplicate Accounts",
+      "sublabel": "Repeated admissions / usernames / IDs",
+      "tag": "Automatic status updates; no manual edits",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1040
+    },
+    {
+      "id": "admission-format",
+      "type": "backend",
+      "label": "Admission Records and Reasons",
+      "sublabel": "Status + reason combined",
+      "tag": "Drop separate mapping_reason",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 1040
+    },
+    {
+      "id": "admission-split",
+      "type": "backend",
+      "label": "Write Admission Workbooks",
+      "sublabel": "Partition by status; serialize XLSX",
+      "tag": "Workbook bytes + row count per group",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1040
+    },
+    {
+      "id": "email-source",
+      "type": "frontend",
+      "label": "06 · Email Input Choice",
+      "sublabel": "Select input explicitly",
+      "tag": "School OR Admission Not Matched",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1420
+    },
+    {
+      "id": "email-read",
+      "type": "backend",
+      "label": "Email Mapping Input",
+      "sublabel": "Original fields + Admission audit",
+      "tag": "Example: first_name=\"Gamma\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1420
+    },
+    {
+      "id": "email-columns",
+      "type": "backend",
+      "label": "Validate Email / Name Columns",
+      "sublabel": "Email + first-name columns",
+      "tag": "Require loaded school file",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 1420
+    },
+    {
+      "id": "email-values",
+      "type": "backend",
+      "label": "Normalized Email Addresses",
+      "sublabel": "Trim + lower; omit blanks",
+      "tag": "Unique sorted query values",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1420
+    },
+    {
+      "id": "email-query-input",
+      "type": "external",
+      "label": "Email Reference Query Input",
+      "sublabel": "Unique emails + school rows",
+      "tag": "School index from dump/settings",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1420
+    },
+    {
+      "id": "email-query-set",
+      "type": "external",
+      "label": "07 · Student Emails",
+      "sublabel": "Query values from 06",
+      "tag": "Keep original rows for matching",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1660
+    },
+    {
+      "id": "email-query",
+      "type": "backend",
+      "label": "MySQL Email Account Records",
+      "sublabel": "users across all schools",
+      "tag": "500-email parameterized batches",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1660
+    },
+    {
+      "id": "email-reference-clean",
+      "type": "backend",
+      "label": "Normalized Email Records",
+      "sublabel": "Text rows; nulls → empty",
+      "tag": "Drop exact duplicate records",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1660
+    },
+    {
+      "id": "email-index",
+      "type": "backend",
+      "label": "Email Candidates / Counts",
+      "sublabel": "Normalized email → candidates",
+      "tag": "Count repeated source emails",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1660
+    },
+    {
+      "id": "email-reference",
+      "type": "database",
+      "label": "Email Reference Records",
+      "sublabel": "Email candidates across schools",
+      "tag": "Example: user_edu_school=\"9000\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1660
+    },
+    {
+      "id": "email-compare-input",
+      "type": "external",
+      "label": "08 · Email Mapping Input",
+      "sublabel": "Source rows + lookup from 07",
+      "tag": "First-name column; school index",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1900
+    },
+    {
+      "id": "email-classify",
+      "type": "backend",
+      "label": "Compare Email and First Name",
+      "sublabel": "Missing / duplicates / name",
+      "tag": "First name: trim + lower",
+      "stage": 1,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 1900
+    },
+    {
+      "id": "email-school-check",
+      "type": "backend",
+      "label": "Verify Matched Account School",
+      "sublabel": "Only provisional Matched",
+      "tag": "Missing/different school → Review",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 1900
+    },
+    {
+      "id": "email-unique",
+      "type": "backend",
+      "label": "Review Duplicate Accounts",
+      "sublabel": "Matched username / ID duplicates",
+      "tag": "Duplicate assignments → Review",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1900
+    },
+    {
+      "id": "email-audit",
+      "type": "external",
+      "label": "Email Classified Records",
+      "sublabel": "Email decision plus account fields",
+      "tag": "Example: _email_group=\"Matched\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1900
+    },
+    {
+      "id": "email-export-input",
+      "type": "external",
+      "label": "09 · Email Results",
+      "sublabel": "School rows + records from 08",
+      "tag": "Retain school row order",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2220
+    },
+    {
+      "id": "email-clean-fields",
+      "type": "backend",
+      "label": "Remove Admission Audit Fields",
+      "sublabel": "Drop Admission RESULT_COLUMNS",
+      "tag": "Keep original school columns",
+      "stage": 1,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 2220
+    },
+    {
+      "id": "email-append",
+      "type": "backend",
+      "label": "Student Email Mapping Results",
+      "sublabel": "Email, name, status, account",
+      "tag": "Internal group selects rows",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 2220
+    },
+    {
+      "id": "email-split",
+      "type": "backend",
+      "label": "Write Email Group Workbooks",
+      "sublabel": "Partition by status; serialize XLSX",
+      "tag": "Workbook bytes + row count per group",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2220
+    },
+    {
+      "id": "class-source",
+      "type": "frontend",
+      "label": "10 · Class Input Choice",
+      "sublabel": "Select unresolved input",
+      "tag": "Or independent school-file run",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2600
+    },
+    {
+      "id": "class-read",
+      "type": "backend",
+      "label": "Full Name + Class Input",
+      "sublabel": "Email misses; original fields kept",
+      "tag": "Example: classNumber=\"3\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2600
+    },
+    {
+      "id": "class-validate",
+      "type": "backend",
+      "label": "Validate Name/Class Inputs",
+      "sublabel": "Name + class columns; rows",
+      "tag": "Require dump generated_col",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2600
+    },
+    {
+      "id": "class-key",
+      "type": "backend",
+      "label": "Normalize Name/Class Key",
+      "sublabel": "Lower/trim full name + class",
+      "tag": "Remove name spaces; concatenate",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2600
+    },
+    {
+      "id": "class-keyed",
+      "type": "external",
+      "label": "Student Name/Class Keys",
+      "sublabel": "Normalized name concatenated to class",
+      "tag": "Example key: \"epsilonexample3\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2600
+    },
+    {
+      "id": "class-dump",
+      "type": "external",
+      "label": "11 · Class Reference",
+      "sublabel": "School reference from 02",
+      "tag": "Every generated_col candidate",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2840
+    },
+    {
+      "id": "class-index",
+      "type": "backend",
+      "label": "Name/Class Reference Lookup",
+      "sublabel": "generated_col maps to all candidates",
+      "tag": "generated_col=\"epsilonexample3\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2840
+    },
+    {
+      "id": "class-classify",
+      "type": "backend",
+      "label": "Match Full Name + Class",
+      "sublabel": "Keyed school rows from 10",
+      "tag": "0 / 1 / many; missing inputs",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2840
+    },
+    {
+      "id": "class-unique",
+      "type": "backend",
+      "label": "Review Duplicate Accounts",
+      "sublabel": "Matched username / ID duplicates",
+      "tag": "Duplicate assignments → Review",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2840
+    },
+    {
+      "id": "class-audit",
+      "type": "external",
+      "label": "Full Name + Class Results",
+      "sublabel": "Originals plus name/class evidence",
+      "tag": "full_name_class_user_id=\"900005\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2840
+    },
+    {
+      "id": "class-export-input",
+      "type": "external",
+      "label": "12 · Class Results",
+      "sublabel": "Classified rows from 11",
+      "tag": "Inherited columns remain",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3160
+    },
+    {
+      "id": "class-export-fields",
+      "type": "backend",
+      "label": "Student Class Mapping Results",
+      "sublabel": "Status includes reason",
+      "tag": "Keep inherited upstream audit",
+      "stage": 1,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 3160
+    },
+    {
+      "id": "class-group-mask",
+      "type": "backend",
+      "label": "Class Records by Final Status",
+      "sublabel": "Use final classification",
+      "tag": "Each row in one group",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 3160
+    },
+    {
+      "id": "class-split",
+      "type": "backend",
+      "label": "Write Class Group Workbooks",
+      "sublabel": "Partition by status; serialize XLSX",
+      "tag": "Workbook bytes + row count per group",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3160
+    },
+    {
+      "id": "admission-matched",
+      "type": "database",
+      "label": "Admission Matched Records",
+      "sublabel": "Matched row in matched.xlsx",
+      "tag": "Example: mapping_user_id=\"900001\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 930
+    },
+    {
+      "id": "admission-review",
+      "type": "database",
+      "label": "Admission Review Records",
+      "sublabel": "Review row; no downstream handoff",
+      "tag": "Example: mapping_user_id=\"\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1040
+    },
+    {
+      "id": "admission-not-matched",
+      "type": "database",
+      "label": "Admission Not Matched Records",
+      "sublabel": "Unmatched row passed to Email/Class",
+      "tag": "Example: admission_number=\"00003\"",
+      "stage": 4,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 1150
+    },
+    {
+      "id": "email-matched",
+      "type": "database",
+      "label": "Email Matched Records",
+      "sublabel": "Matched row in email_matched.xlsx",
+      "tag": "email_mapping_user_id=\"900003\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2110
+    },
+    {
+      "id": "email-review",
+      "type": "database",
+      "label": "Email Review Records",
+      "sublabel": "Review row; keep candidate evidence",
+      "tag": "email_mapping_user_id=\"900004\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2220
+    },
+    {
+      "id": "email-not-matched",
+      "type": "database",
+      "label": "Email Not Matched Records",
+      "sublabel": "Unmatched row passed to Class",
+      "tag": "email_mapping_user_id=\"\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2330
+    },
+    {
+      "id": "class-matched",
+      "type": "database",
+      "label": "Class Matched Records",
+      "sublabel": "Unique name/class match; account kept",
+      "tag": "full_name_class_user_id=\"900005\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3050
+    },
+    {
+      "id": "class-review",
+      "type": "database",
+      "label": "Class Review Records",
+      "sublabel": "Ambiguous match; no later handoff",
+      "tag": "full_name_class_user_id=\"\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3160
+    },
+    {
+      "id": "class-not-matched",
+      "type": "database",
+      "label": "Class Not Matched Records",
+      "sublabel": "Final unresolved row; no later stage",
+      "tag": "full_name_class_user_id=\"\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3270
+    },
+    {
+      "id": "handoff-admission",
+      "type": "database",
+      "label": "13 · Admission Misses",
+      "sublabel": "Admission misses + originals",
+      "tag": "Example: admission_number=\"00003\"",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3540
+    },
+    {
+      "id": "handoff-email",
+      "type": "backend",
+      "label": "Email Mapping Input",
+      "sublabel": "Only Admission Not Matched rows",
+      "tag": "Example: first_name=\"Gamma\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3540
+    },
+    {
+      "id": "handoff-email-misses",
+      "type": "database",
+      "label": "Email Not Matched Records",
+      "sublabel": "Email misses + Email audit",
+      "tag": "email_mapping_user_id=\"\"",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3540
+    },
+    {
+      "id": "handoff-class",
+      "type": "backend",
+      "label": "Full Name + Class Input",
+      "sublabel": "Only Email Not Matched rows",
+      "tag": "Example: classNumber=\"3\"",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3540
+    },
+    {
+      "id": "handoff-final",
+      "type": "database",
+      "label": "Final Not Matched Records",
+      "sublabel": "Final unresolved student records",
+      "tag": "full_name_class_user_id=\"\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3540
+    },
+    {
+      "id": "skip-email-input",
+      "type": "database",
+      "label": "14 · Admission Misses",
+      "sublabel": "Admission misses to Class",
+      "tag": "Example: admission_number=\"00003\"",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3780
+    },
+    {
+      "id": "skip-email-choice",
+      "type": "frontend",
+      "label": "Select Admission Misses",
+      "sublabel": "Skip Email when chosen",
+      "tag": "source=admission_not_matched",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3780
+    },
+    {
+      "id": "skip-email-class",
+      "type": "backend",
+      "label": "Full Name + Class Mapping",
+      "sublabel": "Apply transformations 10–12",
+      "tag": "Uses school reference",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3780
+    },
+    {
+      "id": "skip-email-output",
+      "type": "backend",
+      "label": "Full Name + Class Groups",
+      "sublabel": "Matched / Review / Not Matched",
+      "tag": "Same three outputs as 12",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3780
+    },
+    {
+      "id": "skip-email-results",
+      "type": "database",
+      "label": "Full Name + Class Workbooks",
+      "sublabel": "Available for review/export",
+      "tag": "Replaces previous Class results",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3780
+    },
+    {
+      "id": "preview-input",
+      "type": "database",
+      "label": "15 · Saved Result Groups",
+      "sublabel": "Admission / Email / Class",
+      "tag": "Choose any result group",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4020
+    },
+    {
+      "id": "preview-read",
+      "type": "backend",
+      "label": "Saved Student Result Records",
+      "sublabel": "Text rows from saved XLSX",
+      "tag": "Mapping is not rerun",
+      "stage": 1,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 4020
+    },
+    {
+      "id": "preview-enrich",
+      "type": "backend",
+      "label": "Reference-Enriched Preview",
+      "sublabel": "Admission display enrichment",
+      "tag": "Candidate names; read only",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4020
+    },
+    {
+      "id": "preview-page",
+      "type": "backend",
+      "label": "Paged Student Result Records",
+      "sublabel": "Rows + labels + bounds",
+      "tag": "Counts refer to full group",
+      "stage": 3,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 4020
+    },
+    {
+      "id": "review-display",
+      "type": "frontend",
+      "label": "Student Results with Reasons",
+      "sublabel": "Reasons + mapping evidence",
+      "tag": "View/download; no group moves",
+      "stage": 4,
+      "row": 0,
+      "width": 174,
+      "height": 90,
+      "yOffset": 4020
+    },
+    {
+      "id": "download-input",
+      "type": "database",
+      "label": "16 · Result Workbook",
+      "sublabel": "Full saved group workbook",
+      "tag": "Result keys: data, count",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4260
+    },
+    {
+      "id": "download-format",
+      "type": "backend",
+      "label": "Prepare Complete XLSX / CSV",
+      "sublabel": "XLSX kept; CSV from rows",
+      "tag": "CSV UTF-8 with BOM",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4260
+    },
+    {
+      "id": "download-file",
+      "type": "backend",
+      "label": "Generated Download File Bytes",
+      "sublabel": "Filename + complete content",
+      "tag": "Empty group keeps headers",
+      "stage": 2,
+      "row": 0,
+      "width": 180,
+      "height": 90,
+      "yOffset": 4260
+    },
+    {
+      "id": "download-action",
+      "type": "frontend",
+      "label": "Download All Group Records",
+      "sublabel": "Complete selected group",
+      "tag": "Not limited to preview page",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4260
+    },
+    {
+      "id": "download-output",
+      "type": "external",
+      "label": "Downloaded Student Results",
+      "sublabel": "Student data + stage evidence",
+      "tag": "XLSX or CSV",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4260
+    },
+    {
+      "id": "final-input",
+      "type": "database",
+      "label": "17 · Mapping Workbooks",
+      "sublabel": "Saved Admission/Email/Class",
+      "tag": "At least one group required",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4500
+    },
+    {
+      "id": "final-select",
+      "type": "backend",
+      "label": "Select Result Worksheets",
+      "sublabel": "Admission M/R/N; Email M/R",
+      "tag": "Class M/R/N; omit unavailable",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4500
+    },
+    {
+      "id": "final-assemble",
+      "type": "backend",
+      "label": "Combine Result Worksheets",
+      "sublabel": "Independent stage schemas",
+      "tag": "No cross-stage student dedupe",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4500
+    },
+    {
+      "id": "final-write",
+      "type": "backend",
+      "label": "Generated Results Workbook",
+      "sublabel": "Available groups in separate sheets",
+      "tag": "Example sheet: Final Not Matched",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4500
+    },
+    {
+      "id": "final-download",
+      "type": "frontend",
+      "label": "Downloaded Results Workbook",
+      "sublabel": "automation-{index}-{name}.xlsx",
+      "tag": "Up to 8 independent sheets",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4500
+    }
+  ],
+  "flows": [
+    {
+      "id": "upload-to-accept",
+      "from": "upload",
+      "to": "accept",
+      "label": "uploaded school / dump file bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "accept-to-sheets",
+      "from": "accept",
+      "to": "sheets",
+      "label": "validated student files",
+      "labelDy": 70
+    },
+    {
+      "id": "sheets-to-parse",
+      "from": "sheets",
+      "to": "parse",
+      "label": "selected worksheets + file bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "parse-to-tables",
+      "from": "parse",
+      "to": "tables",
+      "label": "student records as text",
+      "labelDy": 70
+    },
+    {
+      "id": "school-id-to-school-check",
+      "from": "school-id",
+      "to": "school-check",
+      "label": "school index",
+      "labelDy": 70
+    },
+    {
+      "id": "school-check-to-reference-query",
+      "from": "school-check",
+      "to": "reference-query",
+      "label": "verified school index",
+      "labelDy": 70
+    },
+    {
+      "id": "reference-query-to-reference-clean",
+      "from": "reference-query",
+      "to": "reference-clean",
+      "label": "existing student reference records",
+      "labelDy": 70
+    },
+    {
+      "id": "reference-clean-to-reference",
+      "from": "reference-clean",
+      "to": "reference",
+      "label": "normalized reference records",
+      "labelDy": 70
+    },
+    {
+      "id": "config-input-to-columns",
+      "from": "config-input",
+      "to": "columns",
+      "label": "student headers + column choices",
+      "labelDy": 70
+    },
+    {
+      "id": "columns-to-validate-columns",
+      "from": "columns",
+      "to": "validate-columns",
+      "label": "selected mapping columns",
+      "labelDy": 70
+    },
+    {
+      "id": "validate-columns-to-dedupe",
+      "from": "validate-columns",
+      "to": "dedupe",
+      "label": "validated school records",
+      "labelDy": 70
+    },
+    {
+      "id": "dedupe-to-admission-input",
+      "from": "dedupe",
+      "to": "admission-input",
+      "label": "deduplicated student records",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-data-to-admission-normalize",
+      "from": "admission-data",
+      "to": "admission-normalize",
+      "label": "admission and first-name values",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-normalize-to-admission-index",
+      "from": "admission-normalize",
+      "to": "admission-index",
+      "label": "normalized student records",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-index-to-admission-classify",
+      "from": "admission-index",
+      "to": "admission-classify",
+      "label": "admission candidates + hit counts",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-classify-to-admission-audit",
+      "from": "admission-classify",
+      "to": "admission-audit",
+      "label": "admission statuses + reasons",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-check-input-to-admission-unique",
+      "from": "admission-check-input",
+      "to": "admission-unique",
+      "label": "admission-classified records",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-unique-to-admission-format",
+      "from": "admission-unique",
+      "to": "admission-format",
+      "label": "review-updated records",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-format-to-admission-split",
+      "from": "admission-format",
+      "to": "admission-split",
+      "label": "student records + admission results",
+      "labelDy": 70
+    },
+    {
+      "id": "email-source-to-email-read",
+      "from": "email-source",
+      "to": "email-read",
+      "label": "chosen school / admission misses",
+      "labelDy": 70
+    },
+    {
+      "id": "email-read-to-email-columns",
+      "from": "email-read",
+      "to": "email-columns",
+      "label": "email mapping input records",
+      "labelDy": 70
+    },
+    {
+      "id": "email-columns-to-email-values",
+      "from": "email-columns",
+      "to": "email-values",
+      "label": "selected student email values",
+      "labelDy": 70
+    },
+    {
+      "id": "email-values-to-email-query-input",
+      "from": "email-values",
+      "to": "email-query-input",
+      "label": "unique normalized email addresses",
+      "labelDy": 70
+    },
+    {
+      "id": "email-query-set-to-email-query",
+      "from": "email-query-set",
+      "to": "email-query",
+      "label": "email address query batches",
+      "labelDy": 70
+    },
+    {
+      "id": "email-query-to-email-reference-clean",
+      "from": "email-query",
+      "to": "email-reference-clean",
+      "label": "existing email account records",
+      "labelDy": 70
+    },
+    {
+      "id": "email-reference-clean-to-email-index",
+      "from": "email-reference-clean",
+      "to": "email-index",
+      "label": "normalized email reference records",
+      "labelDy": 70
+    },
+    {
+      "id": "email-index-to-email-reference",
+      "from": "email-index",
+      "to": "email-reference",
+      "label": "email candidates + duplicate counts",
+      "labelDy": 70
+    },
+    {
+      "id": "email-compare-input-to-email-classify",
+      "from": "email-compare-input",
+      "to": "email-classify",
+      "label": "student rows + email candidates",
+      "labelDy": 70
+    },
+    {
+      "id": "email-classify-to-email-school-check",
+      "from": "email-classify",
+      "to": "email-school-check",
+      "label": "email/name classification results",
+      "labelDy": 70
+    },
+    {
+      "id": "email-school-check-to-email-unique",
+      "from": "email-school-check",
+      "to": "email-unique",
+      "label": "school-verified mapping results",
+      "labelDy": 70
+    },
+    {
+      "id": "email-unique-to-email-audit",
+      "from": "email-unique",
+      "to": "email-audit",
+      "label": "review-updated records",
+      "labelDy": 70
+    },
+    {
+      "id": "email-export-input-to-email-clean-fields",
+      "from": "email-export-input",
+      "to": "email-clean-fields",
+      "label": "source records + email decisions",
+      "labelDy": 70
+    },
+    {
+      "id": "email-clean-fields-to-email-append",
+      "from": "email-clean-fields",
+      "to": "email-append",
+      "label": "records without Admission audit",
+      "labelDy": 70
+    },
+    {
+      "id": "email-append-to-email-split",
+      "from": "email-append",
+      "to": "email-split",
+      "label": "student records + email results",
+      "labelDy": 70
+    },
+    {
+      "id": "class-source-to-class-read",
+      "from": "class-source",
+      "to": "class-read",
+      "label": "chosen school / unmatched source",
+      "labelDy": 70
+    },
+    {
+      "id": "class-read-to-class-validate",
+      "from": "class-read",
+      "to": "class-validate",
+      "label": "full-name/class input records",
+      "labelDy": 70
+    },
+    {
+      "id": "class-validate-to-class-key",
+      "from": "class-validate",
+      "to": "class-key",
+      "label": "validated name and class values",
+      "labelDy": 70
+    },
+    {
+      "id": "class-key-to-class-keyed",
+      "from": "class-key",
+      "to": "class-keyed",
+      "label": "student records + name/class keys",
+      "labelDy": 70
+    },
+    {
+      "id": "class-dump-to-class-index",
+      "from": "class-dump",
+      "to": "class-index",
+      "label": "existing student reference records",
+      "labelDy": 70
+    },
+    {
+      "id": "class-index-to-class-classify",
+      "from": "class-index",
+      "to": "class-classify",
+      "label": "generated_col candidates + keys",
+      "labelDy": 70
+    },
+    {
+      "id": "class-classify-to-class-unique",
+      "from": "class-classify",
+      "to": "class-unique",
+      "label": "name/class classification results",
+      "labelDy": 70
+    },
+    {
+      "id": "class-unique-to-class-audit",
+      "from": "class-unique",
+      "to": "class-audit",
+      "label": "review-updated records",
+      "labelDy": 70
+    },
+    {
+      "id": "class-export-input-to-class-export-fields",
+      "from": "class-export-input",
+      "to": "class-export-fields",
+      "label": "class records + final statuses",
+      "labelDy": 70
+    },
+    {
+      "id": "class-export-fields-to-class-group-mask",
+      "from": "class-export-fields",
+      "to": "class-group-mask",
+      "label": "student records + class results",
+      "labelDy": 70
+    },
+    {
+      "id": "class-group-mask-to-class-split",
+      "from": "class-group-mask",
+      "to": "class-split",
+      "label": "records partitioned by status",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-split-to-admission-matched",
+      "from": "admission-split",
+      "to": "admission-matched",
+      "label": "matched workbook bytes",
+      "labelAt": [
+        745,
+        1150
+      ]
+    },
+    {
+      "id": "admission-split-to-admission-review",
+      "from": "admission-split",
+      "to": "admission-review",
+      "label": "review workbook bytes",
+      "labelAt": [
+        770,
+        1295
+      ]
+    },
+    {
+      "id": "admission-split-to-admission-not-matched",
+      "from": "admission-split",
+      "to": "admission-not-matched",
+      "label": "not matched workbook bytes",
+      "labelAt": [
+        770,
+        1325
+      ]
+    },
+    {
+      "id": "email-split-to-email-matched",
+      "from": "email-split",
+      "to": "email-matched",
+      "label": "matched workbook bytes",
+      "labelAt": [
+        745,
+        2330
+      ]
+    },
+    {
+      "id": "email-split-to-email-review",
+      "from": "email-split",
+      "to": "email-review",
+      "label": "review workbook bytes",
+      "labelAt": [
+        770,
+        2475
+      ]
+    },
+    {
+      "id": "email-split-to-email-not-matched",
+      "from": "email-split",
+      "to": "email-not-matched",
+      "label": "not matched workbook bytes",
+      "labelAt": [
+        770,
+        2505
+      ]
+    },
+    {
+      "id": "class-split-to-class-matched",
+      "from": "class-split",
+      "to": "class-matched",
+      "label": "matched workbook bytes",
+      "labelAt": [
+        745,
+        3270
+      ]
+    },
+    {
+      "id": "class-split-to-class-review",
+      "from": "class-split",
+      "to": "class-review",
+      "label": "review workbook bytes",
+      "labelAt": [
+        770,
+        3415
+      ]
+    },
+    {
+      "id": "class-split-to-class-not-matched",
+      "from": "class-split",
+      "to": "class-not-matched",
+      "label": "not matched workbook bytes",
+      "labelAt": [
+        770,
+        3445
+      ]
+    },
+    {
+      "id": "handoff-admission-to-handoff-email",
+      "from": "handoff-admission",
+      "to": "handoff-email",
+      "label": "admission misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "handoff-email-to-handoff-email-misses",
+      "from": "handoff-email",
+      "to": "handoff-email-misses",
+      "label": "email misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "handoff-email-misses-to-handoff-class",
+      "from": "handoff-email-misses",
+      "to": "handoff-class",
+      "label": "email misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "handoff-class-to-handoff-final",
+      "from": "handoff-class",
+      "to": "handoff-final",
+      "label": "class misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "skip-email-input-to-skip-email-choice",
+      "from": "skip-email-input",
+      "to": "skip-email-choice",
+      "label": "admission misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "skip-email-choice-to-skip-email-class",
+      "from": "skip-email-choice",
+      "to": "skip-email-class",
+      "label": "admission misses only",
+      "labelDy": 70
+    },
+    {
+      "id": "skip-email-class-to-skip-email-output",
+      "from": "skip-email-class",
+      "to": "skip-email-output",
+      "label": "class statuses + student records",
+      "labelDy": 70
+    },
+    {
+      "id": "skip-email-output-to-skip-email-results",
+      "from": "skip-email-output",
+      "to": "skip-email-results",
+      "label": "generated workbook bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "preview-input-to-preview-read",
+      "from": "preview-input",
+      "to": "preview-read",
+      "label": "selected result workbook bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "preview-read-to-preview-enrich",
+      "from": "preview-read",
+      "to": "preview-enrich",
+      "label": "saved student result records",
+      "labelDy": 70
+    },
+    {
+      "id": "preview-enrich-to-preview-page",
+      "from": "preview-enrich",
+      "to": "preview-page",
+      "label": "student records + display evidence",
+      "labelDy": 70
+    },
+    {
+      "id": "preview-page-to-review-display",
+      "from": "preview-page",
+      "to": "review-display",
+      "label": "paged student records + reasons",
+      "labelDy": 70
+    },
+    {
+      "id": "download-input-to-download-format",
+      "from": "download-input",
+      "to": "download-format",
+      "label": "complete result workbook bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "download-format-to-download-file",
+      "from": "download-format",
+      "to": "download-file",
+      "label": "XLSX bytes or UTF-8 BOM CSV",
+      "labelDy": 70
+    },
+    {
+      "id": "download-file-to-download-action",
+      "from": "download-file",
+      "to": "download-action",
+      "label": "generated download file bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "download-action-to-download-output",
+      "from": "download-action",
+      "to": "download-output",
+      "label": "complete student result file",
+      "labelDy": 70
+    },
+    {
+      "id": "final-input-to-final-select",
+      "from": "final-input",
+      "to": "final-select",
+      "label": "available stage result workbooks",
+      "labelDy": 70
+    },
+    {
+      "id": "final-select-to-final-assemble",
+      "from": "final-select",
+      "to": "final-assemble",
+      "label": "selected result worksheet records",
+      "labelDy": 70
+    },
+    {
+      "id": "final-assemble-to-final-write",
+      "from": "final-assemble",
+      "to": "final-write",
+      "label": "separate stage result worksheets",
+      "labelDy": 70
+    },
+    {
+      "id": "final-write-to-final-download",
+      "from": "final-write",
+      "to": "final-download",
+      "label": "generated workbook bytes",
+      "labelDy": 70
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Scope and reading contract",
+      "items": [
+        "Each numbered lane makes transformation inputs and outputs explicit. Repeated named tables/workbooks refer to the same data objects, not additional databases. Inter-lane references are textual; tracing follows the drawn arrows within each lane.",
+        "Lanes 13–14 expand selectable unresolved-only handoffs. Only Not Matched groups enter later stages. Matched and Review groups remain available for inspection and export. Review has no manual reclassification action.",
+        "The API also supports independent Email and Class runs from the original school file. It does not automatically remove students matched in another independent run. The chained route shown here uses only prior Not Matched outputs.",
+        "Invalid inputs fail the requested operation; they are not student Not Matched classifications. Session, transport, persistence, and security machinery are outside this diagram."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Reference data and normalization",
+      "items": [
+        "School reference: app/repositories/admission_dump_service.py selects users JOIN paid_users for user_edu_school and user_type=0, validates users_schools.school_id, and retains school identity.",
+        "SQL builds fullname and generated_col = lowercase full name without spaces + adjusted class. Package 14 uses class; package 12 uses class+1; package 11 uses class+2; otherwise class is unchanged. Uploaded references must already provide generated_col for Class mapping.",
+        "Reference fields include user_id, user_name, admission_number, user_firstname, user_lastname, fullname, user_email, user_edu_class, user_edu_major, user_package, generated_col. Nulls become empty strings and identical fetched rows are removed.",
+        "Parsing uses dtype=str and keep_default_na=False. Admission identifiers retain leading zeros: 00123 and 123 are different. Normalization is stage-specific, not a global fuzzy-matching pass."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Admission rules in execution order",
+      "items": [
+        "Missing admission → Not Matched. Repeated nonblank admission among deduplicated school rows → Review.",
+        "Missing school first name → Review, even if the admission has no reference hit. Multiple dump occurrences → Review with all source row numbers.",
+        "Otherwise no admission hit → Not Matched. One hit with missing dump first name, unequal first name, matching one-character name (after removing periods), or missing username → Review.",
+        "One admission hit with matching usable first names and username → provisional Matched. The endpoint passes name_is_full=False: the selected first-name cell is compared, not tokenized as a full name.",
+        "Duplicate nonblank usernames or user IDs among provisional Matched records → Review. Preserve audit evidence during overrides. Exact whole-row deduplication occurs before admission-number duplicate checks.",
+        "Append mapping_admission_number, mapping_username, mapping_user_id, mapping_first_name, mapping_dump_first_name, mapping_dump_row, mapping_dump_count, mapping_status. Export combines mapping_status with mapping_reason and removes the separate reason column."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Email rules in execution order",
+      "items": [
+        "Normalize selected emails with trim/lower. Empty values are excluded only from the query set; their school rows remain and become Not Matched.",
+        "Duplicate nonblank email in source rows → Review before dump candidate checks. Multiple dump records for an email → Review. Missing email or no candidates → Not Matched.",
+        "One candidate: compare trimmed lowercase first-name cells. Missing/different names or equal one-character names → Review. Equal usable names → provisional Matched. The optional sorted-full-name branch is not used by this endpoint.",
+        "For provisional Matched only: require selected school index and candidate user_edu_school, with equal normalized values. Missing/null/different school → Review. Then duplicate matched username or user ID → Review.",
+        "SQL looks across schools; school membership is checked after matching. Query normalization trims input emails, while SQL uses LOWER(user_email).",
+        "Exports remove Admission RESULT_COLUMNS, then append email_mapping_email, email_mapping_dump_full_name (the compared first name on this route), email_mapping_status, email_mapping_user_id, email_mapping_username. Internal _email_group is not exported."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Full Name + Class rules",
+      "items": [
+        "Input choice: school_file, admission_not_matched, or email_not_matched. Require nonempty source rows, selected name/class columns, and school reference generated_col.",
+        "Source key = trimmed lowercase full name with literal spaces removed + trimmed lowercase class value, with no separator. Reference keys are trimmed/lowercased generated_col values.",
+        "Missing full name or class → Not Matched. No candidate → Not Matched. Multiple candidates → Review. Exactly one candidate → provisional Matched.",
+        "Duplicate nonblank usernames or user IDs among provisional Matched records → Review. This classifier adds no first-name, school-membership, or required-username check.",
+        "Append full_name_class_generated_value, full_name_class_status, full_name_class_username, full_name_class_user_id. Preserve inherited source columns, including upstream audit columns if present.",
+        "Output names: full_name_class_matched.xlsx, full_name_class_review.xlsx, full_name_class_not_matched.xlsx. The last group is the final unresolved result."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Review, generation, and downloads",
+      "items": [
+        "Every mapping stores three independent XLSX workbooks with row counts, including header-only empty groups. Formula-like uploaded values remain literal text.",
+        "Review previews read saved workbooks. Admission preview may enrich candidate names and perform legacy display cleanup, without rerunning mapping or persisting reclassification. No group-transfer controls are available.",
+        "Combined workbook sheets: Admission Matched, Admission Review, Admission Not Matched, Email Matched, Email Review, Class Matched, Class Review, Final Not Matched. Only available saved groups are included.",
+        "Email Not Matched is individually downloadable but excluded from the combined workbook. Admission Not Matched remains included even after downstream runs. The final workbook does not reconcile repeated students across stages.",
+        "Replacing inputs or rerunning upstream stages can clear dependent saved results. Dropdown drafts alone do not commit a new mapping."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Repository evidence (paths relative to backend/)",
+      "items": [
+        "Intake/configuration: app/routes/file_workflow_routes/file_inputs.py; app/api/file_workflow_configuration.py; app/services/admission_mapping/admission_file_reader.py.",
+        "References: app/repositories/admission_dump_service.py; app/repositories/email_dump_service.py.",
+        "Admission: app/routes/file_workflow_routes/admission_mapping.py; app/services/admission_mapping/{admission_mapping_pipeline,admission_dump_lookup,admission_row_classification,admission_duplicate_checks,admission_result_exports,admission_workbook}.py.",
+        "Email: app/routes/file_workflow_routes/email_mapping.py; app/services/email_mapping/{email_mapping_pipeline,email_dump_lookup,email_row_classification,email_result_exports}.py.",
+        "Class: app/routes/file_workflow_routes/full_name_class_mapping.py; app/services/full_name_class_mapping/{full_name_class_mapping_pipeline,full_name_class_dump_lookup,full_name_class_row_classification,full_name_class_result_exports}.py.",
+        "Outputs: app/routes/file_workflow_routes/{mapping_preview_results,file_downloads}.py; app/services/final_results_workbook.py; app/api/file_workflow_invalidation.py. UI: frontend/src/components/common/ResultPreview.jsx (repository root)."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Click details and synthetic examples",
+      "items": [
+        "Click or keyboard-focus a node to open the native Semantic Passport. It displays the short description, compact field/value sample, and authored neighboring flows. This installed dataflow schema has no separate rich-object detail field; the complete examples are in these supporting cards.",
+        "All sample values below are synthetic documentation fixtures. No uploaded student files, database rows, credentials, or session files were read. Emails use the reserved example.invalid domain. Counts and exported rows were generated by the repository mapping functions.",
+        "Uploaded school headers are user-selected, not a fixed application schema. admission_number, first_name, email, name, and classNumber are representative headers already used in repository tests. Internal/output fields retain the exact names from the code.",
+        "Compact click samples show selected fields, not a whole row. Status and reason are combined in exported mapping_status, email_mapping_status, and full_name_class_status. Full structures below are text representations of workbook rows, not API JSON payloads."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Normalized Student Records — admission-normalize",
+      "items": [
+        "Admission comparison trims admission strings and lowercases/strips the selected first-name cell. It preserves original school columns. There is no standalone globally normalized student DTO.",
+        "Representative source row: {\"admission_number\": \"00001\", \"first_name\": \"Alpha\", \"email\": \"alpha@example.invalid\", \"name\": \"Alpha Example\", \"classNumber\": \"3\"}",
+        "Comparison values under the selected source headers: {\"admission_number\": \"00001\", \"first_name\": \"alpha\"}",
+        "Implementation: backend/app/services/admission_mapping/admission_row_classification.py and admission_name_comparison.py."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Existing Student Records — reference-query / reference",
+      "items": [
+        "Representative subset of the school reference columns; identifiers are text. These synthetic values match the lookup schema, not records fetched from MySQL.",
+        "{\"admission_number\": \"00001\", \"user_firstname\": \"Alpha\", \"user_name\": \"demo_alpha\", \"user_id\": \"900001\", \"generated_col\": \"alphaexample3\"}",
+        "Email reference uses different fields, including user_edu_school: {\"user_email\": \"gamma@example.invalid\", \"user_firstname\": \"Gamma\", \"user_edu_school\": \"9000\", \"user_id\": \"900003\", \"user_name\": \"demo_gamma\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Admission Matched Records",
+      "items": [
+        "School columns plus mapping_* fields. Separate mapping_reason is combined into mapping_status during export. No next-stage handoff; inspect/download this group.",
+        "Workbook: matched.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00001\", \"first_name\": \"Alpha\", \"email\": \"alpha@example.invalid\", \"name\": \"Alpha Example\", \"classNumber\": \"3\", \"mapping_admission_number\": \"00001\", \"mapping_username\": \"demo_alpha\", \"mapping_user_id\": \"900001\", \"mapping_first_name\": \"alpha\", \"mapping_dump_first_name\": \"alpha\", \"mapping_dump_row\": \"2\", \"mapping_dump_count\": \"1\", \"mapping_status\": \"Matched — Admission number and first name match\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Admission Review Records",
+      "items": [
+        "School columns plus mapping_* fields. Separate mapping_reason is combined into mapping_status during export. No next-stage handoff; inspect/download this group.",
+        "Workbook: review.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00002\", \"first_name\": \"Beta\", \"email\": \"beta@example.invalid\", \"name\": \"Beta Example\", \"classNumber\": \"3\", \"mapping_admission_number\": \"00002\", \"mapping_username\": \"demo_beta\", \"mapping_user_id\": \"\", \"mapping_first_name\": \"beta\", \"mapping_dump_first_name\": \"other\", \"mapping_dump_row\": \"3\", \"mapping_dump_count\": \"1\", \"mapping_status\": \"Review — First name does not match between school and dump; dump row: 3\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Admission Not Matched Records",
+      "items": [
+        "School columns plus mapping_* fields. Separate mapping_reason is combined into mapping_status during export. This exact row shape is read from not_matched.xlsx for Email or direct Class input.",
+        "Workbook: not_matched.xlsx; generated synthetic group count: 5.",
+        "Representative workbook row: {\"admission_number\": \"00003\", \"first_name\": \"Gamma\", \"email\": \"gamma@example.invalid\", \"name\": \"Gamma Example\", \"classNumber\": \"3\", \"mapping_admission_number\": \"00003\", \"mapping_username\": \"\", \"mapping_user_id\": \"\", \"mapping_first_name\": \"gamma\", \"mapping_dump_first_name\": \"\", \"mapping_dump_row\": \"\", \"mapping_dump_count\": \"0\", \"mapping_status\": \"Not Matched — Admission number not found\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Email Matched Records",
+      "items": [
+        "Original school columns plus email_mapping_* fields. Admission audit columns are removed. Internal _email_group is not exported. No next-stage handoff; inspect/download this group.",
+        "Workbook: email_matched.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00003\", \"first_name\": \"Gamma\", \"email\": \"gamma@example.invalid\", \"name\": \"Gamma Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"gamma@example.invalid\", \"email_mapping_dump_full_name\": \"gamma\", \"email_mapping_status\": \"Matched — Email and first name match\", \"email_mapping_user_id\": \"900003\", \"email_mapping_username\": \"demo_gamma\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Email Review Records",
+      "items": [
+        "Original school columns plus email_mapping_* fields. Admission audit columns are removed. Internal _email_group is not exported. No next-stage handoff; inspect/download this group.",
+        "Workbook: email_review.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00004\", \"first_name\": \"Delta\", \"email\": \"delta@example.invalid\", \"name\": \"Delta Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"delta@example.invalid\", \"email_mapping_dump_full_name\": \"other\", \"email_mapping_status\": \"Review — Email found; first name is different\", \"email_mapping_user_id\": \"900004\", \"email_mapping_username\": \"demo_delta\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Email Not Matched Records",
+      "items": [
+        "Original school columns plus email_mapping_* fields. Admission audit columns are removed. Internal _email_group is not exported. This exact row shape is read from email_not_matched.xlsx for Class input.",
+        "Workbook: email_not_matched.xlsx; generated synthetic group count: 3.",
+        "Representative workbook row: {\"admission_number\": \"00005\", \"first_name\": \"Epsilon\", \"email\": \"epsilon@example.invalid\", \"name\": \"Epsilon Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"epsilon@example.invalid\", \"email_mapping_dump_full_name\": \"\", \"email_mapping_status\": \"Not Matched — Email not found\", \"email_mapping_user_id\": \"\", \"email_mapping_username\": \"\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Full Name + Class Matched Records",
+      "items": [
+        "Original input columns plus full_name_class_* fields. In this chained example, inherited email_mapping_* fields remain. No next-stage handoff; inspect/download this group.",
+        "Workbook: full_name_class_matched.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00005\", \"first_name\": \"Epsilon\", \"email\": \"epsilon@example.invalid\", \"name\": \"Epsilon Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"epsilon@example.invalid\", \"email_mapping_dump_full_name\": \"\", \"email_mapping_status\": \"Not Matched — Email not found\", \"email_mapping_user_id\": \"\", \"email_mapping_username\": \"\", \"full_name_class_generated_value\": \"epsilonexample3\", \"full_name_class_status\": \"Matched — One dump record matches the concatenated value\", \"full_name_class_username\": \"demo_epsilon\", \"full_name_class_user_id\": \"900005\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Full Name + Class Review Records",
+      "items": [
+        "Original input columns plus full_name_class_* fields. In this chained example, inherited email_mapping_* fields remain. No next-stage handoff; inspect/download this group.",
+        "Workbook: full_name_class_review.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00007\", \"first_name\": \"Eta\", \"email\": \"eta@example.invalid\", \"name\": \"Eta Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"eta@example.invalid\", \"email_mapping_dump_full_name\": \"\", \"email_mapping_status\": \"Not Matched — Email not found\", \"email_mapping_user_id\": \"\", \"email_mapping_username\": \"\", \"full_name_class_generated_value\": \"etaexample3\", \"full_name_class_status\": \"Review — Multiple dump records match the concatenated value\", \"full_name_class_username\": \"\", \"full_name_class_user_id\": \"\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Full Name + Class Not Matched Records",
+      "items": [
+        "Original input columns plus full_name_class_* fields. In this chained example, inherited email_mapping_* fields remain. Final unresolved row; exported as Final Not Matched in the combined workbook.",
+        "Workbook: full_name_class_not_matched.xlsx; generated synthetic group count: 1.",
+        "Representative workbook row: {\"admission_number\": \"00006\", \"first_name\": \"Zeta\", \"email\": \"zeta@example.invalid\", \"name\": \"Zeta Example\", \"classNumber\": \"3\", \"email_mapping_email\": \"zeta@example.invalid\", \"email_mapping_dump_full_name\": \"\", \"email_mapping_status\": \"Not Matched — Email not found\", \"email_mapping_user_id\": \"\", \"email_mapping_username\": \"\", \"full_name_class_generated_value\": \"zetaexample3\", \"full_name_class_status\": \"Not Matched — No dump record matches the concatenated value\", \"full_name_class_username\": \"\", \"full_name_class_user_id\": \"\"}"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Generated workbook data — download-input / final-write",
+      "items": [
+        "build_workbook returns a dictionary with data (actual XLSX bytes) and count (row count). The data value below is only a textual placeholder, not the runtime value or a real file.",
+        "Representative wrapper: {\"data\": \"<XLSX bytes omitted>\", \"count\": 1}",
+        "Individual XLSX downloads return those bytes; CSV downloads parse the full workbook and encode UTF-8 with BOM. Final assembly reads available stage workbooks into separate sheets and returns XLSX bytes.",
+        "Implementation: backend/app/services/admission_mapping/admission_workbook.py; backend/app/services/final_results_workbook.py."
+      ]
+    }
+  ]
+}

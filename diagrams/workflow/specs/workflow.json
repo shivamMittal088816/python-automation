@@ -1,0 +1,304 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Student Mapping Workflow",
+    "locale": "en",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "prepare",
+      "label": "User / Browser - prepare the workspace"
+    },
+    {
+      "id": "admission",
+      "label": "Mapping engine - Admission Number"
+    },
+    {
+      "id": "email",
+      "label": "User choice / Mapping engine - Email"
+    },
+    {
+      "id": "class",
+      "label": "Mapping engine - Full Name + Class"
+    },
+    {
+      "id": "output",
+      "label": "User / Browser - saved results and downloads"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "session",
+      "lane": "prepare",
+      "col": 0,
+      "type": "frontend",
+      "label": "Restore / create",
+      "sublabel": "Cookie workspace",
+      "width": 140
+    },
+    {
+      "id": "inputs",
+      "lane": "prepare",
+      "col": 1,
+      "type": "frontend",
+      "label": "Prepare inputs",
+      "sublabel": "Files, sheets, columns",
+      "width": 145
+    },
+    {
+      "id": "choose",
+      "lane": "email",
+      "col": 1,
+      "type": "frontend",
+      "label": "Choose stage + source",
+      "sublabel": "Select columns; Run mapping",
+      "width": 170
+    },
+    {
+      "id": "admission-run",
+      "lane": "admission",
+      "col": 2,
+      "type": "backend",
+      "label": "Admission Number",
+      "sublabel": "Admission + first name",
+      "width": 160
+    },
+    {
+      "id": "email-run",
+      "lane": "email",
+      "col": 2,
+      "type": "backend",
+      "label": "Email",
+      "sublabel": "SQL emails + first name",
+      "width": 160
+    },
+    {
+      "id": "class-run",
+      "lane": "class",
+      "col": 2,
+      "type": "backend",
+      "label": "Full Name + Class",
+      "sublabel": "Compare generated_col",
+      "width": 160
+    },
+    {
+      "id": "results",
+      "lane": "email",
+      "col": 3,
+      "type": "database",
+      "label": "Save stage results",
+      "sublabel": "Matched / Review / Not Matched",
+      "width": 195
+    },
+    {
+      "id": "preview",
+      "lane": "output",
+      "col": 3,
+      "type": "frontend",
+      "label": "Inspect saved groups",
+      "sublabel": "Optional read-only preview",
+      "width": 170
+    },
+    {
+      "id": "download",
+      "lane": "output",
+      "col": 4,
+      "type": "frontend",
+      "label": "Download results",
+      "sublabel": "Group CSV/XLSX; combined XLSX",
+      "width": 190
+    },
+    {
+      "id": "invalid",
+      "lane": "admission",
+      "col": 0,
+      "type": "frontend",
+      "label": "Correct / retry",
+      "sublabel": "Invalid input or stale revision",
+      "width": 190
+    }
+  ],
+  "edges": [
+    {
+      "id": "session-inputs",
+      "from": "session",
+      "to": "inputs"
+    },
+    {
+      "id": "prepare-choice",
+      "from": "inputs",
+      "to": "choose",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "via": [
+        [
+          313.5,
+          185
+        ],
+        [
+          313.5,
+          315
+        ]
+      ]
+    },
+    {
+      "id": "choose-admission",
+      "from": "choose",
+      "to": "admission-run",
+      "label": "Admission",
+      "role": "branch"
+    },
+    {
+      "id": "choose-email",
+      "from": "choose",
+      "to": "email-run",
+      "label": "Email",
+      "role": "branch"
+    },
+    {
+      "id": "choose-class",
+      "from": "choose",
+      "to": "class-run",
+      "label": "Name + Class",
+      "role": "branch"
+    },
+    {
+      "id": "admission-save",
+      "from": "admission-run",
+      "to": "results",
+      "label": "Classify",
+      "role": "main"
+    },
+    {
+      "id": "email-save",
+      "from": "email-run",
+      "to": "results",
+      "label": "Classify",
+      "role": "main"
+    },
+    {
+      "id": "class-save",
+      "from": "class-run",
+      "to": "results",
+      "label": "Classify",
+      "role": "main"
+    },
+    {
+      "id": "invalid-input",
+      "from": "choose",
+      "to": "invalid",
+      "label": "Validation fails / 409",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "retry",
+      "from": "invalid",
+      "to": "inputs",
+      "label": "Fix selections / reload",
+      "role": "return",
+      "variant": "security",
+      "toSide": "left"
+    },
+    {
+      "id": "forward-misses",
+      "from": "results",
+      "to": "choose",
+      "label": "Optional: Not Matched to later stage",
+      "role": "return",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "via": [
+        [
+          754.4,
+          538
+        ],
+        [
+          313.5,
+          538
+        ]
+      ]
+    },
+    {
+      "id": "inspect",
+      "from": "results",
+      "to": "preview",
+      "label": "Any saved group"
+    },
+    {
+      "id": "export",
+      "from": "preview",
+      "to": "download",
+      "label": "Download anytime"
+    }
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "session"
+    ],
+    "allowedTerminals": [
+      "download"
+    ],
+    "requiredEdges": [
+      {
+        "from": "choose",
+        "to": "admission-run"
+      },
+      {
+        "from": "choose",
+        "to": "email-run"
+      },
+      {
+        "from": "choose",
+        "to": "class-run"
+      },
+      {
+        "from": "results",
+        "to": "choose"
+      }
+    ],
+    "requiredPaths": [
+      {
+        "from": "admission-run",
+        "to": "download"
+      },
+      {
+        "from": "email-run",
+        "to": "download"
+      },
+      {
+        "from": "class-run",
+        "to": "download"
+      }
+    ]
+  },
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Stages are independent",
+      "items": [
+        "Admission: school + dump. Email: school or Admission misses.",
+        "Name + Class: school or earlier misses; dump required."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Prepare and validate",
+      "items": [
+        "Upload CSV/XLSX or fetch dump by school. Choose sheets and columns.",
+        "Each stage validates its prerequisites (school index; generated_col)."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Outcomes and downloads",
+      "items": [
+        "Matched and Review are saved; selected misses may feed a later stage.",
+        "Preview is read-only. Download groups or combined XLSX anytime."
+      ]
+    }
+  ]
+}

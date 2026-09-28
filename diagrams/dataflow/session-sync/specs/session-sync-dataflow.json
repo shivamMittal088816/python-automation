@@ -1,0 +1,3574 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Session State & Cross-Tab Synchronization Flow",
+    "locale": "en",
+    "quality_profile": "standard",
+    "viewBox": [
+      1080,
+      8320
+    ],
+    "views": [
+      {
+        "id": "browser-state",
+        "label": "Browser and session access",
+        "focus": [
+          "browser-tabs",
+          "init-lock",
+          "restore-request",
+          "startup-result",
+          "initial-react",
+          "react-workspace",
+          "ui-edit",
+          "tab-storage",
+          "restore-ui",
+          "rendered-ui",
+          "user-action",
+          "operation-lock",
+          "api-request",
+          "cookie-resolution",
+          "session-folder",
+          "workspace-access",
+          "load-manifest",
+          "load-references",
+          "revision-gate",
+          "operation-state"
+        ]
+      },
+      {
+        "id": "state-events",
+        "label": "Events that update workflow state",
+        "focus": [
+          "upload-event",
+          "upload-route",
+          "register-input",
+          "upload-invalidate",
+          "upload-state",
+          "fetch-event",
+          "fetch-route",
+          "fetch-snapshot",
+          "fetch-settings",
+          "fetch-state",
+          "school-edit-event",
+          "school-edit-route",
+          "school-edit-snapshot",
+          "school-edit-invalidate",
+          "school-edit-state",
+          "draft-event",
+          "draft-preview",
+          "draft-config",
+          "draft-response",
+          "draft-react",
+          "admission-event",
+          "admission-state-builder",
+          "admission-result-state",
+          "admission-state-commit",
+          "admission-updated",
+          "email-event",
+          "email-state-builder",
+          "email-result-state",
+          "email-state-settings",
+          "email-updated",
+          "class-event",
+          "class-state-builder",
+          "class-result-state",
+          "class-state-settings",
+          "class-updated",
+          "clear-event",
+          "clear-route",
+          "clear-results",
+          "clear-settings",
+          "clear-updated",
+          "review-event",
+          "review-read",
+          "review-display-data",
+          "review-response",
+          "review-react"
+        ]
+      },
+      {
+        "id": "state-manifest",
+        "label": "Snapshots and state.json fields",
+        "focus": [
+          "runtime-update",
+          "invalidate-state",
+          "successful-state",
+          "sync-email-state",
+          "state-to-save",
+          "snapshot-input",
+          "content-hash",
+          "stage-bytes",
+          "publish-bytes",
+          "snapshot-reference",
+          "manifest-fields",
+          "identity-fields",
+          "settings-fields",
+          "signature-fields",
+          "manifest-scalar-state",
+          "input-reference-data",
+          "input-ref-builder",
+          "input-ref-metadata",
+          "input-ref-filename",
+          "input-ref-manifest",
+          "result-reference-data",
+          "result-ref-builder",
+          "result-ref-metadata",
+          "result-ref-filename",
+          "result-ref-manifest",
+          "manifest-input",
+          "manifest-serialize",
+          "staged-manifest",
+          "published-manifest",
+          "committed-state"
+        ]
+      },
+      {
+        "id": "state-restore",
+        "label": "state.json read and React restore",
+        "focus": [
+          "restore-trigger",
+          "restore-access",
+          "restored-files",
+          "build-summary",
+          "restore-response",
+          "manifest-read-source",
+          "manifest-read-code",
+          "manifest-read-refs",
+          "manifest-read-handles",
+          "manifest-read-state",
+          "summary-state-source",
+          "summary-file-fields",
+          "summary-export-fields",
+          "summary-config-fields",
+          "summary-json-detail",
+          "summary-input",
+          "freshness-check",
+          "identity-check",
+          "publish-react",
+          "metadata-cache"
+        ]
+      },
+      {
+        "id": "sync-cleanup",
+        "label": "Tab A → server → notification → Tab B",
+        "focus": [
+          "sync-a-action",
+          "sync-a-run",
+          "sync-api-write",
+          "sync-server-update",
+          "sync-server-save",
+          "sync-server-snapshots",
+          "sync-server-manifest",
+          "sync-server-response",
+          "sync-a-publish",
+          "sync-a-announce",
+          "sync-notification",
+          "sync-b-message",
+          "sync-b-ready",
+          "sync-b-get",
+          "sync-api-read",
+          "sync-read-manifest",
+          "sync-read-snapshots",
+          "sync-build-summary",
+          "sync-b-freshness",
+          "sync-b-fingerprint",
+          "sync-b-publish",
+          "sync-b-notice",
+          "sync-b-cache",
+          "sync-b-preview",
+          "sync-b-state"
+        ],
+        "note": "One continuous directed route. BroadcastChannel carries only a notification; persisted state stays in server files."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Trigger / source state"
+    },
+    {
+      "label": "Resolve / prepare"
+    },
+    {
+      "label": "Read / transform"
+    },
+    {
+      "label": "Publish / apply"
+    },
+    {
+      "label": "Result / next boundary"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "browser-tabs",
+      "type": "frontend",
+      "label": "01 · Browser Tabs",
+      "sublabel": "Startup or reload in each tab",
+      "tag": "Shared browser cookie scope",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "init-lock",
+      "type": "frontend",
+      "label": "Coordinate Startup",
+      "sublabel": "Optional Web Lock; recheck cookie",
+      "tag": "student-mapping-session-init",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "restore-request",
+      "type": "frontend",
+      "label": "Session Restore Request",
+      "sublabel": "Fetch saved workspace using cookie",
+      "tag": "GET /mapping/session; no body",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "startup-result",
+      "type": "backend",
+      "label": "Restore or Create",
+      "sublabel": "401 / 404 / 409 at startup",
+      "tag": "POST /mapping/session if needed",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "initial-react",
+      "type": "frontend",
+      "label": "Initial React Workspace",
+      "sublabel": "Publish restored workspace summary",
+      "tag": "Example: {\"revision\": 0}",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 0
+    },
+    {
+      "id": "react-workspace",
+      "type": "frontend",
+      "label": "02 · React Workspace",
+      "sublabel": "React Workspace State summary",
+      "tag": "workspace_id + revision",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "ui-edit",
+      "type": "frontend",
+      "label": "Tab-local Selections",
+      "sublabel": "Draft columns, source, filters",
+      "tag": "UI edits can remain local",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "tab-storage",
+      "type": "database",
+      "label": "Tab-local UI Storage",
+      "sublabel": "sessionStorage: scoped JSON keys",
+      "tag": "No session cookie or file bytes",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "restore-ui",
+      "type": "frontend",
+      "label": "Restore Saved Selections",
+      "sublabel": "Read key; parse or use default",
+      "tag": "Storage failures keep UI usable",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "rendered-ui",
+      "type": "frontend",
+      "label": "React View with Drafts",
+      "sublabel": "Saved state plus local choices",
+      "tag": "Drafts may override saved settings",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 240
+    },
+    {
+      "id": "user-action",
+      "type": "frontend",
+      "label": "03 · Workspace Action",
+      "sublabel": "Upload / clear / run / save",
+      "tag": "Student matching is out of scope",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "operation-lock",
+      "type": "frontend",
+      "label": "Coordinate Operation",
+      "sublabel": "operationActive; optional lock",
+      "tag": "student-mapping-operation",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "api-request",
+      "type": "frontend",
+      "label": "Send API Mutation",
+      "sublabel": "Cookie + payload + revision",
+      "tag": "X-Workspace-Revision header",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "cookie-resolution",
+      "type": "security",
+      "label": "Resolve Workflow Session",
+      "sublabel": "Cookie identity to session folder",
+      "tag": "Session ID: [REDACTED]",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "session-folder",
+      "type": "database",
+      "label": "Workflow Session Folder",
+      "sublabel": "Backend folder for session ID",
+      "tag": "workflow_sessions/<session_id>",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 480
+    },
+    {
+      "id": "workspace-access",
+      "type": "backend",
+      "label": "04 · Session Access",
+      "sublabel": "Resolved folder from 03",
+      "tag": "Process-local RLock",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "load-manifest",
+      "type": "database",
+      "label": "Read Persisted State",
+      "sublabel": "Check expiry before loading",
+      "tag": "Expired folder: remove; 404",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "load-references",
+      "type": "backend",
+      "label": "Resolve Snapshot References",
+      "sublabel": "Validate metadata + file refs",
+      "tag": "StoredFile; bytes read on demand",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "revision-gate",
+      "type": "security",
+      "label": "Check Expected Revision",
+      "sublabel": "Current revision vs header",
+      "tag": "Mismatch: 409; no operation",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "operation-state",
+      "type": "backend",
+      "label": "Mutable Workspace State",
+      "sublabel": "Touch activity; revision + 1",
+      "tag": "Only accepted persistent access",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 720
+    },
+    {
+      "id": "upload-event",
+      "type": "frontend",
+      "label": "05 · File Upload",
+      "sublabel": "School or dump CSV / XLSX",
+      "tag": "POST /mapping/files/{kind}",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 960
+    },
+    {
+      "id": "upload-route",
+      "type": "backend",
+      "label": "Validate Uploaded File",
+      "sublabel": "Validate bytes; compare old input",
+      "tag": "Local path only when enabled",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 960
+    },
+    {
+      "id": "register-input",
+      "type": "backend",
+      "label": "Register Input Snapshot",
+      "sublabel": "Register uploaded bytes + metadata",
+      "tag": "Example: name=\"example.csv\"",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 960
+    },
+    {
+      "id": "upload-invalidate",
+      "type": "backend",
+      "label": "Clear Changed Results",
+      "sublabel": "clear_all_mappings on change",
+      "tag": "Same bytes may retain results",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 960
+    },
+    {
+      "id": "upload-state",
+      "type": "external",
+      "label": "Input State Updated",
+      "sublabel": "saved_admission_school / dump",
+      "tag": "Successful exit uses save_state",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 960
+    },
+    {
+      "id": "fetch-event",
+      "type": "frontend",
+      "label": "06 · Fetch School Dump",
+      "sublabel": "School index from React",
+      "tag": "POST /student-dump/fetch",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1200
+    },
+    {
+      "id": "fetch-route",
+      "type": "backend",
+      "label": "Fetch School Records",
+      "sublabel": "Validate school; fetch SQL data",
+      "tag": "Failed fetch keeps saved state",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1200
+    },
+    {
+      "id": "fetch-snapshot",
+      "type": "backend",
+      "label": "Replace Dump Snapshot",
+      "sublabel": "saved_admission_dump replaced",
+      "tag": "Empty fetch leaves dump absent",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1200
+    },
+    {
+      "id": "fetch-settings",
+      "type": "backend",
+      "label": "Update Dump Settings",
+      "sublabel": "admission_dump_school_index",
+      "tag": "admission_dump_source; invalidate",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1200
+    },
+    {
+      "id": "fetch-state",
+      "type": "external",
+      "label": "Dump State Updated",
+      "sublabel": "CSV bytes + school metadata",
+      "tag": "State committed on success",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1200
+    },
+    {
+      "id": "school-edit-event",
+      "type": "frontend",
+      "label": "07 · Save School Details",
+      "sublabel": "Index and optional school name",
+      "tag": "PATCH /mapping/school",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1440
+    },
+    {
+      "id": "school-edit-route",
+      "type": "backend",
+      "label": "Validate School Details",
+      "sublabel": "Require a loaded dump",
+      "tag": "Validate numeric index",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1440
+    },
+    {
+      "id": "school-edit-snapshot",
+      "type": "backend",
+      "label": "Update Dump Metadata",
+      "sublabel": "school_index and school_name",
+      "tag": "Preserve existing data bytes",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1440
+    },
+    {
+      "id": "school-edit-invalidate",
+      "type": "backend",
+      "label": "Invalidate on Index Change",
+      "sublabel": "clear_all_mappings(state)",
+      "tag": "Name-only edit keeps mappings",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1440
+    },
+    {
+      "id": "school-edit-state",
+      "type": "external",
+      "label": "School Metadata Updated",
+      "sublabel": "Same bytes; revised metadata",
+      "tag": "Existing snapshot hash can be reused",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1440
+    },
+    {
+      "id": "draft-event",
+      "type": "frontend",
+      "label": "08 · Draft Column Choices",
+      "sublabel": "Admission worksheets / columns",
+      "tag": "React useState; not a write",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1680
+    },
+    {
+      "id": "draft-preview",
+      "type": "backend",
+      "label": "Preview Draft Configuration",
+      "sublabel": "POST /configuration-preview",
+      "tag": "Copy state and admission_settings",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1680
+    },
+    {
+      "id": "draft-config",
+      "type": "backend",
+      "label": "Derive Column Configuration",
+      "sublabel": "Inspect draft sheets / columns",
+      "tag": "persist=False; activity touch only",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1680
+    },
+    {
+      "id": "draft-response",
+      "type": "external",
+      "label": "Configuration Preview JSON",
+      "sublabel": "configuration + settings",
+      "tag": "No manifest content rewrite",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1680
+    },
+    {
+      "id": "draft-react",
+      "type": "frontend",
+      "label": "Draft React Selections",
+      "sublabel": "setPreview / setDraft",
+      "tag": "Commit only on successful run",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1680
+    },
+    {
+      "id": "admission-event",
+      "type": "frontend",
+      "label": "09 · Run Admission",
+      "sublabel": "Selected sheets and columns",
+      "tag": "POST /admission-mapping/run",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 1920
+    },
+    {
+      "id": "admission-state-builder",
+      "type": "backend",
+      "label": "Build Admission State",
+      "sublabel": "Copy state; apply payload settings",
+      "tag": "admission_configuration(..., True)",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1920
+    },
+    {
+      "id": "admission-result-state",
+      "type": "backend",
+      "label": "Save Admission Results",
+      "sublabel": "admission_exports = build_exports",
+      "tag": "Matched / Review / Not Matched",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1920
+    },
+    {
+      "id": "admission-state-commit",
+      "type": "backend",
+      "label": "Commit Successful Run",
+      "sublabel": "Clear Email/Class; update saved_state",
+      "tag": "admission_settings + signature",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1920
+    },
+    {
+      "id": "admission-updated",
+      "type": "external",
+      "label": "Admission State Updated",
+      "sublabel": "Result data/count + run settings",
+      "tag": "Replaces prior Admission results",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 1920
+    },
+    {
+      "id": "email-event",
+      "type": "frontend",
+      "label": "10 · Run Email Mapping",
+      "sublabel": "Selected source + email/name",
+      "tag": "POST /email-mapping/run",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2160
+    },
+    {
+      "id": "email-state-builder",
+      "type": "backend",
+      "label": "Build Email Result State",
+      "sublabel": "sync_email_stage; execute mapping",
+      "tag": "Student matching outside this map",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2160
+    },
+    {
+      "id": "email-result-state",
+      "type": "backend",
+      "label": "Save Email Snapshots",
+      "sublabel": "saved_email_dump + email_exports",
+      "tag": "CSV input reference + XLSX groups",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2160
+    },
+    {
+      "id": "email-state-settings",
+      "type": "backend",
+      "label": "Save Email Run Settings",
+      "sublabel": "Source, columns, result signature",
+      "tag": "Clear Class state on success",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2160
+    },
+    {
+      "id": "email-updated",
+      "type": "external",
+      "label": "Email State Updated",
+      "sublabel": "Snapshots + committed selections",
+      "tag": "email_result_signature",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2160
+    },
+    {
+      "id": "class-event",
+      "type": "frontend",
+      "label": "11 · Run Name/Class",
+      "sublabel": "Selected source + name/class",
+      "tag": "POST /full-name-class-mapping/run",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2400
+    },
+    {
+      "id": "class-state-builder",
+      "type": "backend",
+      "label": "Build Name/Class Results",
+      "sublabel": "Read chosen source and dump",
+      "tag": "Validate inputs; execute mapping",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2400
+    },
+    {
+      "id": "class-result-state",
+      "type": "backend",
+      "label": "Save Class Snapshots",
+      "sublabel": "full_name_class_exports",
+      "tag": "Three result workbook dictionaries",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2400
+    },
+    {
+      "id": "class-state-settings",
+      "type": "backend",
+      "label": "Save Class Run Settings",
+      "sublabel": "Source, name and class columns",
+      "tag": "full_name_class_result_signature",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2400
+    },
+    {
+      "id": "class-updated",
+      "type": "external",
+      "label": "Class State Updated",
+      "sublabel": "Results + committed selections",
+      "tag": "Successful exit uses save_state",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2400
+    },
+    {
+      "id": "clear-event",
+      "type": "frontend",
+      "label": "12 · Clear Input File",
+      "sublabel": "School / dump / email_dump",
+      "tag": "POST /files/{kind}/clear",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2640
+    },
+    {
+      "id": "clear-route",
+      "type": "backend",
+      "label": "Remove Input Snapshot",
+      "sublabel": "Remove selected FILES entry",
+      "tag": "Selected input snapshot removed",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2640
+    },
+    {
+      "id": "clear-results",
+      "type": "backend",
+      "label": "Clear Dependent Exports",
+      "sublabel": "School/dump: all mapping groups",
+      "tag": "Email dump: Email and Class",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2640
+    },
+    {
+      "id": "clear-settings",
+      "type": "backend",
+      "label": "Remove Relevant Settings",
+      "sublabel": "School/dump selected sheet removed",
+      "tag": "Dump also removes saved school index",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2640
+    },
+    {
+      "id": "clear-updated",
+      "type": "external",
+      "label": "Cleared Workflow State",
+      "sublabel": "No dedicated mapping reset route",
+      "tag": "New session is a separate action",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2640
+    },
+    {
+      "id": "review-event",
+      "type": "frontend",
+      "label": "13 · Open Review Preview",
+      "sublabel": "Select saved result group/page",
+      "tag": "GET /result-previews/...",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 2880
+    },
+    {
+      "id": "review-read",
+      "type": "backend",
+      "label": "Read Saved Result Group",
+      "sublabel": "workspace(persist=False)",
+      "tag": "Read snapshot; touch activity",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2880
+    },
+    {
+      "id": "review-display-data",
+      "type": "backend",
+      "label": "Prepare Preview Rows",
+      "sublabel": "Admission display enrichment",
+      "tag": "Legacy cleanup stays transient",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2880
+    },
+    {
+      "id": "review-response",
+      "type": "external",
+      "label": "Paged Preview Response",
+      "sublabel": "rows, columns, labels, version",
+      "tag": "No state.json content write",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2880
+    },
+    {
+      "id": "review-react",
+      "type": "frontend",
+      "label": "Review Inspection UI",
+      "sublabel": "View / download; no row moves",
+      "tag": "Review results written by runs only",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 2880
+    },
+    {
+      "id": "runtime-update",
+      "type": "backend",
+      "label": "14 · Runtime Updates",
+      "sublabel": "In-memory state from 04",
+      "tag": "Inputs, results, settings",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3120
+    },
+    {
+      "id": "invalidate-state",
+      "type": "backend",
+      "label": "Invalidate Stale Results",
+      "sublabel": "Clear obsolete result entries",
+      "tag": "Rules in invalidation card",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3120
+    },
+    {
+      "id": "successful-state",
+      "type": "backend",
+      "label": "Successful Operation State",
+      "sublabel": "Handler completes without error",
+      "tag": "Exception skips normal save",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3120
+    },
+    {
+      "id": "sync-email-state",
+      "type": "backend",
+      "label": "Check Email State Validity",
+      "sublabel": "Input / school / rule signature",
+      "tag": "May clear Email and Class state",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3120
+    },
+    {
+      "id": "state-to-save",
+      "type": "external",
+      "label": "Workspace to Persist",
+      "sublabel": "revision + inputs + exports",
+      "tag": "Successful workspace exit",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3120
+    },
+    {
+      "id": "snapshot-input",
+      "type": "external",
+      "label": "15 · Snapshot Bytes",
+      "sublabel": "Input / result dictionaries",
+      "tag": "data bytes + metadata / count",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3360
+    },
+    {
+      "id": "content-hash",
+      "type": "backend",
+      "label": "Identify Snapshot Content",
+      "sublabel": "SHA-256 over exact file bytes",
+      "tag": "Identical content reuses file",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3360
+    },
+    {
+      "id": "stage-bytes",
+      "type": "backend",
+      "label": "Write Missing Snapshot",
+      "sublabel": "<hash>.bin.pending",
+      "tag": "Only if target does not exist",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3360
+    },
+    {
+      "id": "publish-bytes",
+      "type": "database",
+      "label": "Publish Snapshot Bytes",
+      "sublabel": "Replace pending file atomically",
+      "tag": "<hash>.bin in session folder",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3360
+    },
+    {
+      "id": "snapshot-reference",
+      "type": "external",
+      "label": "Snapshot Manifest Entry",
+      "sublabel": "Metadata + content-addressed file",
+      "tag": "Example: {metadata: {...}, file: ...}",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3360
+    },
+    {
+      "id": "manifest-fields",
+      "type": "external",
+      "label": "16 · Manifest Fields",
+      "sublabel": "Current runtime state dictionary",
+      "tag": "save_state: manifest = dict(state)",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3600
+    },
+    {
+      "id": "identity-fields",
+      "type": "external",
+      "label": "Identity and Revision",
+      "sublabel": "workspace_id; revision",
+      "tag": "No session_id JSON field required",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3600
+    },
+    {
+      "id": "settings-fields",
+      "type": "external",
+      "label": "Saved Workflow Settings",
+      "sublabel": "admission_settings",
+      "tag": "See exact settings keys below",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3600
+    },
+    {
+      "id": "signature-fields",
+      "type": "external",
+      "label": "Saved Run Signatures",
+      "sublabel": "Admission / Email / Class signatures",
+      "tag": "JSON arrays from Python tuples",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3600
+    },
+    {
+      "id": "manifest-scalar-state",
+      "type": "external",
+      "label": "Non-file Manifest State",
+      "sublabel": "Identity + settings + signatures",
+      "tag": "Snapshot references added separately",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3600
+    },
+    {
+      "id": "input-reference-data",
+      "type": "external",
+      "label": "17 · Input Snapshots",
+      "sublabel": "Input bytes and source metadata",
+      "tag": "Example: name=\"example.csv\"",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 3840
+    },
+    {
+      "id": "input-ref-builder",
+      "type": "backend",
+      "label": "Extract Snapshot Metadata",
+      "sublabel": "Extract every key except data",
+      "tag": "Hash file bytes; ensure .bin exists",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3840
+    },
+    {
+      "id": "input-ref-metadata",
+      "type": "external",
+      "label": "Input Reference Metadata",
+      "sublabel": "name, source; optional school/path",
+      "tag": "metadata object inside manifest",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3840
+    },
+    {
+      "id": "input-ref-filename",
+      "type": "external",
+      "label": "Input Snapshot Reference",
+      "sublabel": "file = SHA-256(data) + .bin",
+      "tag": "Stored bytes remain outside JSON",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3840
+    },
+    {
+      "id": "input-ref-manifest",
+      "type": "external",
+      "label": "Input Manifest Entries",
+      "sublabel": "Input metadata + stored byte pointer",
+      "tag": "Example: metadata.name=\"example.csv\"",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 3840
+    },
+    {
+      "id": "result-reference-data",
+      "type": "external",
+      "label": "18 · Result Snapshots",
+      "sublabel": "Workbook bytes and row count",
+      "tag": "Example: {data: bytes, count: 0}",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4080
+    },
+    {
+      "id": "result-ref-builder",
+      "type": "backend",
+      "label": "Serialize Each Workbook",
+      "sublabel": "snapshot(item) for each filename",
+      "tag": "Reuse identical .bin bytes",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4080
+    },
+    {
+      "id": "result-ref-metadata",
+      "type": "external",
+      "label": "Result Reference Metadata",
+      "sublabel": "metadata contains count",
+      "tag": "No student rows embedded in JSON",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4080
+    },
+    {
+      "id": "result-ref-filename",
+      "type": "external",
+      "label": "Result Snapshot Reference",
+      "sublabel": "file = SHA-256(data) + .bin",
+      "tag": "Original result filename stays key",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4080
+    },
+    {
+      "id": "result-ref-manifest",
+      "type": "external",
+      "label": "Export Manifest Entries",
+      "sublabel": "Result filename to stored byte pointer",
+      "tag": "Example: metadata.count=0",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4080
+    },
+    {
+      "id": "manifest-input",
+      "type": "external",
+      "label": "19 · Manifest State",
+      "sublabel": "Snapshot refs + workspace fields",
+      "tag": "revision, settings, signatures",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4320
+    },
+    {
+      "id": "manifest-serialize",
+      "type": "backend",
+      "label": "Build Persisted State",
+      "sublabel": "Serialize state + file references",
+      "tag": "FILE_KEYS and EXPORT_KEYS converted",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4320
+    },
+    {
+      "id": "staged-manifest",
+      "type": "database",
+      "label": "Write state.pending.json",
+      "sublabel": "New manifest after snapshots",
+      "tag": "UTF-8 JSON",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4320
+    },
+    {
+      "id": "published-manifest",
+      "type": "database",
+      "label": "Persisted Workflow State",
+      "sublabel": "Saved fields + snapshot references",
+      "tag": "Example: {\"revision\": 1}",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4320
+    },
+    {
+      "id": "committed-state",
+      "type": "database",
+      "label": "Committed Workspace",
+      "sublabel": "Manifest and referenced .bin files",
+      "tag": "Cleanup follows in 32",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4320
+    },
+    {
+      "id": "restore-trigger",
+      "type": "frontend",
+      "label": "20 · Restore Request",
+      "sublabel": "Read cookie-scoped workspace",
+      "tag": "GET /mapping/session; no body",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4560
+    },
+    {
+      "id": "restore-access",
+      "type": "backend",
+      "label": "Read Current Workspace",
+      "sublabel": "Cookie → folder → load_state",
+      "tag": "get_session → workspace(False)",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4560
+    },
+    {
+      "id": "restored-files",
+      "type": "database",
+      "label": "Disk-backed Input / Results",
+      "sublabel": "StoredFile metadata + lazy data",
+      "tag": "Read bytes for summary as needed",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4560
+    },
+    {
+      "id": "build-summary",
+      "type": "backend",
+      "label": "Build Restore Summary",
+      "sublabel": "Metadata, counts, versions",
+      "tag": "Settings + configuration + columns",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4560
+    },
+    {
+      "id": "restore-response",
+      "type": "external",
+      "label": "Session Summary Response",
+      "sublabel": "Summary JSON for React restoration",
+      "tag": "Example: {\"revision\": 1,\"files\":{}}",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4560
+    },
+    {
+      "id": "manifest-read-source",
+      "type": "database",
+      "label": "21 · Persisted State",
+      "sublabel": "state.json: saved workflow fields",
+      "tag": "Example: {\"revision\": 1}",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 4800
+    },
+    {
+      "id": "manifest-read-code",
+      "type": "backend",
+      "label": "Decode Persisted State",
+      "sublabel": "Read UTF-8; json.loads",
+      "tag": "Missing: 404; invalid JSON: 409",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4800
+    },
+    {
+      "id": "manifest-read-refs",
+      "type": "backend",
+      "label": "Restore File References",
+      "sublabel": "Verify metadata/file and path",
+      "tag": "Missing/invalid snapshot: 409",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4800
+    },
+    {
+      "id": "manifest-read-handles",
+      "type": "backend",
+      "label": "Rebuild Snapshot Handles",
+      "sublabel": "StoredFile(path, metadata)",
+      "tag": "data read lazily from .bin",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4800
+    },
+    {
+      "id": "manifest-read-state",
+      "type": "external",
+      "label": "Restored Workflow State",
+      "sublabel": "Fields + inputs + result handles",
+      "tag": "Older identity/revision defaults",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 4800
+    },
+    {
+      "id": "summary-state-source",
+      "type": "external",
+      "label": "22 · Restored State",
+      "sublabel": "Input/result handles + settings",
+      "tag": "Summary is derived, not persisted",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 5040
+    },
+    {
+      "id": "summary-file-fields",
+      "type": "backend",
+      "label": "Build File Summary",
+      "sublabel": "Metadata + sheets + version hash",
+      "tag": "saved_* keys → files kinds",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5040
+    },
+    {
+      "id": "summary-export-fields",
+      "type": "backend",
+      "label": "Build Result Summary",
+      "sublabel": "exports counts; export_versions",
+      "tag": "Signatures → run_columns",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5040
+    },
+    {
+      "id": "summary-config-fields",
+      "type": "backend",
+      "label": "Build Configuration Summary",
+      "sublabel": "settings, configuration, errors",
+      "tag": "email_ready; workspace_id/revision",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5040
+    },
+    {
+      "id": "summary-json-detail",
+      "type": "external",
+      "label": "Session Summary Response",
+      "sublabel": "File metadata, counts and settings",
+      "tag": "Example: {\"email_ready\": true}",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5040
+    },
+    {
+      "id": "summary-input",
+      "type": "external",
+      "label": "23 · Restore Payload",
+      "sublabel": "Restored or mutation response",
+      "tag": "Mapping responses: no-store",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 5280
+    },
+    {
+      "id": "freshness-check",
+      "type": "frontend",
+      "label": "Check Refresh Freshness",
+      "sublabel": "readSequence; operationActive",
+      "tag": "Suppress superseded refreshes",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5280
+    },
+    {
+      "id": "identity-check",
+      "type": "frontend",
+      "label": "Compare Workspace Version",
+      "sublabel": "workspace_id + revision",
+      "tag": "Same fingerprint: keep React state",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5280
+    },
+    {
+      "id": "publish-react",
+      "type": "frontend",
+      "label": "Workspace Rehydration",
+      "sublabel": "Normalize summary; set React state",
+      "tag": "Example: {\"revision\": 1,\"files\":{}}",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5280
+    },
+    {
+      "id": "metadata-cache",
+      "type": "frontend",
+      "label": "Refresh Derived Metadata",
+      "sublabel": "Discard cache on changed keys",
+      "tag": "File/version/settings-based keys",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5280
+    },
+    {
+      "id": "sync-a-action",
+      "type": "frontend",
+      "label": "24 · Tab A Action",
+      "sublabel": "Upload / clear / run / save",
+      "tag": "Browser context A; persistent action",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 5520
+    },
+    {
+      "id": "sync-a-run",
+      "type": "frontend",
+      "label": "Tab A: Submit State Change",
+      "sublabel": "Guard; optional Web Lock",
+      "tag": "Send workspaceRef.current.revision",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5520
+    },
+    {
+      "id": "sync-api-write",
+      "type": "backend",
+      "label": "Resolve Workflow Session",
+      "sublabel": "Cookie session + revision gate",
+      "tag": "Reject stale writes before mutation",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5520
+    },
+    {
+      "id": "sync-server-update",
+      "type": "backend",
+      "label": "Update Workflow State",
+      "sublabel": "Handler builds response in memory",
+      "tag": "Commit only on successful exit",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5520
+    },
+    {
+      "id": "sync-server-save",
+      "type": "backend",
+      "label": "Persist Workflow State",
+      "sublabel": "sync_email_stage then save_state",
+      "tag": "Still inside process-local lock",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5520
+    },
+    {
+      "id": "sync-a-announce",
+      "type": "frontend",
+      "label": "25 · Tab A Notifies",
+      "sublabel": "Notify tabs after publication",
+      "tag": "\"workspace-changed\"",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 5760
+    },
+    {
+      "id": "sync-a-publish",
+      "type": "frontend",
+      "label": "Tab A: Restore React State",
+      "sublabel": "Normalize mutation summary into React",
+      "tag": "Example: {\"revision\": 1}",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5760
+    },
+    {
+      "id": "sync-server-response",
+      "type": "backend",
+      "label": "Session Summary Response",
+      "sublabel": "Summary after successful persistence",
+      "tag": "Example: {\"revision\": 1}",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5760
+    },
+    {
+      "id": "sync-server-manifest",
+      "type": "database",
+      "label": "Persisted Workflow State",
+      "sublabel": "state.json: fields + file references",
+      "tag": "Example: {\"revision\": 1}",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5760
+    },
+    {
+      "id": "sync-server-snapshots",
+      "type": "database",
+      "label": "Input / Result Snapshots",
+      "sublabel": "Write/reuse content-addressed bytes",
+      "tag": "Persistent <hash>.bin files",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 5760
+    },
+    {
+      "id": "sync-notification",
+      "type": "messagebus",
+      "label": "26 · Browser Notice",
+      "sublabel": "BroadcastChannel change signal",
+      "tag": "postMessage(\"workspace-changed\")",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 6000
+    },
+    {
+      "id": "sync-b-message",
+      "type": "frontend",
+      "label": "Tab B: Receive Notification",
+      "sublabel": "Read exact notification string",
+      "tag": "event.data === \"workspace-changed\"",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6000
+    },
+    {
+      "id": "sync-b-ready",
+      "type": "frontend",
+      "label": "Tab B: State Refresh Gate",
+      "sublabel": "Idle and workspace exists?",
+      "tag": "Otherwise defer; see path 29",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6000
+    },
+    {
+      "id": "sync-b-get",
+      "type": "frontend",
+      "label": "Request Latest Session",
+      "sublabel": "Fetch latest cookie-scoped workspace",
+      "tag": "GET /mapping/session; no body",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6000
+    },
+    {
+      "id": "sync-api-read",
+      "type": "backend",
+      "label": "Resolve Restore Session",
+      "sublabel": "Cookie → same session folder",
+      "tag": "workspace(persist=False)",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6000
+    },
+    {
+      "id": "sync-b-fingerprint",
+      "type": "frontend",
+      "label": "27 · Compare Version",
+      "sublabel": "workspace_id + revision changed?",
+      "tag": "Unchanged: keep current React state",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 6240
+    },
+    {
+      "id": "sync-b-freshness",
+      "type": "frontend",
+      "label": "Tab B: Reject Stale Reads",
+      "sublabel": "readSequence unchanged; still idle",
+      "tag": "Otherwise ignore stale response",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6240
+    },
+    {
+      "id": "sync-build-summary",
+      "type": "backend",
+      "label": "API: Build Latest Summary",
+      "sublabel": "Build metadata and result counts",
+      "tag": "Example: exports.admission={}",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6240
+    },
+    {
+      "id": "sync-read-snapshots",
+      "type": "backend",
+      "label": "Read Input/Result Snapshots",
+      "sublabel": "StoredFile metadata + lazy bytes",
+      "tag": "Read for versions / configuration",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6240
+    },
+    {
+      "id": "sync-read-manifest",
+      "type": "backend",
+      "label": "Read Persisted State",
+      "sublabel": "load_state: parse current manifest",
+      "tag": "Touch activity; no revision increase",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6240
+    },
+    {
+      "id": "sync-b-publish",
+      "type": "frontend",
+      "label": "28 · Rehydrate Tab B",
+      "sublabel": "Latest summary to React state",
+      "tag": "Example: {\"revision\": 1,\"files\":{}}",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 6480
+    },
+    {
+      "id": "sync-b-notice",
+      "type": "frontend",
+      "label": "Tab B: Update Notice",
+      "sublabel": "Workspace updated from another tab",
+      "tag": "Review selections before running",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6480
+    },
+    {
+      "id": "sync-b-cache",
+      "type": "frontend",
+      "label": "Tab B: Metadata Cache",
+      "sublabel": "Invalidate changed metadata keys",
+      "tag": "Workspace/file/settings-dependent",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6480
+    },
+    {
+      "id": "sync-b-preview",
+      "type": "frontend",
+      "label": "Tab B: Refresh Views",
+      "sublabel": "Dependent preview requests as needed",
+      "tag": "Result versions / file keys change",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6480
+    },
+    {
+      "id": "sync-b-state",
+      "type": "frontend",
+      "label": "Tab B: Updated React State",
+      "sublabel": "Latest accepted server summary",
+      "tag": "Local drafts can remain different",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6480
+    },
+    {
+      "id": "sync-b-blocked",
+      "type": "frontend",
+      "label": "29 · Tab B Busy",
+      "sublabel": "Operation active OR no workspace",
+      "tag": "Notification cannot apply state",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 6720
+    },
+    {
+      "id": "sync-b-pending",
+      "type": "frontend",
+      "label": "Tab B: Queue State Refresh",
+      "sublabel": "refreshPending flag; no state copy",
+      "tag": "Boolean flag; not a data payload",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6720
+    },
+    {
+      "id": "sync-b-drain",
+      "type": "frontend",
+      "label": "Tab B: Resume State Refresh",
+      "sublabel": "run finally OR startup while-loop",
+      "tag": "Startup drains before first publish",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6720
+    },
+    {
+      "id": "sync-b-refetch",
+      "type": "frontend",
+      "label": "Tab B: Re-fetch Summary",
+      "sublabel": "GET /mapping/session",
+      "tag": "Same restore path as 26–28",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6720
+    },
+    {
+      "id": "sync-b-deferred-state",
+      "type": "frontend",
+      "label": "Tab B: Publish When Ready",
+      "sublabel": "Refresh guards or startup publish",
+      "tag": "Read failures surface an error",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6720
+    },
+    {
+      "id": "sync-b-fallback",
+      "type": "frontend",
+      "label": "30 · Tab B Focus",
+      "sublabel": "Focus or becomes visible",
+      "tag": "Fallback also runs without channel",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 6960
+    },
+    {
+      "id": "sync-b-visible",
+      "type": "frontend",
+      "label": "Tab B: Visibility Check",
+      "sublabel": "document.visibilityState = visible",
+      "tag": "Same onUpdate callback",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6960
+    },
+    {
+      "id": "sync-b-fallback-refresh",
+      "type": "frontend",
+      "label": "Tab B: State Refresh",
+      "sublabel": "Same ready/deferred behavior",
+      "tag": "No polling or replay queue",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6960
+    },
+    {
+      "id": "sync-b-fallback-get",
+      "type": "frontend",
+      "label": "Tab B: Restore from API",
+      "sublabel": "GET summary from server files",
+      "tag": "No state supplied by Tab A",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6960
+    },
+    {
+      "id": "sync-b-fallback-apply",
+      "type": "frontend",
+      "label": "Tab B: Apply Latest State",
+      "sublabel": "Sequence + fingerprint checks",
+      "tag": "Failure warns; does not create",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 6960
+    },
+    {
+      "id": "rejected-operation",
+      "type": "external",
+      "label": "31 · API Error Response",
+      "sublabel": "Mutation rejected or unavailable",
+      "tag": "No automatic action replay",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 7200
+    },
+    {
+      "id": "recovery-choice",
+      "type": "frontend",
+      "label": "Choose Recovery Path",
+      "sublabel": "409: reload current workspace",
+      "tag": "401/session 404: create new",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7200
+    },
+    {
+      "id": "recovery-api",
+      "type": "backend",
+      "label": "Reload or Create Session",
+      "sublabel": "GET or POST /mapping/session",
+      "tag": "Startup also recreates on 409",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7200
+    },
+    {
+      "id": "recovery-summary",
+      "type": "external",
+      "label": "Recovery Workspace Summary",
+      "sublabel": "Current or empty replacement",
+      "tag": "New cookie only on creation",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7200
+    },
+    {
+      "id": "recovery-react",
+      "type": "frontend",
+      "label": "Publish and Notify User",
+      "sublabel": "Retry operation after review",
+      "tag": "Announce replacement session",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7200
+    },
+    {
+      "id": "saved-manifest",
+      "type": "database",
+      "label": "32 · Snapshot Cleanup",
+      "sublabel": "Current state.json after save",
+      "tag": "Inputs + export file references",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 7440
+    },
+    {
+      "id": "collect-references",
+      "type": "backend",
+      "label": "Collect Live Snapshot Names",
+      "sublabel": "Referenced .bin filename set",
+      "tag": "Deduplicated within session folder",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7440
+    },
+    {
+      "id": "find-orphans",
+      "type": "backend",
+      "label": "Find Unreferenced Files",
+      "sublabel": "Session folder .bin files",
+      "tag": "Ignore symlink deletion targets",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7440
+    },
+    {
+      "id": "remove-orphans",
+      "type": "backend",
+      "label": "Remove Obsolete Snapshots",
+      "sublabel": "Unreferenced .bin + *.pending",
+      "tag": "After publishing new state.json",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7440
+    },
+    {
+      "id": "retained-snapshots",
+      "type": "database",
+      "label": "Live Workspace Snapshots",
+      "sublabel": "Current referenced content only",
+      "tag": "Shared hash retained while referenced",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7440
+    },
+    {
+      "id": "activity-clock",
+      "type": "database",
+      "label": "33 · Session Activity",
+      "sublabel": "state.json modification time",
+      "tag": "Folder mtime if manifest absent",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 7680
+    },
+    {
+      "id": "expiry-check",
+      "type": "backend",
+      "label": "Check 24-hour Inactivity",
+      "sublabel": "On access or creation sweep",
+      "tag": "No background cleanup scheduler",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7680
+    },
+    {
+      "id": "expired-session",
+      "type": "database",
+      "label": "Expired UUID Session Folder",
+      "sublabel": "Direct child; reject symlinks",
+      "tag": "Inactive at least 24 hours",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7680
+    },
+    {
+      "id": "remove-session",
+      "type": "backend",
+      "label": "Expired Session Cleanup",
+      "sublabel": "Delete entire session folder",
+      "tag": "Access returns 404 after removal",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7680
+    },
+    {
+      "id": "expiry-client",
+      "type": "frontend",
+      "label": "Client Handles Expiry",
+      "sublabel": "Startup / operation may recreate",
+      "tag": "Background refresh warns only",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7680
+    },
+    {
+      "id": "create-request",
+      "type": "frontend",
+      "label": "34 · Create Session",
+      "sublabel": "POST /mapping/session",
+      "tag": "Optional school_index",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 90,
+      "yOffset": 7920
+    },
+    {
+      "id": "create-identities",
+      "type": "backend",
+      "label": "Create Session Identities",
+      "sublabel": "session_id UUID + workspace_id UUID",
+      "tag": "Independent identifiers",
+      "stage": 1,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7920
+    },
+    {
+      "id": "initial-manifest",
+      "type": "database",
+      "label": "Save Empty Workspace",
+      "sublabel": "revision=0; admission_settings",
+      "tag": "Creation sweeps expired folders",
+      "stage": 2,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7920
+    },
+    {
+      "id": "set-cookie",
+      "type": "security",
+      "label": "Workflow Session Cookie",
+      "sublabel": "HttpOnly workflow session identity",
+      "tag": "Cookie: [REDACTED]; Path=/",
+      "stage": 3,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7920
+    },
+    {
+      "id": "created-summary",
+      "type": "external",
+      "label": "New Workspace Summary",
+      "sublabel": "Read-only summary after creation",
+      "tag": "Cookie stored by browser; React data",
+      "stage": 4,
+      "row": 0,
+      "width": 170,
+      "height": 90,
+      "yOffset": 7920
+    }
+  ],
+  "flows": [
+    {
+      "id": "browser-tabs-to-init-lock",
+      "from": "browser-tabs",
+      "to": "init-lock",
+      "label": "tab initialization",
+      "labelDy": 70
+    },
+    {
+      "id": "init-lock-to-restore-request",
+      "from": "init-lock",
+      "to": "restore-request",
+      "label": "restore inside lock",
+      "labelDy": 70
+    },
+    {
+      "id": "restore-request-to-startup-result",
+      "from": "restore-request",
+      "to": "startup-result",
+      "label": "HTTP request + session cookie",
+      "labelDy": 70
+    },
+    {
+      "id": "startup-result-to-initial-react",
+      "from": "startup-result",
+      "to": "initial-react",
+      "label": "restored or new summary",
+      "labelDy": 70
+    },
+    {
+      "id": "react-workspace-to-ui-edit",
+      "from": "react-workspace",
+      "to": "ui-edit",
+      "label": "workspace context",
+      "labelDy": 70
+    },
+    {
+      "id": "ui-edit-to-tab-storage",
+      "from": "ui-edit",
+      "to": "tab-storage",
+      "label": "tab-local UI values",
+      "labelDy": 70
+    },
+    {
+      "id": "tab-storage-to-restore-ui",
+      "from": "tab-storage",
+      "to": "restore-ui",
+      "label": "saved JSON selections",
+      "labelDy": 70
+    },
+    {
+      "id": "restore-ui-to-rendered-ui",
+      "from": "restore-ui",
+      "to": "rendered-ui",
+      "label": "restored selections",
+      "labelDy": 70
+    },
+    {
+      "id": "user-action-to-operation-lock",
+      "from": "user-action",
+      "to": "operation-lock",
+      "label": "user operation",
+      "labelDy": 70
+    },
+    {
+      "id": "operation-lock-to-api-request",
+      "from": "operation-lock",
+      "to": "api-request",
+      "label": "current React revision",
+      "labelDy": 70
+    },
+    {
+      "id": "api-request-to-cookie-resolution",
+      "from": "api-request",
+      "to": "cookie-resolution",
+      "label": "HTTP request + session cookie",
+      "labelDy": 70
+    },
+    {
+      "id": "cookie-resolution-to-session-folder",
+      "from": "cookie-resolution",
+      "to": "session-folder",
+      "label": "resolved session ID",
+      "labelDy": 70
+    },
+    {
+      "id": "workspace-access-to-load-manifest",
+      "from": "workspace-access",
+      "to": "load-manifest",
+      "label": "read persisted state",
+      "labelDy": 70
+    },
+    {
+      "id": "load-manifest-to-load-references",
+      "from": "load-manifest",
+      "to": "load-references",
+      "label": "manifest settings + references",
+      "labelDy": 70
+    },
+    {
+      "id": "load-references-to-revision-gate",
+      "from": "load-references",
+      "to": "revision-gate",
+      "label": "restored state + revision",
+      "labelDy": 70
+    },
+    {
+      "id": "revision-gate-to-operation-state",
+      "from": "revision-gate",
+      "to": "operation-state",
+      "label": "accepted state for mutation",
+      "labelDy": 70
+    },
+    {
+      "id": "runtime-update-to-invalidate-state",
+      "from": "runtime-update",
+      "to": "invalidate-state",
+      "label": "invalidate stale result references",
+      "labelDy": 70
+    },
+    {
+      "id": "invalidate-state-to-successful-state",
+      "from": "invalidate-state",
+      "to": "successful-state",
+      "label": "remaining valid state",
+      "labelDy": 70
+    },
+    {
+      "id": "successful-state-to-sync-email-state",
+      "from": "successful-state",
+      "to": "sync-email-state",
+      "label": "successful handler state",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-email-state-to-state-to-save",
+      "from": "sync-email-state",
+      "to": "state-to-save",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "snapshot-input-to-content-hash",
+      "from": "snapshot-input",
+      "to": "content-hash",
+      "label": "input / workbook bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "content-hash-to-stage-bytes",
+      "from": "content-hash",
+      "to": "stage-bytes",
+      "label": "content hash + bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "stage-bytes-to-publish-bytes",
+      "from": "stage-bytes",
+      "to": "publish-bytes",
+      "label": "staged file bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "publish-bytes-to-snapshot-reference",
+      "from": "publish-bytes",
+      "to": "snapshot-reference",
+      "label": "snapshot reference added",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-input-to-manifest-serialize",
+      "from": "manifest-input",
+      "to": "manifest-serialize",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-serialize-to-staged-manifest",
+      "from": "manifest-serialize",
+      "to": "staged-manifest",
+      "label": "write updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "staged-manifest-to-published-manifest",
+      "from": "staged-manifest",
+      "to": "published-manifest",
+      "label": "atomic state.json replacement",
+      "labelDy": 70
+    },
+    {
+      "id": "published-manifest-to-committed-state",
+      "from": "published-manifest",
+      "to": "committed-state",
+      "label": "committed state.json + snapshots",
+      "labelDy": 70
+    },
+    {
+      "id": "restore-trigger-to-restore-access",
+      "from": "restore-trigger",
+      "to": "restore-access",
+      "label": "HTTP request + session cookie",
+      "labelDy": 70
+    },
+    {
+      "id": "restore-access-to-restored-files",
+      "from": "restore-access",
+      "to": "restored-files",
+      "label": "manifest + snapshot references",
+      "labelDy": 70
+    },
+    {
+      "id": "restored-files-to-build-summary",
+      "from": "restored-files",
+      "to": "build-summary",
+      "label": "restored workspace data",
+      "labelDy": 70
+    },
+    {
+      "id": "build-summary-to-restore-response",
+      "from": "build-summary",
+      "to": "restore-response",
+      "label": "session summary JSON",
+      "labelDy": 70
+    },
+    {
+      "id": "summary-input-to-freshness-check",
+      "from": "summary-input",
+      "to": "freshness-check",
+      "label": "rehydration payload",
+      "labelDy": 70
+    },
+    {
+      "id": "freshness-check-to-identity-check",
+      "from": "freshness-check",
+      "to": "identity-check",
+      "label": "eligible refresh response",
+      "labelDy": 70
+    },
+    {
+      "id": "identity-check-to-publish-react",
+      "from": "identity-check",
+      "to": "publish-react",
+      "label": "changed workspace summary",
+      "labelDy": 70
+    },
+    {
+      "id": "publish-react-to-metadata-cache",
+      "from": "publish-react",
+      "to": "metadata-cache",
+      "label": "rehydrated React workspace",
+      "labelDy": 70
+    },
+    {
+      "id": "rejected-operation-to-recovery-choice",
+      "from": "rejected-operation",
+      "to": "recovery-choice",
+      "label": "status + error detail",
+      "labelDy": 70
+    },
+    {
+      "id": "recovery-choice-to-recovery-api",
+      "from": "recovery-choice",
+      "to": "recovery-api",
+      "label": "recovery request",
+      "labelDy": 70
+    },
+    {
+      "id": "recovery-api-to-recovery-summary",
+      "from": "recovery-api",
+      "to": "recovery-summary",
+      "label": "restored / replacement summary",
+      "labelDy": 70
+    },
+    {
+      "id": "recovery-summary-to-recovery-react",
+      "from": "recovery-summary",
+      "to": "recovery-react",
+      "label": "updated React workspace",
+      "labelDy": 70
+    },
+    {
+      "id": "saved-manifest-to-collect-references",
+      "from": "saved-manifest",
+      "to": "collect-references",
+      "label": "published snapshot references",
+      "labelDy": 70
+    },
+    {
+      "id": "collect-references-to-find-orphans",
+      "from": "collect-references",
+      "to": "find-orphans",
+      "label": "live filename set",
+      "labelDy": 70
+    },
+    {
+      "id": "find-orphans-to-remove-orphans",
+      "from": "find-orphans",
+      "to": "remove-orphans",
+      "label": "unreferenced snapshot paths",
+      "labelDy": 70
+    },
+    {
+      "id": "remove-orphans-to-retained-snapshots",
+      "from": "remove-orphans",
+      "to": "retained-snapshots",
+      "label": "retained referenced bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "activity-clock-to-expiry-check",
+      "from": "activity-clock",
+      "to": "expiry-check",
+      "label": "last activity timestamp",
+      "labelDy": 70
+    },
+    {
+      "id": "expiry-check-to-expired-session",
+      "from": "expiry-check",
+      "to": "expired-session",
+      "label": "expired session candidate",
+      "labelDy": 70
+    },
+    {
+      "id": "expired-session-to-remove-session",
+      "from": "expired-session",
+      "to": "remove-session",
+      "label": "validated session folder",
+      "labelDy": 70
+    },
+    {
+      "id": "remove-session-to-expiry-client",
+      "from": "remove-session",
+      "to": "expiry-client",
+      "label": "session unavailable response",
+      "labelDy": 70
+    },
+    {
+      "id": "create-request-to-create-identities",
+      "from": "create-request",
+      "to": "create-identities",
+      "label": "new-session request",
+      "labelDy": 70
+    },
+    {
+      "id": "create-identities-to-initial-manifest",
+      "from": "create-identities",
+      "to": "initial-manifest",
+      "label": "new identity + initial state",
+      "labelDy": 70
+    },
+    {
+      "id": "initial-manifest-to-set-cookie",
+      "from": "initial-manifest",
+      "to": "set-cookie",
+      "label": "persisted session ID",
+      "labelDy": 70
+    },
+    {
+      "id": "set-cookie-to-created-summary",
+      "from": "set-cookie",
+      "to": "created-summary",
+      "label": "Set-Cookie + summary JSON",
+      "labelDy": 70
+    },
+    {
+      "id": "upload-event-to-upload-route",
+      "from": "upload-event",
+      "to": "upload-route",
+      "label": "file bytes + filename",
+      "labelDy": 70
+    },
+    {
+      "id": "upload-route-to-register-input",
+      "from": "upload-route",
+      "to": "register-input",
+      "label": "validated input bytes",
+      "labelDy": 70
+    },
+    {
+      "id": "register-input-to-upload-invalidate",
+      "from": "register-input",
+      "to": "upload-invalidate",
+      "label": "input snapshot added",
+      "labelDy": 70
+    },
+    {
+      "id": "upload-invalidate-to-upload-state",
+      "from": "upload-invalidate",
+      "to": "upload-state",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "fetch-event-to-fetch-route",
+      "from": "fetch-event",
+      "to": "fetch-route",
+      "label": "requested school index",
+      "labelDy": 70
+    },
+    {
+      "id": "fetch-route-to-fetch-snapshot",
+      "from": "fetch-route",
+      "to": "fetch-snapshot",
+      "label": "fetched CSV + school identity",
+      "labelDy": 70
+    },
+    {
+      "id": "fetch-snapshot-to-fetch-settings",
+      "from": "fetch-snapshot",
+      "to": "fetch-settings",
+      "label": "replacement dump + settings",
+      "labelDy": 70
+    },
+    {
+      "id": "fetch-settings-to-fetch-state",
+      "from": "fetch-settings",
+      "to": "fetch-state",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "school-edit-event-to-school-edit-route",
+      "from": "school-edit-event",
+      "to": "school-edit-route",
+      "label": "school identity edits",
+      "labelDy": 70
+    },
+    {
+      "id": "school-edit-route-to-school-edit-snapshot",
+      "from": "school-edit-route",
+      "to": "school-edit-snapshot",
+      "label": "validated identity values",
+      "labelDy": 70
+    },
+    {
+      "id": "school-edit-snapshot-to-school-edit-invalidate",
+      "from": "school-edit-snapshot",
+      "to": "school-edit-invalidate",
+      "label": "updated snapshot metadata",
+      "labelDy": 70
+    },
+    {
+      "id": "school-edit-invalidate-to-school-edit-state",
+      "from": "school-edit-invalidate",
+      "to": "school-edit-state",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "draft-event-to-draft-preview",
+      "from": "draft-event",
+      "to": "draft-preview",
+      "label": "draft worksheet selections",
+      "labelDy": 70
+    },
+    {
+      "id": "draft-preview-to-draft-config",
+      "from": "draft-preview",
+      "to": "draft-config",
+      "label": "copied workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "draft-config-to-draft-response",
+      "from": "draft-config",
+      "to": "draft-response",
+      "label": "derived draft configuration",
+      "labelDy": 70
+    },
+    {
+      "id": "draft-response-to-draft-react",
+      "from": "draft-response",
+      "to": "draft-react",
+      "label": "preview settings only",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-event-to-admission-state-builder",
+      "from": "admission-event",
+      "to": "admission-state-builder",
+      "label": "run columns + worksheets",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-state-builder-to-admission-result-state",
+      "from": "admission-state-builder",
+      "to": "admission-result-state",
+      "label": "configured workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-result-state-to-admission-state-commit",
+      "from": "admission-result-state",
+      "to": "admission-state-commit",
+      "label": "result snapshots + signature",
+      "labelDy": 70
+    },
+    {
+      "id": "admission-state-commit-to-admission-updated",
+      "from": "admission-state-commit",
+      "to": "admission-updated",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "email-event-to-email-state-builder",
+      "from": "email-event",
+      "to": "email-state-builder",
+      "label": "mapping run selections",
+      "labelDy": 70
+    },
+    {
+      "id": "email-state-builder-to-email-result-state",
+      "from": "email-state-builder",
+      "to": "email-result-state",
+      "label": "successful mapping outputs",
+      "labelDy": 70
+    },
+    {
+      "id": "email-result-state-to-email-state-settings",
+      "from": "email-result-state",
+      "to": "email-state-settings",
+      "label": "result snapshots + CSV dump",
+      "labelDy": 70
+    },
+    {
+      "id": "email-state-settings-to-email-updated",
+      "from": "email-state-settings",
+      "to": "email-updated",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "class-event-to-class-state-builder",
+      "from": "class-event",
+      "to": "class-state-builder",
+      "label": "mapping run selections",
+      "labelDy": 70
+    },
+    {
+      "id": "class-state-builder-to-class-result-state",
+      "from": "class-state-builder",
+      "to": "class-result-state",
+      "label": "successful mapping outputs",
+      "labelDy": 70
+    },
+    {
+      "id": "class-result-state-to-class-state-settings",
+      "from": "class-result-state",
+      "to": "class-state-settings",
+      "label": "result snapshots + run signature",
+      "labelDy": 70
+    },
+    {
+      "id": "class-state-settings-to-class-updated",
+      "from": "class-state-settings",
+      "to": "class-updated",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "clear-event-to-clear-route",
+      "from": "clear-event",
+      "to": "clear-route",
+      "label": "clear-file request",
+      "labelDy": 70
+    },
+    {
+      "id": "clear-route-to-clear-results",
+      "from": "clear-route",
+      "to": "clear-results",
+      "label": "invalidate dependent results",
+      "labelDy": 70
+    },
+    {
+      "id": "clear-results-to-clear-settings",
+      "from": "clear-results",
+      "to": "clear-settings",
+      "label": "invalidated result references",
+      "labelDy": 70
+    },
+    {
+      "id": "clear-settings-to-clear-updated",
+      "from": "clear-settings",
+      "to": "clear-updated",
+      "label": "updated workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "review-event-to-review-read",
+      "from": "review-event",
+      "to": "review-read",
+      "label": "selected result + pagination",
+      "labelDy": 70
+    },
+    {
+      "id": "review-read-to-review-display-data",
+      "from": "review-read",
+      "to": "review-display-data",
+      "label": "saved workbook records",
+      "labelDy": 70
+    },
+    {
+      "id": "review-display-data-to-review-response",
+      "from": "review-display-data",
+      "to": "review-response",
+      "label": "read-only preview data",
+      "labelDy": 70
+    },
+    {
+      "id": "review-response-to-review-react",
+      "from": "review-response",
+      "to": "review-react",
+      "label": "display rows; no reclassification",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-fields-to-identity-fields",
+      "from": "manifest-fields",
+      "to": "identity-fields",
+      "label": "workflow state fields",
+      "labelDy": 70
+    },
+    {
+      "id": "identity-fields-to-settings-fields",
+      "from": "identity-fields",
+      "to": "settings-fields",
+      "label": "workspace identity + revision",
+      "labelDy": 70
+    },
+    {
+      "id": "settings-fields-to-signature-fields",
+      "from": "settings-fields",
+      "to": "signature-fields",
+      "label": "committed settings",
+      "labelDy": 70
+    },
+    {
+      "id": "signature-fields-to-manifest-scalar-state",
+      "from": "signature-fields",
+      "to": "manifest-scalar-state",
+      "label": "non-file state.json fields",
+      "labelDy": 70
+    },
+    {
+      "id": "input-reference-data-to-input-ref-builder",
+      "from": "input-reference-data",
+      "to": "input-ref-builder",
+      "label": "input bytes + metadata",
+      "labelDy": 70
+    },
+    {
+      "id": "input-ref-builder-to-input-ref-metadata",
+      "from": "input-ref-builder",
+      "to": "input-ref-metadata",
+      "label": "input snapshot metadata",
+      "labelDy": 70
+    },
+    {
+      "id": "input-ref-metadata-to-input-ref-filename",
+      "from": "input-ref-metadata",
+      "to": "input-ref-filename",
+      "label": "snapshot reference added",
+      "labelDy": 70
+    },
+    {
+      "id": "input-ref-filename-to-input-ref-manifest",
+      "from": "input-ref-filename",
+      "to": "input-ref-manifest",
+      "label": "input references for state.json",
+      "labelDy": 70
+    },
+    {
+      "id": "result-reference-data-to-result-ref-builder",
+      "from": "result-reference-data",
+      "to": "result-ref-builder",
+      "label": "result workbook bytes + count",
+      "labelDy": 70
+    },
+    {
+      "id": "result-ref-builder-to-result-ref-metadata",
+      "from": "result-ref-builder",
+      "to": "result-ref-metadata",
+      "label": "result snapshot metadata",
+      "labelDy": 70
+    },
+    {
+      "id": "result-ref-metadata-to-result-ref-filename",
+      "from": "result-ref-metadata",
+      "to": "result-ref-filename",
+      "label": "snapshot reference added",
+      "labelDy": 70
+    },
+    {
+      "id": "result-ref-filename-to-result-ref-manifest",
+      "from": "result-ref-filename",
+      "to": "result-ref-manifest",
+      "label": "result references for state.json",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-read-source-to-manifest-read-code",
+      "from": "manifest-read-source",
+      "to": "manifest-read-code",
+      "label": "read persisted state",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-read-code-to-manifest-read-refs",
+      "from": "manifest-read-code",
+      "to": "manifest-read-refs",
+      "label": "decoded workflow manifest",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-read-refs-to-manifest-read-handles",
+      "from": "manifest-read-refs",
+      "to": "manifest-read-handles",
+      "label": "validated snapshot references",
+      "labelDy": 70
+    },
+    {
+      "id": "manifest-read-handles-to-manifest-read-state",
+      "from": "manifest-read-handles",
+      "to": "manifest-read-state",
+      "label": "restored workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "summary-state-source-to-summary-file-fields",
+      "from": "summary-state-source",
+      "to": "summary-file-fields",
+      "label": "restored workflow state",
+      "labelDy": 70
+    },
+    {
+      "id": "summary-file-fields-to-summary-export-fields",
+      "from": "summary-file-fields",
+      "to": "summary-export-fields",
+      "label": "file metadata + content versions",
+      "labelDy": 70
+    },
+    {
+      "id": "summary-export-fields-to-summary-config-fields",
+      "from": "summary-export-fields",
+      "to": "summary-config-fields",
+      "label": "result counts + run columns",
+      "labelDy": 70
+    },
+    {
+      "id": "summary-config-fields-to-summary-json-detail",
+      "from": "summary-config-fields",
+      "to": "summary-json-detail",
+      "label": "session summary JSON",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-a-action-to-sync-a-run",
+      "from": "sync-a-action",
+      "to": "sync-a-run",
+      "label": "state-changing action",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-a-run-to-sync-api-write",
+      "from": "sync-a-run",
+      "to": "sync-api-write",
+      "label": "payload + cookie + revision",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-api-write-to-sync-server-update",
+      "from": "sync-api-write",
+      "to": "sync-server-update",
+      "label": "accepted workflow mutation",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-server-update-to-sync-server-save",
+      "from": "sync-server-update",
+      "to": "sync-server-save",
+      "label": "updated workflow state",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-server-save-to-sync-server-snapshots",
+      "from": "sync-server-save",
+      "to": "sync-server-snapshots",
+      "label": "input / result snapshot bytes",
+      "variant": "emphasis",
+      "labelAt": [
+        960,
+        5813
+      ]
+    },
+    {
+      "id": "sync-server-snapshots-to-sync-server-manifest",
+      "from": "sync-server-snapshots",
+      "to": "sync-server-manifest",
+      "label": "state.json write after snapshots",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-server-manifest-to-sync-server-response",
+      "from": "sync-server-manifest",
+      "to": "sync-server-response",
+      "label": "successful persistence complete",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-server-response-to-sync-a-publish",
+      "from": "sync-server-response",
+      "to": "sync-a-publish",
+      "label": "session summary JSON",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-a-publish-to-sync-a-announce",
+      "from": "sync-a-publish",
+      "to": "sync-a-announce",
+      "label": "local React state published",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-a-announce-to-sync-notification",
+      "from": "sync-a-announce",
+      "to": "sync-notification",
+      "label": "workspace-changed message",
+      "variant": "dashed",
+      "labelAt": [
+        100,
+        6053
+      ]
+    },
+    {
+      "id": "sync-notification-to-sync-b-message",
+      "from": "sync-notification",
+      "to": "sync-b-message",
+      "label": "workspace-changed message event",
+      "variant": "dashed",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-message-to-sync-b-ready",
+      "from": "sync-b-message",
+      "to": "sync-b-ready",
+      "label": "exact message triggers refresh",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-ready-to-sync-b-get",
+      "from": "sync-b-ready",
+      "to": "sync-b-get",
+      "label": "request latest session state",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-get-to-sync-api-read",
+      "from": "sync-b-get",
+      "to": "sync-api-read",
+      "label": "HTTP request + session cookie",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-api-read-to-sync-read-manifest",
+      "from": "sync-api-read",
+      "to": "sync-read-manifest",
+      "label": "read persisted state",
+      "variant": "emphasis",
+      "labelAt": [
+        960,
+        6293
+      ]
+    },
+    {
+      "id": "sync-read-manifest-to-sync-read-snapshots",
+      "from": "sync-read-manifest",
+      "to": "sync-read-snapshots",
+      "label": "validated snapshot references",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-read-snapshots-to-sync-build-summary",
+      "from": "sync-read-snapshots",
+      "to": "sync-build-summary",
+      "label": "restored workflow state",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-build-summary-to-sync-b-freshness",
+      "from": "sync-build-summary",
+      "to": "sync-b-freshness",
+      "label": "session summary JSON",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-freshness-to-sync-b-fingerprint",
+      "from": "sync-b-freshness",
+      "to": "sync-b-fingerprint",
+      "label": "eligible latest-state response",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-fingerprint-to-sync-b-publish",
+      "from": "sync-b-fingerprint",
+      "to": "sync-b-publish",
+      "label": "changed identity / revision",
+      "variant": "emphasis",
+      "labelAt": [
+        100,
+        6533
+      ]
+    },
+    {
+      "id": "sync-b-publish-to-sync-b-notice",
+      "from": "sync-b-publish",
+      "to": "sync-b-notice",
+      "label": "workspace rehydration applied",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-notice-to-sync-b-cache",
+      "from": "sync-b-notice",
+      "to": "sync-b-cache",
+      "label": "updated workspace context",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-cache-to-sync-b-preview",
+      "from": "sync-b-cache",
+      "to": "sync-b-preview",
+      "label": "changed data/version dependencies",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-preview-to-sync-b-state",
+      "from": "sync-b-preview",
+      "to": "sync-b-state",
+      "label": "refreshed view state",
+      "variant": "emphasis",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-blocked-to-sync-b-pending",
+      "from": "sync-b-blocked",
+      "to": "sync-b-pending",
+      "label": "defer latest-state read",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-pending-to-sync-b-drain",
+      "from": "sync-b-pending",
+      "to": "sync-b-drain",
+      "label": "pending refresh flag",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-drain-to-sync-b-refetch",
+      "from": "sync-b-drain",
+      "to": "sync-b-refetch",
+      "label": "operation finishes / startup drains",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-refetch-to-sync-b-deferred-state",
+      "from": "sync-b-refetch",
+      "to": "sync-b-deferred-state",
+      "label": "latest workspace summary",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-fallback-to-sync-b-visible",
+      "from": "sync-b-fallback",
+      "to": "sync-b-visible",
+      "label": "focus / visibility event",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-visible-to-sync-b-fallback-refresh",
+      "from": "sync-b-visible",
+      "to": "sync-b-fallback-refresh",
+      "label": "visible: request refresh",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-fallback-refresh-to-sync-b-fallback-get",
+      "from": "sync-b-fallback-refresh",
+      "to": "sync-b-fallback-get",
+      "label": "cookie-scoped latest-state read",
+      "labelDy": 70
+    },
+    {
+      "id": "sync-b-fallback-get-to-sync-b-fallback-apply",
+      "from": "sync-b-fallback-get",
+      "to": "sync-b-fallback-apply",
+      "label": "rehydration payload",
+      "labelDy": 70
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Runtime flow and navigation",
+      "items": [
+        "Paths 24–28 are one continuous directed cross-tab route, alternating left-to-right and right-to-left. Arrowheads define the order. Other numbered paths decompose the same named runtime objects; repeated references are not additional databases.",
+        "Main write/read cycle: Browser Tabs → Frontend State → API/Session Resolution → input/result snapshots → state.json → Session Restore → React. Notifications then request that same restore path in another tab. Cleanup and invalidation act on the saved workspace lifecycle.",
+        "This map describes the mapping workspace only. Bulk registration has a separate workspace and bulk-registration-updates channel. Matching/classification rules belong in Student Mapping Data Flow.",
+        "Lane 23 describes background refresh acceptance. Startup and successful mutations publish their accepted summaries directly; they do not all execute the refresh fingerprint gate."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Browser identity and API boundary",
+      "items": [
+        "Requests use credentials: include. The HttpOnly cookie selects the backend session; React does not read that cookie. The response exposes workspace_id, not the cookie session ID.",
+        "Secure mode cookie: __Host-student-mapping-session. Nonsecure mode: student_mapping_session. Path=/, configured SameSite, max-age 72 hours. These are code options; no environment secrets were inspected.",
+        "require_session can migrate __Host-workflow or workflow_session when no new cookie exists and the legacy session manifest is present. Ordinary GET restore does not routinely renew the cookie.",
+        "Non-GET/HEAD/OPTIONS requests pass an Origin/Sec-Fetch-Site check. Revision headers apply to persistent mutations, not read-only configuration previews or creation. Mapping responses are Cache-Control: no-store."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Frontend state is not a browser copy of all files",
+      "items": [
+        "React stores a workspace summary, busy/error/notice state and request coordination refs. Raw uploaded files and generated result workbooks are persisted on the backend.",
+        "sessionStorage stores tab-local drafts, source choices, selected group, pagination, search, filters and worksheet choices. Keys include workspace identity and applicable file/export versions. It does not transport the session cookie or broadcast drafts.",
+        "Initialization removes the old studentMappingSession key. useSessionValue catches read/parse/write errors and retains usable React values. Key changes select another stored entry; no general old-key cleanup is implemented.",
+        "Email and Class draft values can override restored settings. Cross-tab synchronization therefore does not promise identical visible dropdowns in both tabs.",
+        "Optional Web Locks: student-mapping-session-init rechecks GET before creating; student-mapping-operation coordinates writes. They are skipped when navigator.locks is unavailable."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Session resolution and concurrency",
+      "items": [
+        "Session root: backend/storage/temp/workflow_sessions/. Each session directory is named by a canonical UUID. A module-level RLock serializes access within the backend process, including different sessions. It is not a distributed or multi-worker lock.",
+        "workspace() checks expiry, loads state, compares expected revision, then touches state.json. A stale revision returns 409 before yielding state.",
+        "Persistent access sets revision to current+1 in memory. The route mutates state and builds its response; successful context exit runs sync_email_stage and save_state before the response is returned. An exception skips that normal save.",
+        "Read-only access uses persist=False: no revision increment or manifest rewrite. It still touches activity and may derive configuration in memory. A failed handler can occur after the activity touch; this is not an all-files transaction.",
+        "GET missing manifest: 404. Unreadable/invalid metadata or missing/invalid snapshot references: 409. load_state supplies workspace_id=folder name and revision=0 for older manifests until a later mutation persists them."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Snapshot and state.json contract",
+      "items": [
+        "Input keys: saved_admission_school, saved_admission_dump, saved_email_dump. Result dictionaries: admission_exports, email_exports, full_name_class_exports.",
+        "In memory an input exposes name, data and source plus optional metadata. A result workbook exposes data and count. In state.json each file becomes {\"metadata\": {...}, \"file\": \"<SHA-256>.bin\"}. The angle-bracket value describes the real naming scheme; it is not a real hash.",
+        "save_state hashes exact bytes; identical bytes reuse one file within this session. It writes missing bytes as <hash>.bin.pending, replaces <hash>.bin, then serializes the manifest to state.pending.json and replaces state.json.",
+        "Settings, revision, workspace_id and committed run/input signatures stay in the manifest. Student rows and workbook bytes are stored in referenced files, not embedded in JSON.",
+        "StoredFile loads bytes on data access. load_state checks that each referenced file resolves directly inside the session folder and exists. The loader does not recompute the content hash as an integrity check.",
+        "Temporary parsing files in backend/storage/temp/admission_mapping/ are deleted in finally. They are separate from durable workflow snapshots; the SessionFile helper is not the persisted workflow manifest."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Restore response and React publication",
+      "items": [
+        "summary() returns workspace_id, revision, files, settings, configuration, configuration_error, exports, export_versions, email_ready and run_columns.",
+        "files provides non-data metadata, sheet names and SHA-256 versions. exports provides per-workbook counts; export_versions provides hashes. run_columns describes committed mapping runs rather than current local draft selections.",
+        "Summary creation may read snapshot bytes for hashes, sheet discovery and configuration. The response omits raw bytes; previews/downloads use separate endpoints.",
+        "normalizeWorkspace ensures expected collections exist and defaults missing revision to 0. publish updates workspaceRef and React state. Background refresh compares only workspace_id and revision.",
+        "useWorkspaceMetadata caches metadata request promises by workspace/file/settings keys and discards stale entries. Result page keys include export versions so a replaced workbook can reset that page selection."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Cross-tab notification contract",
+      "items": [
+        "Channel name: student-mapping-workspace. Exact message: \"workspace-changed\". It is a notification string, not a revision object or file payload. No student data, session ID, workspace ID or revision is sent.",
+        "Successful mutation: await action → publish(data) → announce(). Replacement after an operation error also publishes then announces. Startup creation differs: await createSession → announce → drain pending reads → initial publish. A successful startup restore does not announce.",
+        "Tab B receives the exact string and invokes refreshWorkspace. It fetches GET /mapping/session using the current browser cookie, checks freshness, and applies a changed summary with an update notice.",
+        "If a local operation is active or initial workspace is unavailable, refreshPending defers the read. Startup drains pending notifications before its first publication; run() drains a pending refresh in finally.",
+        "readSequence rejects superseded refresh responses. A mutation starts by advancing it; hook cleanup advances it too. This suppresses stale local reads rather than merging their contents.",
+        "Focus and visibilitychange (when visible) invoke the same refresh path. Channel construction/posting can fail harmlessly; focus/visibility remain. There is no polling timer or backend push connection.",
+        "Hook cleanup closes the channel and removes event listeners. BroadcastChannel does not enforce concurrent writes; the backend revision gate remains the conflict check."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Recovery paths differ by caller",
+      "items": [
+        "Startup: GET first; 401, 404 or 409 permits POST to create a new empty session, optionally retaining the school query parameter. Other failures show the startup error and Retry control.",
+        "Mutation 409: GET latest workspace, publish it, show a warning, and return without retrying the action. A failed reload shows its error.",
+        "Mutation 401, or 404 whose message contains session: create replacement, publish, announce, and warn. Other operation errors remain visible while a best-effort GET attempts restoration.",
+        "Background broadcast/focus refresh errors show a warning only. They do not create a new session. Therefore a broadcast cannot recreate expired disk data.",
+        "Cookie expiry and server inactivity are separate: a 72-hour cookie can point to a deleted 24-hour-inactive session. Access touches backend activity but does not generally renew cookie expiry."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Invalidation and cleanup ordering",
+      "items": [
+        "Changed school/reference bytes, relevant reference school identity changes, and clears invalidate dependent results. Same-content uploads do not always clear results; the route compares data and relevant metadata.",
+        "Admission success clears Email dump/results/signatures and Class results/signature. Email success clears Class results/signature. Class success replaces its own result group dictionary.",
+        "sync_email_stage compares school bytes plus selected worksheet and validates saved result school/rule signatures. Incompatible results clear Email and Class data. Configuration-preview operates on a copied state; draft dropdown edits do not commit a run.",
+        "Invalidation removes in-memory references first. After a successful save publishes the new manifest, snapshot cleanup deletes .bin files that no longer have any live reference. A hash shared by retained entries stays.",
+        "Expiry uses state.json mtime, falling back to directory mtime. At >=24 hours of inactivity, canonical nonsymlink session folders can be removed. Access checks its own session; create_session scans the root for expired sessions. No scheduled sweep was found.",
+        "Reads such as preview/download count as activity. Unrelated invalid UUID folders and symlinks are excluded from session-folder cleanup."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Repository evidence",
+      "items": [
+        "Frontend: frontend/src/context/WorkspaceContext.jsx; frontend/src/services/api.js; frontend/src/services/admissionMappingApi.js.",
+        "Tab communication: frontend/src/services/cross-tab-broadcast-channel.js; frontend/src/hooks/useCrossTabWorkspaceUpdates.js.",
+        "Local state: frontend/src/hooks/useSessionValue.js; frontend/src/hooks/useWorkspaceMetadata.js; frontend/src/utils/workspace.js.",
+        "Backend identity and access: backend/app/api/session_cookie.py; backend/app/api/file_workflow_state.py.",
+        "Persistence: backend/app/api/file_workflow_session_storage.py; backend/app/utils/file_snapshots.py.",
+        "Restore/creation routes: backend/app/routes/file_workflow_routes/get_session.py; backend/app/routes/file_workflow_routes/set_session.py.",
+        "Response and invalidation: backend/app/api/file_workflow_responses.py; backend/app/api/file_workflow_invalidation.py; backend/app/services/email_mapping/email_input.py.",
+        "Input mutations: backend/app/routes/file_workflow_routes/file_inputs.py. Stage invalidation: admission_mapping.py and email_mapping.py in that same route directory.",
+        "Read-only previews: backend/app/routes/file_workflow_routes/configuration_preview.py. Cache/CORS response behavior: backend/app/main.py."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Which events actually write state.json",
+      "items": [
+        "Persistent writes use workspace(session_id, expected_revision=revision): file upload; enabled local-path load; school dump fetch; PATCH school details; clear input file; successful Admission, Email, or Full Name + Class run. Session creation calls save_state directly for an empty revision-0 workspace.",
+        "A dropdown change alone is not a saved workflow mutation. Admission uses local React useState for drafts; worksheet changes can request configuration-preview against a copied state. Successful Admission run applies its payload to admission_settings and commits selected worksheets and columns.",
+        "Email and Class draft/source selections use sessionStorage-backed UI state. Their successful run endpoints commit the chosen source and columns. Generic file-viewer worksheet/search/page changes are local UI preferences, not persisted workflow changes.",
+        "There is no manual Review update endpoint or move-between-groups control. Review outputs are written as result snapshots during mapping completion. Opening Review uses persist=False; Admission legacy cleanup/enrichment only changes transient display data.",
+        "There is no mapping reset endpoint in the assembled router. Clear-file invalidation and POST /mapping/session creation/recovery are the implemented alternatives. Bulk registration reset belongs to another workspace and is excluded."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "How each route builds the workflow state",
+      "items": [
+        "upload_file/load_path call add_snapshot: saved_admission_school or saved_admission_dump receives name, data, source and optional path metadata. Changed content/relevant school metadata clears mapping references before successful save.",
+        "fetch_dump replaces saved_admission_dump only after a successful fetch and saves admission_dump_school_index and admission_dump_source. A successful empty fetch removes the previous dump without adding a new one.",
+        "school_details replaces the dump metadata dictionary while retaining data; school-index changes invalidate all mappings. Name-only metadata changes still persist without replacing the bytes by content hash.",
+        "admission_map copies saved_state and admission_settings, applies AdmissionRunInput, calls admission_configuration(apply_settings=True), writes admission_exports, clears Email/Class, then copies the successful state back into saved_state.",
+        "email_map saves saved_email_dump, email_exports, email_result_signature and Email settings; it clears Class state. full_name_map saves full_name_class_exports, full_name_class_result_signature and Class settings.",
+        "clear_file pops the chosen FILES entry, dependent exports/signatures, and relevant selected-sheet settings. Clearing the dump also removes admission_dump_school_index. It does not replace the workspace ID with a new one."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Exact state.json field families",
+      "items": [
+        "Identity: workspace_id and revision. The folder name/cookie carry the session ID. Last activity is file mtime, not a last_activity or expires_at JSON field.",
+        "Settings object: admission_settings. Its keys can include workspace_school_index, admission_school_sheet, admission_dump_sheet, school_admission_col, school_name_col, admission_header_detection_v2, admission_dump_school_index and admission_dump_source.",
+        "Email settings: email_input_source, email_input_column, email_first_name_column. Class settings: full_name_class_input_source, full_name_class_name_column, full_name_class_class_column. These are inside admission_settings, not independent top-level settings objects.",
+        "Input references: saved_admission_school, saved_admission_dump, saved_email_dump. Each present item becomes metadata plus file. Input metadata depends on the source and may include name, source, path, school_index and school_name; data is excluded.",
+        "Result references: admission_exports, email_exports, full_name_class_exports. Each maps the real output filename to metadata/count and file. Cleared entries are removed, not replaced by invented status fields.",
+        "Signatures: admission_signature, email_source_signature, email_result_signature, full_name_class_result_signature. Python tuples serialize as JSON arrays; load_state explicitly restores admission_signature to a tuple. The legacy email_handoff_signature is removed by sync_email_stage.",
+        "No React draft, busy flag, refreshPending, readSequence, cookie secret, BroadcastChannel message, preview rows, or raw workbook bytes are introduced as manifest fields."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Manifest reference structure — illustrative, sanitized",
+      "items": [
+        "Input entry saved_admission_school contains: metadata = {name: \"sample.csv\", source: \"sample.csv\"}; file = \"<SHA-256>.bin\". Angle-bracket values are explanatory placeholders, not real identifiers.",
+        "Result entry admission_exports[\"matched.xlsx\"] contains: metadata = {count: 1}; file = \"<SHA-256>.bin\". The corresponding in-memory result dictionary has data bytes and count.",
+        "All original result filenames remain keys under their stage. Matched, Review, and Not Matched are separate workbook snapshots. Counts are metadata inside state.json; student rows remain in the .bin workbook.",
+        "Manifest content = ordinary workflow fields + converted input references + converted result references. The writer copies the existing state dictionary; it does not persist the UI summary as state.json."
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "Write ordering, failures and activity",
+      "items": [
+        "workspace() loads state under the process-local lock, rejects a stale expected revision, touches state.json mtime, then increments revision for persistent access before yielding state to the route.",
+        "The route builds its summary from in-memory state. Successful context exit then runs sync_email_stage and save_state before returning the HTTP response. Do not draw a fresh state.json reread between every mutation and its response: there is none.",
+        "save_state first ensures every referenced content-addressed .bin exists. Each new snapshot is written through .bin.pending and renamed. Only then is state.pending.json written and atomically replaced as state.json. Post-publication orphan cleanup follows.",
+        "An exception from the operation skips the normal context-exit save. The activity timestamp may already have changed. A persistence or cleanup failure is not guaranteed to roll back all disk work, so this is not a database transaction.",
+        "GET session, previews, downloads and configuration-preview use persist=False: they can touch state.json mtime but do not serialize a new manifest or increment its revision. summary/admission_configuration may derive values on the loaded state in memory; a read does not commit those derivations."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "state.json → session summary → React",
+      "items": [
+        "get_session uses workspace(persist=False), which calls load_state(folder). load_state reads UTF-8 state.json, parses JSON, validates reference shape/path/existence, creates StoredFile objects and supplies older identity/revision defaults.",
+        "summary(state, session_id) is the response builder. File references become files.school, files.dump and files.email_dump entries containing metadata, sheets and version. Result references become exports.admission/email/full_name_class counts plus export_versions hashes.",
+        "Other exact response fields are workspace_id, revision, settings, configuration, configuration_error, email_ready and run_columns. settings comes from admission_settings; configuration and run_columns are derived rather than copied as manifest fields.",
+        "React getSession() parses that JSON through request(). normalizeWorkspace defaults missing collections/revision; publish assigns workspaceRef.current and calls setWorkspace. Startup, successful operation responses and recovery publish their accepted summaries.",
+        "Background refresh additionally checks readSequence/operationActive and compares workspaceFingerprint([workspace_id, revision]). Changed accepted responses rehydrate React and display an update notice; unchanged ones preserve existing state.",
+        "Updated file/settings keys invalidate metadata caches. Preview group counts and export_versions update pages; separate preview/download requests retrieve rows or bytes. Local drafts are not serialized into the restore response."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Additional implementation evidence",
+      "items": [
+        "backend/app/routes/file_workflow_routes/admission_mapping.py: admission_map and successful saved_state replacement.",
+        "backend/app/routes/file_workflow_routes/email_mapping.py: email_map settings, CSV dump, exports and signature.",
+        "backend/app/routes/file_workflow_routes/full_name_class_mapping.py: full_name_map result/settings/signature update.",
+        "backend/app/api/file_workflow_configuration.py: admission_configuration and signature/default derivation.",
+        "backend/app/api/file_workflow_snapshots.py: add_snapshot metadata and bytes.",
+        "frontend/src/pages/AdmissionMapping/AdmissionMappingForm.jsx: local drafts, configuration preview and run submission.",
+        "backend/app/routes/file_workflow_routes/mapping_preview_results.py and frontend/src/components/common/ResultPreview.jsx: read-only review.",
+        "backend/app/routes/file_workflows.py: actual mapping router list; no reset or manual-review mutation endpoint."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Separate browser contexts and server persistence",
+      "items": [
+        "Tab A and Tab B are separate React/browser contexts with their own workspaceRef, operationActive, readSequence, refreshPending and UI drafts. Nodes are explicitly prefixed Tab A or Tab B. The browser cookie can resolve both to the same backend workspace.",
+        "Server Snapshot Files and Server state.json are database-type nodes: persisted input/result bytes and the authoritative manifest in the workflow session folder. API-type nodes read/write those server files.",
+        "BroadcastChannel is a messagebus-type node labelled Browser notification only. Its sole application message here is the string workspace-changed. Dashed notification arrows carry no workspace object, records, file bytes, revision, cookie or snapshot references.",
+        "There is no BroadcastChannel → state.json write. Tab B responds to the notification by making an HTTP GET; the API reads persisted state and creates a separate session summary response."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Connected cross-tab sequence (paths 24–28)",
+      "items": [
+        "Tab A runs an implemented persistent action. The API resolves the cookie, locks workspace access, checks the supplied revision, updates the state and builds the handler summary.",
+        "Successful workspace exit calls sync_email_stage then save_state. New snapshots are written/reused before the manifest is atomically published. Only after save_state returns does the successful response reach Tab A.",
+        "Tab A publish(data) updates its own workspaceRef and React state. Then announce() calls channel.postMessage(workspace-changed) on student-mapping-workspace.",
+        "Tab B channel.onmessage accepts only event.data === workspace-changed and invokes the latest onUpdate callback. If ready, refreshWorkspace advances readSequence and awaits getSession().",
+        "GET /mapping/session reads current state.json and referenced files through workspace(persist=False). It touches activity but does not rewrite manifest contents or increment revision. summary() returns the current UI payload.",
+        "Tab B ignores superseded responses or responses received during a local operation. If workspace_id or revision differs, publish(latest) normalizes and updates workspaceRef/setWorkspace, then shows the cross-tab update notice. If unchanged, no state publication or update notice occurs.",
+        "Dependent metadata caches and preview fetches react to changed keys/versions. SessionStorage/local drafts are not replaced by BroadcastChannel messages and may still override visible selections."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Deferred reads, unsupported channels, and failures",
+      "items": [
+        "If Tab B is busy or not initialized, refreshWorkspace sets refreshPending and returns without a GET. run() finally drains a pending refresh; startup loops over pending notifications before its first publication. Path 29 shows this alternate route.",
+        "Focus and visibilitychange call the same update callback only when the document is visible. These triggers also work when BroadcastChannel is absent, construction throws or posting fails. Path 30 shows the fallback. No timer, persisted notification queue, acknowledgement or replay is implemented.",
+        "Read-sequence equality is a local stale-response guard, not an extra server revision check. Backend expected-revision enforcement protects writes independently of Web Locks and BroadcastChannel.",
+        "A failed mutation does not follow the successful announce path. A 409 reloads and warns without automatically retrying or broadcasting. An operation recovery that creates a replacement session publishes and announces that replacement.",
+        "A background refresh error sets a warning; it does not create a new session. Startup creation announces before initial publish, unlike successful mutation publication. The main connected route deliberately shows the successful persistent mutation case.",
+        "Hook cleanup closes the browser channel, removes focus/visibility listeners and invalidates pending reads. It does not delete persisted server state."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Reading the clickable examples",
+      "items": [
+        "Click or keyboard-focus a diagram node to open its native Semantic Passport: the description says what it represents, the compact sample shows representative fields, and upstream/downstream flows describe inputs and outputs. Complete structures are in the matching example cards below. This installed schema has no custom rich JSON detail field.",
+        "All values below are synthetic. [REDACTED] hides every cookie/session credential. The example workspace_id is a made-up public workspace identity, not a cookie session ID. The CSV example contains a header only, with no student rows. Partial examples and pseudocode are explicitly marked."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: Workflow Session Cookie",
+      "items": [
+        "Represents: browser-managed session identity. Input: a server-created session ID. Output: an HttpOnly Set-Cookie response; later requests carry the cookie to require_session, which resolves the workflow folder.",
+        "Sanitized HTTPS example (Secure=true, SameSite=lax): Set-Cookie: __Host-student-mapping-session=[REDACTED]; HttpOnly; Max-Age=259200; Path=/; SameSite=lax; Secure. Request header: Cookie: __Host-student-mapping-session=[REDACTED]. The HTTP development cookie name is student_mapping_session.",
+        "React uses credentials: \"include\" and never reads the HttpOnly value. Source: backend/app/api/session_cookie.py; frontend/src/services/api.js."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: Persisted Workflow State (state.json)",
+      "items": [
+        "Represents: server-side workflow fields and snapshot references. Input: updated runtime state; save_state writes snapshot bytes first, then atomically replaces state.json. Output: load_state rebuilds fields and StoredFile handles for the response builder.",
+        "Representative state after uploading a synthetic header-only school CSV: {\"workspace_id\": \"00000000-0000-4000-8000-000000000001\", \"revision\": 1, \"admission_settings\": {\"workspace_school_index\": \"\"}, \"saved_admission_school\": {\"metadata\": {\"name\": \"example.csv\", \"source\": \"example.csv\"}, \"file\": \"d0bc2e6cca60bc71c2bf85a7bf9e15d6b372f54695647a1dc6631a0f78d1d08e.bin\"}}",
+        "The .bin name is the actual SHA-256 of the synthetic bytes b'admission_number\\n'. This state has no dump or mapping results yet. Additional input/result keys appear only when present; raw file data and cookie session IDs are not JSON fields.",
+        "Source: backend/app/api/file_workflow_session_storage.py; backend/app/api/file_workflow_state.py."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: Input File Snapshot",
+      "items": [
+        "Represents: uploaded source bytes and identifying metadata. Input: add_snapshot(state, \"school\", \"example.csv\", b\"admission_number\\n\"). Runtime Python structure: {\"name\": \"example.csv\", \"data\": b\"admission_number\\n\", \"source\": \"example.csv\"}.",
+        "Output persisted under saved_admission_school: {\"metadata\": {\"name\": \"example.csv\", \"source\": \"example.csv\"}, \"file\": \"d0bc2e6cca60bc71c2bf85a7bf9e15d6b372f54695647a1dc6631a0f78d1d08e.bin\"}",
+        "Restore resolves that reference into StoredFile(path, metadata); data is read lazily. Summary files.school includes name, source, sheets and version, without raw bytes. Source: file_workflow_snapshots.py, file_workflow_session_storage.py and file_workflow_responses.py."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: Result File Snapshot",
+      "items": [
+        "Represents: one generated result workbook and its row count. Input runtime Python structure (bytes placeholder): admission_exports[\"matched.xlsx\"] = {\"data\": b\"<generated XLSX bytes>\", \"count\": 0}. A headers-only workbook is generated for an empty result group.",
+        "Output manifest portion, with an explicitly redacted hash placeholder: {\"admission_exports\": {\"matched.xlsx\": {\"metadata\": {\"count\": 0}, \"file\": \"<SHA-256 of workbook bytes>.bin\"}}. The real file value has 64 hexadecimal characters followed by .bin.",
+        "Summary portions: {\"exports\": {\"admission\": {\"matched.xlsx\": 0}}, \"export_versions\": {\"admission\": {\"matched.xlsx\": \"<SHA-256 of workbook bytes>\"}}}. These are partial examples; other stages and groups are omitted here.",
+        "Source: backend/app/services/admission_mapping/admission_result_exports.py and admission_workbook.py; backend/app/api/file_workflow_session_storage.py."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: Session Restore Request and Response",
+      "items": [
+        "Represents: a cookie-scoped read of the latest server workspace. Input: getSession() calls request(\"/mapping/session\"). HTTP example with default API prefix: GET /api/v1/mapping/session; Cookie: __Host-student-mapping-session=[REDACTED]. No JSON body and no X-Workspace-Revision header on this GET. fetch uses method: \"GET\", credentials: \"include\".",
+        "Output: HTTP 200 application/json. Complete representative summary for the header-only school upload shown above: {\"workspace_id\": \"00000000-0000-4000-8000-000000000001\", \"revision\": 1, \"files\": {\"school\": {\"name\": \"example.csv\", \"source\": \"example.csv\", \"sheets\": [], \"version\": \"d0bc2e6cca60bc71c2bf85a7bf9e15d6b372f54695647a1dc6631a0f78d1d08e\"}}, \"settings\": {\"workspace_school_index\": \"\"}, \"configuration\": null, \"configuration_error\": null, \"exports\": {\"admission\": {}, \"email\": {}, \"full_name_class\": {}}, \"export_versions\": {\"admission\": {}, \"email\": {}, \"full_name_class\": {}}, \"email_ready\": true, \"run_columns\": {\"admission\": {}, \"email\": {}, \"full_name_class\": {}}}",
+        "files contains metadata, worksheet names and a content hash. exports contains row counts; export_versions contains workbook content hashes. configuration is null because both school and dump files are required. Missing-cookie example: HTTP 401, {\"detail\":\"Workflow session cookie is missing.\"}.",
+        "Source: frontend/src/services/admissionMappingApi.js and api.js; backend/app/api/file_workflow_responses.py and session_cookie.py."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: BroadcastChannel Message",
+      "items": [
+        "Represents: a browser notification to re-read server state. Input: successful mutation publishes its returned summary locally, then announce() posts on channel \"student-mapping-workspace\". Output: the other tab receives a MessageEvent and checks event.data.",
+        "Actual sent value: \"workspace-changed\" (a string, not an object). Sender: channel.postMessage(\"workspace-changed\"). Receiver: event.data === \"workspace-changed\". No type, payload, revision, workspace_id or student data is transmitted in this message.",
+        "The receiver invokes refreshWorkspace(); a busy/uninitialized tab sets refreshPending and defers its GET. BroadcastChannel does not persist any application state. Source: frontend/src/services/cross-tab-broadcast-channel.js, hooks/useCrossTabWorkspaceUpdates.js, context/WorkspaceContext.jsx."
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Example: React Workspace Rehydration",
+      "items": [
+        "Represents: accepting a server summary into the current tab. Input: the Session Restore Response example above. Output: normalizeWorkspace(data) preserves its fields, ensures collections exist and revision is an integer; publish sets workspaceRef.current and calls setWorkspace(next). For the complete example above, normalized output has the same structure and values.",
+        "Partial normalized example: {\"workspace_id\": \"00000000-0000-4000-8000-000000000001\", \"revision\": 1, \"files\": {\"school\": {\"name\": \"example.csv\", \"source\": \"example.csv\", \"sheets\": [], \"version\": \"d0bc2e6cca60bc71c2bf85a7bf9e15d6b372f54695647a1dc6631a0f78d1d08e\"}}, \"exports\": {\"admission\": {}, \"email\": {}, \"full_name_class\": {}}}",
+        "The comparison fingerprint is JSON.stringify([workspace_id, revision]); example: [\"00000000-0000-4000-8000-000000000001\", 1]. A refresh is discarded if its read sequence is stale or an operation is active. An unchanged fingerprint does not republish. After a changed refresh, the info notice is {\"type\":\"info\",\"text\":\"Workspace updated from another tab. Review your selections before running mapping.\"}.",
+        "Source: frontend/src/utils/workspace.js and context/WorkspaceContext.jsx. Workspace state holds summary metadata; raw snapshot bytes stay on the server."
+      ]
+    }
+  ]
+}
