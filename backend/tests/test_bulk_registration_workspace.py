@@ -167,7 +167,9 @@ class BulkWorkspaceTests(unittest.TestCase):
 
         with patch.object(conversion_routes, 'get_school', return_value={
             'school_index': '914', 'school_name': 'Test School',
-        }), patch.object(conversion_routes, 'fetch_sections', return_value=[]):
+        }), patch.object(conversion_routes, 'fetch_sections', return_value=[]), patch.object(
+            conversion_routes, 'fetch_available_usernames', return_value=['ada001'],
+        ):
             preview = convert(1)
             before = convert(2, 'csv').body
             changed = file_routes.load_stored_file(

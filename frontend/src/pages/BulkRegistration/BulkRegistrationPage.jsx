@@ -53,6 +53,8 @@ export function BulkRegistrationPage() {
         <RegistrationPreviews
           file={workflow.file} output={workflow.output} busy={busy}
           onOutputPage={workflow.showOutputPage}
+          usernameVerification={workflow.usernameVerification}
+          onVerifyUsernames={workflow.verifyUsernames}
         />
         <footer className="bulk-footer">
           <ConfirmResetBulkRegistration disabled={busy} onConfirm={() => workflow.clearWorkspace(true)} />

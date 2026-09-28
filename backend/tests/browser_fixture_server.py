@@ -49,6 +49,9 @@ def fetch_bulk_school(index):
 
 school_routes.fetch_school = fetch_bulk_school
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
+conversion_routes.fetch_available_usernames = lambda names: [
+    f'{str(name).strip().lower()}{index:03d}' for index, name in enumerate(names, start=1)
+]
 app=create_app()
 if __name__=='__main__':
     uvicorn.run(app,host='127.0.0.1',port=8123)

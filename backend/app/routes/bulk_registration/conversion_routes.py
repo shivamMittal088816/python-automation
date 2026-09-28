@@ -10,10 +10,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.mappings.bulk_registration.section import apply_section_ids
 from app.repositories.section_repository import fetch_sections
+from app.repositories.username_repository import fetch_available_usernames, fetch_existing_usernames
 from app.routes.bulk_registration.file_reading import read_frame
 from app.routes.bulk_registration.school_routes import get_school
 from app.routes.bulk_registration.workspace_access import require_revision, workspace_for, workspace_summary
-from app.services.bulk_registration import convert_frame, export_frame
+from app.services.bulk_registration import (
+    apply_available_usernames, blank_first_name_records, convert_frame, export_frame,
+    verify_generated_usernames,
+)
 from app.services.bulk_registration_storage import read_snapshot, save_workspace, workspace_locked
 
 
@@ -33,7 +37,8 @@ def paginated_summary(name, output, school, sheet, page, missing_sections):
     return {'name': name, 'row_count': len(output), 'columns': list(output.columns),
             'rows': preview.values.tolist(), 'school': school, 'page': page,
             'page_size': OUTPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages, 'sheet': sheet,
-            'missing_sections': missing_sections}
+            'missing_sections': missing_sections,
+            'blank_first_name_records': blank_first_name_records(output)}
 
 
 def read_authoritative_output(workspace_id, state):
@@ -62,6 +67,21 @@ def get_output_page(request: Request, response: Response, page: int = 1):
     return workspace_summary(visible_state)
 
 
+@router.get('/output/verify-usernames')
+@workspace_locked
+def verify_output_usernames(request: Request, response: Response):
+    workspace_id, state = workspace_for(request, response)
+    if not state.get('output'):
+        raise HTTPException(409, 'Generate the output preview before verifying usernames.')
+    _, output = read_authoritative_output(workspace_id, state)
+    usernames = output['user_name'].astype(str).str.strip().tolist()
+    try:
+        existing = fetch_existing_usernames(usernames)
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, 'Could not verify usernames. Check the database connection and try again.') from exc
+    return verify_generated_usernames(output, existing)
+
+
 @router.post('/convert')
 @workspace_locked
 def convert_workspace_file(
@@ -85,8 +105,14 @@ def convert_workspace_file(
             raise HTTPException(400, str(exc)) from exc
         try:
             missing_sections = apply_section_ids(output, fetch_sections())
+            first_names = output.loc[
+                output['FIRST NAME'].astype(str).str.strip().ne(''), 'FIRST NAME'
+            ].tolist()
+            apply_available_usernames(output, fetch_available_usernames(first_names))
         except SQLAlchemyError as exc:
-            raise HTTPException(503, 'Could not verify sections. Check the database connection and try again.') from exc
+            raise HTTPException(503, 'Could not verify sections or allocate usernames. Check the database connection and try again.') from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
         summary = paginated_summary(name, output, school, sheet, page, missing_sections)
         state.update({'school_index': school['school_index'], 'school': school,
                       'output': summary, 'outputs': {}, 'revision': expected_revision + 1})

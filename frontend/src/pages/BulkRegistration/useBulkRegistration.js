@@ -8,6 +8,7 @@ export function useBulkRegistration() {
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
   const [error, setError] = useState('');
+  const [usernameVerification, setUsernameVerification] = useState(null);
   const schoolValid = school?.school_index === schoolIndex.trim();
   const pending = useRef(false);
 
@@ -54,7 +55,10 @@ export function useBulkRegistration() {
       const result = await bulkRegistrationApi.convert({
         schoolIndex: schoolIndex.trim(), format, page, sheet: selectedSheet, revision: state.revision,
       });
-      if (format === 'preview') replace(result, { origin });
+      if (format === 'preview') {
+        replace(result, { origin });
+        setUsernameVerification(null);
+      }
       else {
         const blob = await result.blob();
         const url = URL.createObjectURL(blob);
@@ -73,6 +77,14 @@ export function useBulkRegistration() {
     pending.current = true; setWorking(true); setError('');
     const origin = beginOperation();
     try { replace(await bulkRegistrationApi.outputPage(page), { origin, announce: false }); }
+    catch (err) { await handleError(err); }
+    finally { pending.current = false; setWorking(false); }
+  }
+
+  async function verifyUsernames() {
+    if (pending.current || !output || !ready) return;
+    pending.current = true; setWorking(true); setError('');
+    try { setUsernameVerification(await bulkRegistrationApi.verifyUsernames()); }
     catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
@@ -99,10 +111,10 @@ export function useBulkRegistration() {
   }
 
   return {
-    path, file, source, schoolIndex, school, output,
+    path, file, source, schoolIndex, school, output, usernameVerification,
     ready, storageError, working, busy, error, schoolValid,
     edit,
     load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
-    verifySchool, selectSheet, convert, showOutputPage, upload, clearWorkspace,
+    verifySchool, selectSheet, convert, showOutputPage, verifyUsernames, upload, clearWorkspace,
   };
 }

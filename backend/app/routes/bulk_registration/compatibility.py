@@ -10,7 +10,10 @@ from app.routes.bulk_registration.conversion_routes import OUTPUT_PREVIEW_PAGE_S
 from app.routes.bulk_registration.file_reading import preview_file, read_frame, read_path
 from app.routes.bulk_registration.models import FilePathInput
 from app.routes.bulk_registration.school_routes import get_school
-from app.services.bulk_registration import convert_frame, export_frame
+from app.repositories.username_repository import fetch_available_usernames
+from app.services.bulk_registration import (
+    apply_available_usernames, blank_first_name_records, convert_frame, export_frame,
+)
 from app.services.bulk_registration_storage import delete_workspace
 
 
@@ -34,6 +37,10 @@ def convert_file(school_index, file_format='preview', file=None, path=None, shee
         name, data = read_path(path)
     school = get_school(school_index)
     output = convert_frame(read_frame(name, data, sheet), school)
+    first_names = output.loc[
+        output['FIRST NAME'].astype(str).str.strip().ne(''), 'FIRST NAME'
+    ].tolist()
+    apply_available_usernames(output, fetch_available_usernames(first_names))
     if file_format == 'preview':
         total_pages = max(1, ceil(len(output) / OUTPUT_PREVIEW_PAGE_SIZE))
         if page < 1 or page > total_pages:
@@ -42,7 +49,8 @@ def convert_file(school_index, file_format='preview', file=None, path=None, shee
         preview = output.iloc[start:start + OUTPUT_PREVIEW_PAGE_SIZE]
         return {'name': name, 'row_count': len(output), 'columns': list(output.columns),
                 'rows': preview.values.tolist(), 'school': school, 'page': page,
-                'page_size': OUTPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages}
+                'page_size': OUTPUT_PREVIEW_PAGE_SIZE, 'total_pages': total_pages,
+                'blank_first_name_records': blank_first_name_records(output)}
     filename = f'bulk-registration-{school_index}.{file_format}'
     exported = export_frame(output, file_format)
     media_type = ('text/csv' if file_format == 'csv' else

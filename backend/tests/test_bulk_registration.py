@@ -9,12 +9,35 @@ from fastapi import HTTPException
 
 from app.routes.bulk_registration import FilePathInput, load_path, preview_file, upload_file, clear_workspace
 from app.routes.bulk_registration import convert_file, get_school
-from app.services.bulk_registration import OUTPUT_HEADERS, FIXED_VALUES, convert_frame, export_frame, fetch_school
+from app.services.bulk_registration import (
+    OUTPUT_HEADERS, FIXED_VALUES, apply_available_usernames, blank_first_name_records,
+    convert_frame, export_frame, fetch_school, verify_generated_usernames,
+)
 from app.mappings.bulk_registration.section import apply_section_ids
+from app.repositories.username_repository import fetch_available_usernames, fetch_existing_usernames
 from fastapi import UploadFile
 
 
 class BulkRegistrationTests(unittest.TestCase):
+    def setUp(self):
+        def usernames(first_names):
+            counts = {}
+            result = []
+            for first_name in first_names:
+                prefix = first_name.strip().lower()
+                counts[prefix] = counts.get(prefix, 0) + 1
+                result.append(f'{prefix}{counts[prefix]:03d}')
+            return result
+
+        self.username_patch = patch(
+            'app.routes.bulk_registration.compatibility.fetch_available_usernames',
+            side_effect=usernames,
+        )
+        self.username_patch.start()
+
+    def tearDown(self):
+        self.username_patch.stop()
+
     def test_working_sheet_preview_and_conversion(self):
         data = BytesIO()
         with pd.ExcelWriter(data, engine='openpyxl') as writer:
@@ -87,6 +110,86 @@ class BulkRegistrationTests(unittest.TestCase):
         self.assertEqual(workbook.active.cell(2, password_column).data_type, 's')
         workbook.close()
 
+    def test_conversion_sorts_by_first_name_case_insensitively_with_blanks_last(self):
+        frame = pd.DataFrame({
+            'FIRST NAME': ['charlie', '', ' Bob ', 'alice', 'ALICE'],
+            'admission_number': ['003', '005', '002', '004', '001'],
+        })
+
+        output = convert_frame(frame, {'school_index': '42', 'school_name': 'Test School'})
+
+        self.assertEqual(output['FIRST NAME'].tolist(), ['alice', 'ALICE', ' Bob ', 'charlie', ''])
+        self.assertEqual(output['admission_number'].tolist(), ['004', '001', '002', '003', '005'])
+
+        self.assertEqual(blank_first_name_records(output), [{
+            'record': 1,
+            'last_name': '',
+            'full_name': '',
+            'admission_number': '005',
+            'status': 'Provide FIRST NAME for user_name generation',
+        }])
+
+        apply_available_usernames(output, ['alice001', 'alice002', 'bob001', 'charlie001'])
+        self.assertEqual(
+            output['user_name'].tolist(),
+            ['alice001', 'alice002', 'bob001', 'charlie001', ''],
+        )
+        with self.assertRaisesRegex(ValueError, 'exhausted values 001 through 1999'):
+            apply_available_usernames(output, ['alice001'])
+
+    def test_available_username_query_uses_lowercase_ordered_prefixes(self):
+        connection = MagicMock()
+        connection.execute.return_value.all.return_value = [('aarav001',), ('aditya002',)]
+        with patch('app.config.database.engine.connect') as connect:
+            connect.return_value.__enter__.return_value = connection
+            result = fetch_available_usernames([' Aarav ', 'ADITYA'])
+
+        self.assertEqual(result, ['aarav001', 'aditya002'])
+        statement, parameters = connection.execute.call_args.args
+        self.assertIn('BETWEEN 1 AND 1999', str(statement))
+        self.assertIn('LEFT JOIN users', str(statement))
+        self.assertEqual(parameters, {'prefix_0': 'aarav', 'prefix_1': 'aditya'})
+
+    def test_existing_username_query_uses_parameterized_in_values(self):
+        connection = MagicMock()
+        connection.execute.return_value.all.return_value = [('alice001',)]
+        with patch('app.config.database.engine.connect') as connect:
+            connect.return_value.__enter__.return_value = connection
+            result = fetch_existing_usernames(['bob001', 'alice001', 'alice001', ''])
+
+        self.assertEqual(result, {'alice001'})
+        statement, parameters = connection.execute.call_args.args
+        self.assertIn('WHERE u.user_name IN', str(statement))
+        self.assertEqual(parameters, {'usernames': ['alice001', 'bob001']})
+
+    def test_username_verification_reports_all_three_stages(self):
+        output = convert_frame(pd.DataFrame({
+            'FIRST NAME': ['Alice', 'Bob', 'Cara'],
+        }), {'school_index': '42', 'school_name': 'Test School'})
+        output['user_name'] = ['alice001', 'alice001', 'wrong001']
+
+        result = verify_generated_usernames(output, {'alice001'})
+
+        self.assertFalse(result['passed'])
+        self.assertEqual(result['checked_usernames'], 3)
+        self.assertEqual(result['stages'][0]['issues'], ['alice001'])
+        self.assertEqual(result['stages'][1]['issues'], ['alice001'])
+        self.assertEqual(result['stages'][2]['issues'], [
+            {'first_name': 'Bob', 'username': 'alice001', 'username_prefix': 'alice'},
+            {'first_name': 'Cara', 'username': 'wrong001', 'username_prefix': 'wrong'},
+        ])
+
+        passed = verify_generated_usernames(
+            output.assign(user_name=['alice001', 'bob001', 'cara001']), set(),
+        )
+        self.assertTrue(passed['passed'])
+
+        missing_suffix = verify_generated_usernames(
+            output.assign(user_name=['alice', 'bob001', 'cara001']), set(),
+        )
+        self.assertFalse(missing_suffix['stages'][2]['passed'])
+
+
     def test_gender_number_is_derived_from_gender_header(self):
         frame = pd.DataFrame({
             'Gender Number': ['99', '99', '99', '99', '99'],
@@ -147,7 +250,7 @@ class BulkRegistrationTests(unittest.TestCase):
                     self.assertEqual(response['rows'][0][13], 'My School')
 
     def test_output_preview_is_paginated(self):
-        rows = ''.join(f'Student {index},{index:03d}\n' for index in range(1, 46))
+        rows = ''.join(f'Student {index:02d},{index:03d}\n' for index in range(1, 46))
         data = ('FIRST NAME,admission_number\n' + rows).encode()
 
         with patch('app.routes.bulk_registration.school_routes.fetch_school', return_value={'school_index': '42', 'school_name': 'My School'}):
@@ -156,7 +259,7 @@ class BulkRegistrationTests(unittest.TestCase):
 
         self.assertEqual((first['page'], first['page_size'], first['total_pages']), (1, 20, 3))
         self.assertEqual(len(first['rows']), 20)
-        self.assertEqual(first['rows'][0][0], 'Student 1')
+        self.assertEqual(first['rows'][0][0], 'Student 01')
         self.assertEqual(len(third['rows']), 5)
         self.assertEqual(third['rows'][0][0], 'Student 41')
 

@@ -9,6 +9,9 @@ from sqlalchemy import text
 
 from app.mappings.bulk_registration import FIXED_VALUES, OUTPUT_HEADERS, class_id, gender_number
 from app.mappings.bulk_registration.password import generate_password
+from app.services.verify_username.database_duplicates import find_database_duplicates
+from app.services.verify_username.first_name_match import find_first_name_mismatches
+from app.services.verify_username.preview_duplicates import find_preview_duplicates
 
 
 class SchoolNotFoundError(ValueError):
@@ -38,6 +41,11 @@ def convert_frame(frame, school):
     if unknown:
         raise ValueError('Unrecognized input headers: ' + ', '.join(unknown))
     output = frame.reindex(columns=OUTPUT_HEADERS, fill_value='').fillna('').copy()
+    first_names = output['FIRST NAME'].astype(str).str.strip().str.casefold()
+    output = (output.assign(_first_name_blank=first_names.eq(''), _first_name_sort=first_names)
+                    .sort_values(['_first_name_blank', '_first_name_sort'], kind='stable')
+                    .drop(columns=['_first_name_blank', '_first_name_sort'])
+                    .reset_index(drop=True))
     output['CLASS'] = output['Class Number'].map(class_id)
     output['Gender Number'] = output['GENDER'].map(gender_number)
     # The web preview and CSV need calculated values because neither can run
@@ -48,6 +56,68 @@ def convert_frame(frame, school):
     output['School Number'] = school['school_index']
     output['SCHOOL'] = school['school_name']
     return output
+
+
+def blank_first_name_records(frame):
+    """Return identifying details for rows that cannot support username generation."""
+    blank = frame['FIRST NAME'].astype(str).str.strip().eq('')
+    records = []
+    for position, (_, row) in enumerate(frame.loc[blank].iterrows(), start=1):
+        records.append({
+            'record': position,
+            'last_name': str(row['LAST NAME']),
+            'full_name': str(row['FULL NAME']),
+            'admission_number': str(row['admission_number']),
+            'status': 'Provide FIRST NAME for user_name generation',
+        })
+    return records
+
+
+def apply_available_usernames(frame, usernames):
+    """Assign query results to sorted nonblank first-name rows."""
+    indexes = frame.index[frame['FIRST NAME'].astype(str).str.strip().ne('')]
+    if len(usernames) != len(indexes):
+        raise ValueError(
+            'Could not allocate a username for every student. '
+            'A first-name prefix may have exhausted values 001 through 1999.'
+        )
+    frame.loc[indexes, 'user_name'] = list(usernames)
+    frame.loc[frame.index.difference(indexes), 'user_name'] = ''
+
+
+def verify_generated_usernames(frame, existing_usernames):
+    """Report preview uniqueness, database availability, and prefix integrity."""
+    records = frame.loc[frame['user_name'].astype(str).str.strip().ne('')]
+    normalized = records['user_name'].astype(str).str.strip()
+    preview_duplicates = find_preview_duplicates(normalized)
+    existing = find_database_duplicates(normalized, existing_usernames)
+    prefix_mismatches = find_first_name_mismatches(records)
+
+    stages = [
+        {
+            'id': 'preview_duplicates',
+            'title': 'No duplicate usernames in preview',
+            'passed': not preview_duplicates,
+            'issues': preview_duplicates,
+        },
+        {
+            'id': 'database_duplicates',
+            'title': 'No usernames already exist in database',
+            'passed': not existing,
+            'issues': existing,
+        },
+        {
+            'id': 'first_name_match',
+            'title': 'Username prefix matches first name',
+            'passed': not prefix_mismatches,
+            'issues': prefix_mismatches,
+        },
+    ]
+    return {
+        'passed': all(stage['passed'] for stage in stages),
+        'checked_usernames': len(normalized),
+        'stages': stages,
+    }
 
 
 def export_frame(frame, file_format):

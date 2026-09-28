@@ -62,6 +62,20 @@ is derived from `GENDER` (`Male` = 1, `Female` = 2, `Others` = 3). Rows are not
 deduplicated. Identifiers stored as text retain leading zeros. Output preview is
 paginated at 20 rows per page; exports include every row. No registrations are submitted.
 
+Before saving the preview, records are sorted by `FIRST NAME` without regard to
+capitalization, with blank first names last. Each nonblank first name is trimmed,
+lowercased, and used as a username prefix. MySQL checks `users.user_name` and assigns
+the first available numbered username from `001` through `1999`; repeated first
+names receive successive available values. The resulting values replace `user_name`
+in the preview and both downloads. Blank-first-name records retain a blank username
+and appear in a warning table because a first name is required for username generation.
+
+After preview generation, **Verify usernames** runs three checks against the saved
+output: usernames must be unique within the preview, none may already exist in
+`users.user_name`, and removing the trailing numeric suffix must reproduce the
+lowercase first name. The database check uses a parameterized `IN` lookup and the
+UI reports each stage independently as passed or failed.
+
 `CLASS` is derived from the class name in `Class Number`: Class I-XII map to 0-11, followed by
 Other = 12, Nursery = 13, LKG = 14, UKG = 15, Passed Out = 16, KG = 17,
 Pre Nursery = 18, Pre Primary = 19, Pre School = 20, and Play Group = 21.
