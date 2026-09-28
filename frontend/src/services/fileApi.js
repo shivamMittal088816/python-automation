@@ -19,3 +19,14 @@ export const fileApi = {
     setTimeout(() => URL.revokeObjectURL(href), 1000);
   },
 };
+
+/*
+ * Purpose: Centralizes file operations belonging to the shared mapping workspace.
+ * It uploads, loads by path, clears, previews, and downloads each supported file kind.
+ * Preview calls accept paging/search parameters and an AbortSignal for cancellation.
+ * Download reads the server filename, creates a temporary object URL, and clicks it.
+ * Mutating methods include the current revision to protect against stale-tab writes.
+ * Used by: FileInput and ClearMappingFileButton for file lifecycle actions.
+ * FileViewer, ResultPreview, DumpDownload, and SidebarDownloadButton use read/downloads.
+ * useWorkspaceMetadata uses table previews to discover columns and mapping suggestions.
+ */

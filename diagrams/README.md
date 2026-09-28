@@ -54,3 +54,18 @@ View the existing architecture diagram:
 ```powershell
 Start-Process .\diagrams\architecture\output\architecture.html
 ```
+
+## Current source boundaries
+
+When reading or regenerating diagrams, represent frontend API calls through
+`frontend/src/services/api.js`, the focused `useWorkspace*` hooks behind
+`WorkspaceContext.jsx`, FastAPI endpoints under `backend/app/routes`, shared workflow
+support under `backend/app/api`, business logic under `backend/app/services`, and SQL
+under `backend/app/repositories`.
+
+## Bulk registration diagrams
+
+Architecture and data-flow diagrams should show bulk registration as an independent
+frontend/backend workflow with its own cookie, revisions, snapshots, conversion service,
+repository lookups, pagination, verification, and downloads. It shares the HTTP transport
+and FastAPI application but not the mapping workspace state.

@@ -46,3 +46,12 @@ def admission_map(session_id: SessionId, revision: WorkspaceRevision, payload: A
         saved_state.clear()
         saved_state.update(state)
         return result
+
+# Purpose: Admission mapping endpoints for the mapping API.
+# Its public interface includes admission_map.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.file_workflows.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

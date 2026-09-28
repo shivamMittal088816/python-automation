@@ -4,7 +4,6 @@ from itertools import chain
 import re
 import unicodedata
 
-import pandas as pd
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
 from sqlalchemy import text
@@ -205,3 +204,12 @@ def export_frame(frame, file_format):
     stream = BytesIO()
     workbook.save(stream)
     return stream.getvalue()
+
+# Purpose: Fixed output schema and conversion rules, independent of mapping state.
+# Its public interface includes SchoolNotFoundError, fetch_school, convert_frame, blank_first_name_records, blank_full_name_records, apply_available_usernames and 4 additional helpers.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.compatibility, app.routes.bulk_registration.conversion_routes, app.routes.bulk_registration.school_routes.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

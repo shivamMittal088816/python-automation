@@ -26,3 +26,12 @@ class Student(Base):
     package: Mapped[str] = mapped_column(String(100))
 
     year: Mapped[str] = mapped_column(String(20))
+
+# Purpose: Defines the application-owned students SQLAlchemy table mapping.
+# Its public interface includes Student.
+# It represents persistence structure rather than API transport validation.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.scripts.init_db.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

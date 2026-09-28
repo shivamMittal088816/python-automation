@@ -19,3 +19,12 @@ def build_full_name_class_lookup(dump):
             lookup[key].append(user)
 
     return lookup
+
+# Purpose: Normalize concatenated values and index the dump.
+# Its public interface includes value, build_full_name_class_lookup.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.full_name_class_mapping.full_name_class_mapping_pipeline, app.services.full_name_class_mapping.full_name_class_row_classification.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

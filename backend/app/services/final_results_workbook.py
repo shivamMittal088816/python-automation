@@ -62,3 +62,12 @@ def build_final_results_workbook(state):
                     if cell.data_type == 'f':
                         cell.data_type = 's'
     return output.getvalue()
+
+# Purpose: Build one final workbook without merging result schemas across mapping stages.
+# Its public interface includes FinalResultsUnavailable, final_results_filename, final_results_available, build_final_results_workbook.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.file_workflow_routes.file_downloads.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

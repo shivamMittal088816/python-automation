@@ -52,3 +52,12 @@ def email_map(session_id: SessionId,revision: WorkspaceRevision,payload: EmailIn
                                          payload.name_column,'email_first_name_school_v13',school_index)
         clear_class_mapping(state)
         return summary(state,session_id)
+
+# Purpose: Email mapping endpoints for the mapping API.
+# Its public interface includes email_map.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.file_workflows.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

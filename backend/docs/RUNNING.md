@@ -119,3 +119,17 @@ npm run build
 ```
 
 For deployment settings, see [Clone, run, test, and deploy](CLONING.md).
+
+## Code navigation after startup
+
+Browser calls can be traced from `frontend/src/services` to the endpoint decorators in
+`backend/app/routes`. FastAPI's `/docs` page describes HTTP request and response schemas;
+it does not describe the complete schema of externally managed MySQL tables. Database
+ownership is documented in [External database contract](EXTERNAL_DATABASE_SCHEMA.md).
+
+## Run and verify bulk registration
+
+After both services start, open `http://127.0.0.1:5173/bulk-reg`. Verify a numeric school
+index, upload or load a CSV/XLSX file, generate the preview, inspect the warning and
+verification sections, and download CSV or XLSX. Database-backed school, section,
+username, and email checks require the configured MySQL connection.

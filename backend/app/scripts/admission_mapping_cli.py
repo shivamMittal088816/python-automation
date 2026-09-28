@@ -60,3 +60,12 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+# Purpose: Command-line admission mapping: read inputs and write three result workbooks.
+# Its public interface includes main.
+# It supports explicit command-line or maintenance execution outside HTTP requests.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.scripts.admission_mapping.admission_file_mapping.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

@@ -73,3 +73,12 @@ def dump_overview(rows):
     else:
         student_count = len(rows)
     return table, student_count
+
+# Purpose: School identity inference and class/section statistics.
+# Its public interface includes inferred_school_index, class_section_table, school_class_statistics, dump_overview.
+# It supplies reusable helpers without owning endpoint or workflow state.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.api.file_workflow_helpers, app.routes.file_workflow_routes.source_files_preview.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

@@ -84,3 +84,19 @@ The files were subsequently moved into `diagrams/architecture/` without changing
 the specification or HTML bytes. The original automated receipt retains its
 generation-time absolute artifact path; its hash still identifies this HTML.
 The next `visual-check` run refreshes the receipt with the new location.
+
+## Current frontend workspace detail
+
+The React workspace boundary includes `context/WorkspaceContext.jsx` plus
+`hooks/useWorkspaceState.js`, `useWorkspaceInitialization.js`,
+`useWorkspaceSynchronization.js`, `useWorkspaceMutation.js`, and
+`useWorkspaceMetadata.js`. At high abstraction, these may remain one “React workspace”
+node; detailed diagrams should show the individual responsibilities.
+
+## Bulk registration architecture detail
+
+Represent `/bulk-reg` with `BulkRegistrationPage`, `useBulkRegistration`,
+`useBulkRegistrationWorkspace`, and `bulkRegistrationApi` on the frontend. The backend
+branch consists of `routes/bulk_registration`, `services/bulk_registration.py`,
+`services/bulk_registration_storage.py`, `mappings/bulk_registration`, and the school,
+section, username, and email repositories.

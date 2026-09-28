@@ -70,3 +70,12 @@ def classify_email_rows(school, lookup, email_column, name_column, school_index=
         records[position]["email_mapping_status"] = (
             "Review — Duplicate username or user ID among matched students")
     return records
+
+# Purpose: Classify email matches and flag duplicate accounts for review.
+# Its public interface includes classify_email_rows.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.email_mapping.email_mapping_pipeline.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

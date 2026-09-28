@@ -53,3 +53,12 @@ def full_name_map(session_id: SessionId,revision: WorkspaceRevision,payload: Ful
         state['full_name_class_exports']=result
         state['full_name_class_result_signature']=signature
         return summary(state,session_id)
+
+# Purpose: Full name and class mapping endpoints for the mapping API.
+# Its public interface includes full_name_map.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.file_workflows.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

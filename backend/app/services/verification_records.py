@@ -32,3 +32,12 @@ def attach_failed_records(frame, stages, column):
             ],
             'row_count': len(positions),
         }
+
+# Purpose: Attach complete output records to each failed verification stage.
+# Its public interface includes blank_value_stage, attach_failed_records.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.bulk_registration.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

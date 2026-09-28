@@ -89,3 +89,18 @@ See [verification commands](RUNNING.md#verification-commands) for tests and buil
 - Backend: 144 tests pass.
 - Frontend: 18 Playwright tests pass.
 - Frontend production build succeeds.
+
+## Current modularization follow-up
+
+The deployment split remains unchanged. Within the frontend, `WorkspaceContext.jsx` now
+delegates state, initialization, synchronization, and mutations to focused hooks. Within
+the backend, endpoint definitions remain in `app/routes`, while shared workflow HTTP
+support is isolated in `app/api`. These are internal responsibility splits and do not
+change deployment URLs or the public API.
+
+## Bulk registration deployment path
+
+The existing frontend/backend deployment split also serves `/bulk-reg`. Vite serves the
+React route, while calls under `/api/v1/bulk-reg` are handled by the same FastAPI process.
+Its cookie workspace and snapshots are independent of `/api/v1/mapping`; no additional
+frontend deployment or database schema migration is required.

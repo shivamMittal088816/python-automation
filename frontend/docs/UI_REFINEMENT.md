@@ -70,3 +70,18 @@ Click-to-select upload behavior is preserved; the upload area does not promise d
 - Existing tests exercise uploads, paths, dump fetch, admission/email/full-name mapping, downloads, locked Preview screens, filters, reload restoration, and removed routes.
 - Rendered screenshots were inspected for admission, Preview screen, school, dump, email mapping, email dump, full-name mapping, long filenames, empty and error states, and responsive layouts.
 - Screenshots are generated in `test-results/` and can be regenerated with the browser command above.
+
+## Current workspace composition
+
+The visual structure described above is preserved. `WorkspaceContext.jsx` now delegates
+session initialization, normalized state publication, cross-tab synchronization, mutation
+recovery, and metadata loading to focused hooks. This changes code ownership without
+changing page layout or the context API used by components.
+
+## Bulk registration UI
+
+The `/bulk-reg` page uses visually separated cards for school verification, input file,
+defaults, warnings, actions, username/email verification, input preview, and output
+preview. Both preview tables are collapsible and paginated, with direct page-number
+navigation. Verification results are collapsible and remain separate from the output
+preview so validation status is not visually merged with student data.

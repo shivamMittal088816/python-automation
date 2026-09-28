@@ -7,6 +7,7 @@ test('dump pages all rows and searches beyond the visible page', async ({ page }
   await page.getByLabel('Add dump file').setInputFiles({ name: 'large-dump.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(page.getByText('Loaded: large-dump.csv', { exact: true })).toBeVisible();
   const response = page.waitForResponse(r => r.url().includes('/table-previews/dump?') && r.status() === 200);
+  await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
   await page.getByRole('link', { name: 'Dump file', exact: true }).click();
   const data = await (await response).json();
   expect(data.rows).toHaveLength(50);

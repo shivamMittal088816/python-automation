@@ -73,3 +73,12 @@ def load_stored_file(payload: StoredFileInput, request: Request, response: Respo
     state['input']['metadata'] = metadata | {'sheet': result['sheet']}
     save_workspace(workspace_id, state)
     return workspace_summary(state)
+
+# Purpose: Upload, local-path, and worksheet-selection endpoints.
+# Its public interface includes get_input_page, upload_workspace_file, load_workspace_path, load_stored_file.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.__init__.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

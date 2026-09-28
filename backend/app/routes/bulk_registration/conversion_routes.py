@@ -172,3 +172,12 @@ def convert_workspace_file(
                     headers={'Content-Disposition': f'attachment; filename="{filename}"',
                              'Cache-Control': 'no-store',
                              'X-Workspace-Revision': str(state['revision'])})
+
+# Purpose: Paginated output preview and CSV/XLSX download endpoint.
+# Its public interface includes paginated_summary, read_authoritative_output, get_output_page, verify_output_usernames, verify_output_email_addresses, convert_workspace_file.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.__init__, app.routes.bulk_registration.compatibility.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

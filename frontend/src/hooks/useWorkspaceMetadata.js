@@ -45,3 +45,12 @@ export function useWorkspaceMetadata(workspace) {
     getEmailSourceMetadata: () => getMappingMetadata('school'),
   };
 }
+
+// This hook caches file information needed to configure school and dump mappings.
+// Cache keys include the workspace, file details, and settings that affect the requested data.
+// A lookup requests a one-row table preview, including the selected dump worksheet when needed.
+// Repeated lookups share the same promise so they do not send duplicate requests.
+// Changed keys and failed requests remove old cache entries so later lookups can load fresh data.
+// It returns the cache keys and lookup functions, including a shortcut for email-source information.
+// Used by WorkspaceProvider in context/WorkspaceContext.jsx to share metadata across mapping pages.
+// EmailMappingPage.jsx and FullNameClassMappingPage.jsx consume these helpers through useWorkspace().

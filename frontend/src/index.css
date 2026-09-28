@@ -24,11 +24,11 @@
   summary { @apply leading-6 text-slate-700; }
 }
 @layer components {
-  .input { @apply min-h-10 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal text-slate-900 shadow-xs transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500; }
+  .input { @apply min-h-9 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-normal text-slate-900 shadow-xs transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500; }
   .input[type='number'] { @apply max-w-28; }
   .page-title { @apply mb-2 text-2xl font-semibold tracking-tight; }
   .caption { @apply break-words text-sm leading-6 text-slate-500; }
-  .page-stack { @apply space-y-4; }
+  .page-stack { @apply space-y-3; }
 }
 
 /* Lightweight shared presentation: system fonts, static surfaces, no animation assets. */
@@ -41,12 +41,12 @@
   .caption { @apply leading-5; }
   .input { @apply border-slate-200 shadow-none; }
 }
-main > div > div > header {
-  padding: 0 0 16px 16px;
+.mapping-app main > div > div > header {
+  padding: 0 0 12px 12px;
   border-left: 3px solid #2563eb;
 }
-main header h2 { font-size: clamp(1.25rem, 2vw, 1.65rem); }
-main section {
+.mapping-app main header h2 { font-size: clamp(1.15rem, 1.8vw, 1.45rem); }
+.mapping-app main section {
   border-color: #dfe7f1;
   box-shadow: 0 2px 5px -3px #33415520;
 }
@@ -58,9 +58,9 @@ aside > div:first-child > span {
   background: linear-gradient(140deg, #2563eb, #4338ca);
 }
 aside nav summary { color: #475569; }
-main [role='tablist'] { border: 1px solid #e2e8f0; }
-main label:has(> input[type='file']) { padding-block: 20px; }
-main label:has(> input[type='file']) > span:last-of-type {
+.mapping-app main [role='tablist'] { border: 1px solid #e2e8f0; }
+.mapping-app main label:has(> input[type='file']) { padding-block: 16px; }
+.mapping-app main label:has(> input[type='file']) > span:last-of-type {
   border-radius: 5px;
   background: #eaf0f8;
   padding: 3px 8px;

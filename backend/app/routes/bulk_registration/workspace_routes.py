@@ -48,3 +48,12 @@ def reset_workspace(request: Request, response: Response, expected_revision: Rev
     new_id = create_workspace()
     set_workspace_cookie(response, new_id)
     return workspace_summary(load_workspace(new_id))
+
+# Purpose: Workspace restoration, file clearing, and complete reset endpoints.
+# Its public interface includes get_workspace, initialize_workspace, clear_file, reset_workspace.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.__init__.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

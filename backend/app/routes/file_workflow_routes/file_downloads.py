@@ -70,3 +70,12 @@ def download(session_id: SessionId,kind: str,filename: str | None=None,format: s
                 name=f'{stem}.{format}'
         mime='text/csv' if name.lower().endswith('.csv') else 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         return Response(data,media_type=mime,headers={'Content-Disposition':f"attachment; filename*=UTF-8''{quote(name)}"})
+
+# Purpose: File downloads endpoints for the mapping API.
+# Its public interface includes download_final_results, download.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.file_workflows.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

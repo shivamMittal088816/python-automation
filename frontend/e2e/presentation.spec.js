@@ -42,7 +42,7 @@ test('all active pages remain readable at desktop, tablet and mobile widths', as
     await page.setViewportSize({ width, height: 1000 });
     for (const route of ['admission_file', 'admission_preview', 'school_file', 'dump_file', 'email_mapping', 'email_dump', 'full_name_class_mapping']) {
       await page.goto(`/${route}_page`);
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Open sidebar', exact: true })).toBeVisible();
       await expect(page.getByRole('status').filter({ hasText: /Reading|Checking/ })).toHaveCount(0);
       await capture(`${route}-${width}`);
     }

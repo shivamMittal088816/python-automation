@@ -60,3 +60,19 @@ must also provide:
 The current in-process workspace lock is suitable for one backend process. It is
 not a distributed lock, so multiple production workers require coordinated locking
 before they can safely mutate the same session.
+
+## Current error propagation path
+
+`frontend/src/services/api.js` normalizes network, validation, request-ID, JSON, and blob
+responses. Focused service modules provide endpoint-specific options. Workspace mutations
+then handle revision conflicts and expired sessions before exposing notices through
+`WorkspaceContext`. Backend routes translate expected validation/database failures while
+the middleware in `app/main.py` protects unexpected internal details.
+
+## Bulk registration error handling
+
+Bulk endpoints return user-facing 400/409/413/422 errors for invalid files, pages,
+revisions, workspaces, school values, or conversion inputs, and 503 when required database
+lookups are unavailable. The frontend refreshes after revision conflicts, binds
+verification results to the current workspace revision, and displays storage failures
+instead of silently continuing with unsaved state.

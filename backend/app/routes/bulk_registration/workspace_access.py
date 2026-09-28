@@ -48,3 +48,12 @@ def workspace_summary(state):
         'schoolIndex': state.get('school_index', ''), 'school': state.get('school'),
         'output': state.get('output'),
     }
+
+# Purpose: Cookie lookup, revision checks, and browser-safe workspace responses.
+# Its public interface includes set_workspace_cookie, workspace_for, require_revision, workspace_summary.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.conversion_routes, app.routes.bulk_registration.file_routes, app.routes.bulk_registration.school_routes.
+# It also has 1 additional direct importer in the backend.
+# Tests and higher-level workflows exercise this behavior through its public callers.

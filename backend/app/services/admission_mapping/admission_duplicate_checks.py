@@ -52,3 +52,12 @@ def review_duplicate_usernames(result):
         result.at[index, "mapping_status"] = "Review"
         result.at[index, "mapping_reason"] = reason
     return result
+
+# Purpose: Remove identical school rows and review duplicate admissions after mapping.
+# Its public interface includes prepare_school_rows, review_duplicate_admissions, review_duplicate_usernames.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.admission_mapping.admission_mapping_pipeline.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

@@ -34,3 +34,12 @@ def map_students(
     result.attrs["duplicate_rows"] = duplicate_rows
     result.attrs["dropped_rows"] = dropped_rows
     return result
+
+# Purpose: Coordinate validation, deduplication, lookup and classification in the required order.
+# Its public interface includes map_students.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.scripts.admission_mapping.admission_file_mapping, app.scripts.admission_mapping_cli, app.services.admission_mapping.admission_file_mapping.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

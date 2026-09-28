@@ -503,3 +503,26 @@ API paths use `/api/v1` by default; the frontend and backend prefixes are config
 The two main run endpoints are `POST /mapping/email-mapping/run` and
 `POST /mapping/full-name-class-mapping/run`, after that prefix. Admission runs use
 `POST /mapping/admission-mapping/run`. Opening a page does not call these run endpoints.
+
+## 14. Current React workspace hook ownership
+
+`WorkspaceContext.jsx` is now a composition boundary rather than the implementation of
+every workspace concern. `useWorkspaceState` normalizes and publishes state;
+`useWorkspaceInitialization` restores or creates the cookie session;
+`useWorkspaceSynchronization` processes focus, visibility, and broadcast refreshes;
+`useWorkspaceMutation` serializes writes and recovers from revision/session failures;
+and `useWorkspaceMetadata` caches file-derived metadata. Existing context consumers do
+not need to know which hook performs the work.
+
+## 15. Bulk registration session and data flow
+
+Bulk registration does not use `WorkspaceContext` or the mapping-session cookie. Its
+own HTTP-only cookie selects a workspace stored under
+`backend/storage/bulk_registration/<uuid>/`. `useBulkRegistrationWorkspace` loads the
+browser-safe summary, keeps unsaved drafts in the current tab, rejects older responses,
+refreshes on focus or BroadcastChannel messages, and publishes accepted revisions.
+
+The backend stores uploaded input and authoritative output as referenced snapshots.
+Preview pagination reads only the requested slice, while verification and downloads read
+the complete authoritative output. Mutations require `X-Workspace-Revision`; a stale
+request receives HTTP 409 and the frontend refreshes before another attempt.

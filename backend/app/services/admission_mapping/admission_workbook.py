@@ -19,3 +19,12 @@ def build_workbook(rows: pd.DataFrame, sheet_name: str) -> dict:
                 if cell.data_type == "f":
                     cell.data_type = "s"
     return {"data": buffer.getvalue(), "count": len(rows)}
+
+# Purpose: Excel serialization shared by admission mapping and manual review.
+# Its public interface includes build_workbook.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.admission_mapping.admission_result_exports, app.services.email_mapping.email_result_exports, app.services.full_name_class_mapping.full_name_class_result_exports.
+# It also has 1 additional direct importer in the backend.
+# Tests and higher-level workflows exercise this behavior through its public callers.

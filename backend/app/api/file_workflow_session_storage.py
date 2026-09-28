@@ -83,3 +83,13 @@ def load_state(folder):
     if state.get('admission_signature'):
         state['admission_signature'] = tuple(state['admission_signature'])
     return state
+
+
+# Purpose: Persists workflow manifests and their content-addressed binary snapshots.
+# save_state hashes file bytes, writes snapshots atomically, then publishes state.json.
+# It removes unreferenced binaries and abandoned staging files after successful saves.
+# load_state validates the manifest and restores safe StoredFile objects for consumers.
+# It supplies compatibility defaults for sessions created before revision tracking.
+# Used by: file_workflow_state loads and saves data inside the workspace context manager.
+# Session creation uses save_state to publish the initial empty workspace.
+# Route and service code access restored files indirectly through workspace state.

@@ -59,3 +59,13 @@ def admission_configuration(state, apply_settings=False):
         'dump_admission':dump_admission,'username':username,'dump_first_name':dump_first_name,
         'missing_columns':missing,'admission_hits':hits,'school_rows':len(school),
         'duplicate_rows':int(school.duplicated(keep=False).sum()),'dropped_rows':int(school.duplicated(keep='first').sum())}
+
+
+# Purpose: Inspects admission inputs and builds the configuration shown before mapping.
+# suggest matches columns against normalized aliases while respecting saved preferences.
+# admission_configuration loads selected sheets and discovers required dump columns.
+# It maintains committed input signatures and invalidates results after file replacement.
+# The returned payload includes columns, worksheets, missing fields, hits, and duplicates.
+# Used by: configuration-preview and admission-mapping routes validate mapping selections.
+# Workspace summaries call it to expose current configuration and readable errors.
+# Source-file preview uses suggest when recommending school overview columns.

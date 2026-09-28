@@ -85,3 +85,12 @@ export function useBulkRegistrationWorkspace() {
 
   return { state, ready, storageError, replace, edit, refresh, beginOperation };
 }
+
+// This hook manages the saved files, school details, and output for bulk registration.
+// It loads the workspace from the server and reports whether loading succeeded or failed.
+// Unsaved edits stay in this tab and are combined with the latest saved server values.
+// Request numbers and workspace revisions prevent older responses from replacing newer state.
+// Accepted changes update the screen, clear committed drafts, and notify other tabs.
+// It refreshes on tab focus or a shared update and removes its listeners when no longer used.
+// Used by pages/BulkRegistration/useBulkRegistration.js to manage the page's workspace.
+// That hook connects these helpers to school verification, file uploads, previews, and resets.

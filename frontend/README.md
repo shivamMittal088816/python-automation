@@ -48,3 +48,25 @@ uses client-side routing.
 
 See the repository [documentation index](../backend/docs/README.md) for the full
 workflow, session, and deployment references.
+
+## API and workspace modules
+
+Pages and hooks call the focused modules in `src/services`; only `src/services/api.js`
+performs the underlying browser `fetch()`. `WorkspaceContext.jsx` preserves the public
+context API while delegating state publication, session initialization, cross-tab
+synchronization, and mutation recovery to the `useWorkspace*` hooks.
+
+The `e2e` directory contains Playwright browser tests. It is not shipped as application
+runtime code, but it protects complete React-to-FastAPI workflows and multi-tab behavior.
+
+## Bulk registration frontend flow
+
+`BulkRegistrationPage.jsx` composes the screen. `useBulkRegistration.js` handles file,
+school, sheet, conversion, paging, verification, download, clear, and reset actions.
+`useBulkRegistrationWorkspace.js` independently restores and synchronizes the bulk
+workspace. All HTTP calls are named in `services/bulkRegistrationApi.js` and pass through
+the common `services/api.js` transport.
+
+Input and output previews are paginated independently. Username and email verification
+results are tied to the current workspace ID and revision so results from an older output
+cannot remain visible after conversion or reset.

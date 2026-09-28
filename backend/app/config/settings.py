@@ -45,3 +45,12 @@ def get_settings():
 
 
 settings = get_settings()
+
+# Purpose: Loads and validates backend settings from environment variables.
+# Its public interface includes Settings, get_settings.
+# It keeps environment and infrastructure setup separate from request handling.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.api.session_cookie, app.config.database, app.main.
+# It also has 5 additional direct importers in the backend.
+# Tests and higher-level workflows exercise this behavior through its public callers.

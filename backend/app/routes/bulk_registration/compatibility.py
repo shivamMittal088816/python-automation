@@ -1,5 +1,4 @@
 """Pure helpers retained for tests and supported non-HTTP callers."""
-from io import BytesIO
 from math import ceil
 
 from fastapi import HTTPException, UploadFile
@@ -69,3 +68,12 @@ def convert_file(school_index, file_format='preview', file=None, path=None, shee
 
 def clear_workspace(workspace_id):
     delete_workspace(workspace_id)
+
+# Purpose: Pure helpers retained for tests and supported non-HTTP callers.
+# Its public interface includes upload_file, load_path, convert_file, clear_workspace.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.__init__.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

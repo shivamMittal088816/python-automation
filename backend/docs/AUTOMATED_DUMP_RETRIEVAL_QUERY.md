@@ -480,3 +480,28 @@ populate `users`, `users_schools` or `paid_users`, which must already exist for
 retrieval features. The runtime retrieval queries documented here perform no
 INSERT, UPDATE or DELETE operations. Mapping outputs and sessions are written
 to files rather than these database tables.
+
+## External schema ownership note
+
+The SQL in this guide documents the columns consumed by this service. It is not a table
+migration specification. `users`, `paid_users`, `users_schools`, and `users_sections`
+belong to the existing platform database; only the application-owned `students` ORM
+table is registered by `student_model.py`. See
+[External database contract](EXTERNAL_DATABASE_SCHEMA.md) before adding or changing a
+model.
+
+## Bulk registration database checks
+
+Bulk registration performs four database-backed operations without modifying platform
+tables:
+
+1. `users_schools` validates the school index and supplies the authoritative school name.
+2. `users_sections` supplies canonical section IDs for input section labels.
+3. `users.user_name` is left-joined by the username-allocation query so each sorted
+   lowercase first-name prefix receives its first available suffix from `001` to `1999`.
+4. `users.user_name` and `users.user_email` are queried again during explicit preview
+   verification to ensure generated values do not already exist.
+
+The repositories use parameterized SQL. These reads neither define nor migrate the
+external tables; their schema ownership remains documented in
+[External database contract](EXTERNAL_DATABASE_SCHEMA.md).

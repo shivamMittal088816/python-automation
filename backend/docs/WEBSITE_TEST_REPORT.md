@@ -137,3 +137,18 @@ The final backend verification includes the file-workflow API tests. Email tests
 follow the current single-pass first-name behavior, while full-name/class
 tests reflect eligibility independent of admission number. The unused email-mapping
 compatibility parameter was also removed.
+
+## Current status note
+
+This report preserves the test evidence from its stated dates. The current frontend also
+contains focused workspace-loading, revision-conflict, session-race, navigation, bulk
+registration, and presentation Playwright tests under `frontend/e2e`. That directory is
+test-only and is not required by the deployed runtime bundle.
+
+## Bulk registration coverage
+
+Playwright coverage under `frontend/e2e/bulk-registration.spec.js` exercises school
+verification, uploads, worksheet selection, preview generation, paging, verification,
+downloads, clearing, resetting, and multi-tab behavior. Backend tests cover conversion,
+username/email rules, output schemas, snapshot persistence, and expected database errors.
+This section describes current coverage; the dated evidence above remains unchanged.

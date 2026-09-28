@@ -40,3 +40,12 @@ def set_school(payload: SchoolInput, request: Request, response: Response, expec
                   'output': None, 'outputs': {}, 'revision': expected_revision + 1})
     save_workspace(workspace_id, state)
     return workspace_summary(state)
+
+# Purpose: School verification and authoritative school-state endpoints.
+# Its public interface includes get_school, verify_school, set_school.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.__init__, app.routes.bulk_registration.compatibility, app.routes.bulk_registration.conversion_routes.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

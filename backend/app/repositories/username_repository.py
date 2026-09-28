@@ -78,3 +78,12 @@ WHERE u.user_name IN :usernames''').bindparams(bindparam('usernames', expanding=
     with engine.connect() as connection:
         rows = connection.execute(query, {'usernames': values}).all()
     return {str(row[0]) for row in rows}
+
+# Purpose: Allocate and verify bulk-registration usernames against MySQL.
+# Its public interface includes fetch_available_usernames, fetch_existing_usernames.
+# It isolates SQL and database access from services and route handlers.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.compatibility, app.routes.bulk_registration.conversion_routes.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

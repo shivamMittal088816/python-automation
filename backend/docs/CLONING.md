@@ -140,3 +140,18 @@ Browser tests start an isolated fixture API and do not use production SQL data.
 | API cannot be reached | Verify `VITE_PRODUCTION_API_BASE_URL`, rebuild the frontend, and check the backend health route. |
 | Client route returns 404 | Configure the frontend host's SPA fallback to `index.html`. |
 | Local path loading fails | The path is resolved on the backend host and requires `ALLOW_LOCAL_FILE_PATHS=true`. |
+
+## Database ownership after cloning
+
+Cloning this repository does not create the platform `users`, `paid_users`,
+`users_schools`, or `users_sections` tables. Configure access to the existing database
+before running database-backed workflows. `backend/app/scripts/init_db.py` concerns only
+application-owned ORM metadata. See
+[External database contract](EXTERNAL_DATABASE_SCHEMA.md).
+
+## Bulk registration after cloning
+
+No separate installation is required. Start the same FastAPI and Vite services, then open
+`/bulk-reg`. Live school, section, username, and email verification needs access to the
+existing platform database. Local-path loading additionally requires
+`ALLOW_LOCAL_FILE_PATHS=true`; browser uploads do not.

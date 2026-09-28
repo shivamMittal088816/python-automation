@@ -31,3 +31,12 @@ def missing_gender_records(output):
                 'status': 'Gender is blank' if not display else 'Gender not exist',
             })
     return missing
+
+# Purpose: Map source gender labels to bulk-registration numeric identifiers.
+# Its public interface includes gender_number, missing_gender_records.
+# It keeps declarative conversion rules separate from orchestration and HTTP code.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.mappings.bulk_registration.__init__, app.routes.bulk_registration.compatibility, app.routes.bulk_registration.conversion_routes.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

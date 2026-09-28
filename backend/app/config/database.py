@@ -35,3 +35,12 @@ SessionLocal = sessionmaker(
     autoflush=False,
     autocommit=False
 )
+
+# Purpose: Configures the SQLAlchemy engine, declarative base, and database sessions.
+# Its public interface includes Base.
+# It keeps environment and infrastructure setup separate from request handling.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.config.dependencies, app.main, app.models.student_model.
+# It also has 7 additional direct importers in the backend.
+# Tests and higher-level workflows exercise this behavior through its public callers.

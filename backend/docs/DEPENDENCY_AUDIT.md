@@ -185,3 +185,17 @@ snapshots, backend test output, startup logs, security results and screenshots a
 under `logs/dependency-audit-2026-09-18/` (already ignored by the repository).
 No known security findings remain. Live MySQL integration remains unverified
 because connectivity was unavailable in both baseline and final checks.
+
+## Current status note
+
+This audit is a dated dependency snapshot and its recorded versions and results remain
+historical. Later source organization did not introduce new runtime dependencies:
+workspace responsibilities were split into existing React hooks, and backend source files
+received documentation comments only.
+
+## Bulk registration dependency surface
+
+Bulk registration uses the existing FastAPI, SQLAlchemy, pandas, openpyxl, React, and
+Playwright dependencies. CSV conversion uses pandas; XLSX parsing/export uses openpyxl;
+database verification uses SQLAlchemy repositories. The feature does not require an
+additional runtime package or frontend state-management library.

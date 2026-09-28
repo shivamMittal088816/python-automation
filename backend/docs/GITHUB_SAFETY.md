@@ -98,3 +98,19 @@ rules for private files.
 
 These checks reduce accidental publication risk; they are not a guarantee that
 arbitrary new files or historical commits contain no sensitive information.
+
+## Documentation and test files
+
+Markdown, diagrams, and Playwright files are expected repository content and should be
+reviewed like source code before pushing. `frontend/e2e` does not affect the production
+bundle, but deleting it removes browser regression coverage. Generated render output,
+temporary test folders, local environment files, and database credentials must remain
+outside commits unless a specific tracked fixture is intentional.
+
+## Bulk registration files in Git
+
+Keep the bulk-registration source under `frontend/src/pages/BulkRegistration`, its
+frontend service/hook, backend route/service/mapping modules, and E2E specifications in
+Git. Do not commit generated bulk CSV/XLSX output, temporary workspace snapshots,
+uploaded student files, database exports, or local school data unless an intentionally
+sanitized test fixture has been reviewed.

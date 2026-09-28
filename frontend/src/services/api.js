@@ -13,14 +13,14 @@ if (import.meta.env.DEV && loopbackHosts.has(apiHost.hostname) && loopbackHosts.
 }
 const host = apiHost.toString().replace(/\/$/, '');
 const prefix = (import.meta.env.VITE_API_PREFIX || '/api/v1').replace(/^\/?/, '/').replace(/\/$/, '');
-export const API_BASE_URL = `${host}${prefix}`;
+const API_BASE_URL = `${host}${prefix}`;
 
 const cleanMessage = value => String(value || '')
   .replace(/&#x20;|&#32;/gi, ' ')
   .replace(/\s+/g, ' ')
   .trim();
 
-export function apiUrl(path, params = {}) {
+function apiUrl(path, params = {}) {
   const url = new URL(`${API_BASE_URL}/${path.replace(/^\//, '')}`);
   Object.entries(params).forEach(([key, value]) => {
     if (value == null || value === '') return;
@@ -75,3 +75,14 @@ export async function request(path, { method = 'GET', body, params, signal, blob
   if (payload.success === false) throw new Error(payload.message || 'The operation could not be completed.');
   return payload;
 }
+
+/*
+ * Purpose: Provides the common HTTP foundation used by every frontend API service.
+ * It builds the API base URL from development or production environment settings.
+ * apiUrl adds query parameters while consistently handling empty and repeated values.
+ * request sends JSON or FormData, includes cookies, revisions, and cancellation signals.
+ * It normalizes backend, validation, network, blob, and invalid-response handling.
+ * Used by: admissionMappingApi, bulkRegistrationApi, emailMappingApi, and fileApi.
+ * Feature components call those focused services instead of calling request directly.
+ * This keeps transport configuration and error behavior consistent across the UI.
+ */

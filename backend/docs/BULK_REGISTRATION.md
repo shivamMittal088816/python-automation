@@ -180,3 +180,314 @@ file loading, school verification, worksheet changes, conversion, and downloads.
 The `components/` folder contains `SchoolVerification`, `RegistrationFileInput`,
 `RegistrationDefaults`, `RegistrationActions`, and `RegistrationPreviews`.
 `useBulkRegistrationWorkspace.js` remains responsible for persistence and tab sync.
+
+## Current frontend and backend ownership
+
+`frontend/src/services/bulkRegistrationApi.js` defines the bulk HTTP calls;
+`useBulkRegistrationWorkspace` owns workspace restoration/synchronization and
+`pages/BulkRegistration/useBulkRegistration.js` owns page actions. Backend decorators
+are grouped under `app/routes/bulk_registration`, conversion rules live in
+`app/services/bulk_registration.py` and `app/mappings/bulk_registration`, and database
+lookups remain in repositories.
+
+The full schema of platform-owned lookup tables is intentionally not duplicated here.
+See [External database contract](EXTERNAL_DATABASE_SCHEMA.md).
+
+## End-to-end execution flow
+
+1. `BulkRegistrationPage.jsx` renders the feature and calls
+   `useBulkRegistration()`. `useBulkRegistrationWorkspace()` restores the independent
+   cookie-selected workspace through `bulkRegistrationApi.getWorkspace()`.
+2. `bulkRegistrationApi.js` passes requests to the shared `request()` transport in
+   `frontend/src/services/api.js`. Uploads use `FormData`; mutations include the current
+   `X-Workspace-Revision`.
+3. Route modules under `backend/app/routes/bulk_registration` validate the request,
+   resolve the cookie workspace, enforce its revision, and delegate file parsing,
+   conversion, persistence, and database lookup work.
+4. `convert_workspace_file()` reads the saved input snapshot and calls
+   `convert_frame()`. The frame is sorted by first name, fixed values are applied,
+   sections are resolved, usernames are allocated, and blank emails are generated.
+5. `fetch_available_usernames()` allocates the first unused numbered username for each
+   lowercase first-name prefix. Repeated names receive successive available values from
+   the database query result. Rows with blank first names remain unallocated and are
+   returned with source row numbers for correction.
+6. `fill_blank_emails()` preserves uploaded nonblank email values. For blank values with
+   a generated username, it removes spaces and punctuation from the school name and
+   creates a lowercase `username@schoolname.com` address.
+7. The authoritative output is saved as a backend snapshot. Input and output previews
+   request individual pages; CSV and XLSX downloads always use the complete authoritative
+   frame rather than the visible page.
+8. `verify_output_usernames()` checks preview duplicates, database duplicates,
+   first-name/prefix agreement, and blanks. `verify_output_email_addresses()` checks
+   preview duplicates, database duplicates, and blanks. Failed stages include complete
+   student records so the UI can display the affected rows.
+
+```text
+BulkRegistrationPage
+    -> useBulkRegistration
+    -> bulkRegistrationApi
+    -> shared request and fetch
+    -> FastAPI bulk registration route
+    -> conversion service and mapping rules
+    -> repository SQL and snapshot storage
+    -> workspace summary or file response
+    -> hook state replacement
+    -> preview verification or download UI
+```
+
+## Repository-backed detailed flows
+
+The diagrams below use the current filenames and function names. They describe the web
+workflow implemented by the repository, not a proposed design.
+
+### 1. Module and request ownership
+
+```mermaid
+flowchart LR
+    Page[BulkRegistrationPage.jsx] --> Actions[useBulkRegistration.js]
+    Page --> Components[BulkRegistration components]
+    Actions --> Workspace[useBulkRegistrationWorkspace.js]
+    Actions --> Client[bulkRegistrationApi.js]
+    Workspace --> Client
+    Client --> Transport[services/api.js request]
+    Transport --> Router[routes/bulk_registration]
+    Router --> Reading[file_reading.py]
+    Router --> Convert[services/bulk_registration.py]
+    Router --> Storage[bulk_registration_storage.py]
+    Router --> Repositories[section username email repositories]
+    Repositories --> MySQL[(Platform MySQL)]
+    Storage --> Disk[(state.json and bin snapshots)]
+    Router --> Transport
+    Transport --> Actions
+    Actions --> Page
+```
+
+`BulkRegistrationPage.jsx` only composes sections. `useBulkRegistration.js` owns user
+operations, busy/error state, pagination requests, and revision-bound verification
+results. `useBulkRegistrationWorkspace.js` owns saved state, local drafts, stale-read
+protection, focus refresh, and BroadcastChannel updates.
+
+### 2. Workspace restoration and cross-tab synchronization
+
+```mermaid
+sequenceDiagram
+    participant Tab as Browser tab
+    participant Hook as useBulkRegistrationWorkspace
+    participant API as bulkRegistrationApi
+    participant Route as workspace_routes.py
+    participant Store as bulk_registration_storage.py
+
+    Tab->>Hook: Mount /bulk-reg
+    Hook->>API: getWorkspace()
+    API->>Route: GET /bulk-reg/workspace with cookie
+    Route->>Store: load_workspace(cookie ID)
+    alt workspace exists and is active
+        Store-->>Route: state.json
+        Route-->>Hook: browser-safe workspace summary
+    else cookie missing, expired, or invalid
+        Route-->>API: HTTP 409
+        API->>Route: POST /bulk-reg/workspace under browser lock
+        Route->>Store: create_workspace()
+        Store-->>Route: new workspace ID and revision 0
+        Route-->>Hook: summary plus HTTP-only cookie
+    end
+    Hook->>Hook: publish saved state plus local drafts
+    Hook-->>Tab: ready true
+
+    Note over Tab,Hook: Another tab mutation broadcasts a revision
+    Hook->>API: getWorkspace() on message or focus
+    Hook->>Hook: reject older revision or replaced-workspace response
+```
+
+The hook keeps path and school-index drafts only in memory. Reloading discards drafts.
+The backend manifest and snapshots survive navigation until reset or 24-hour inactivity
+expiry.
+
+### 3. School verification
+
+```mermaid
+sequenceDiagram
+    participant UI as SchoolVerification.jsx
+    participant Hook as useBulkRegistration.verifySchool
+    participant API as bulkRegistrationApi.verifySchool
+    participant Route as school_routes.set_school
+    participant Service as bulk_registration.fetch_school
+    participant DB as users_schools
+
+    UI->>Hook: Submit numeric school index
+    Hook->>API: POST /bulk-reg/school with revision
+    API->>Route: school_index plus X-Workspace-Revision
+    Route->>Service: get_school then fetch_school
+    Service->>DB: SELECT school WHERE school_id = index
+    DB-->>Service: authoritative school name
+    Service-->>Route: school_index and school_name
+    Route->>Route: clear previous output and increment revision
+    Route-->>Hook: updated workspace summary
+    Hook-->>UI: verified school badge and read-only name
+```
+
+Changing the school-index input in React immediately clears the local verified school and
+output. The backend rechecks the school during conversion and download; a saved preview
+cannot be downloaded under a different school index.
+
+### 4. File upload, local path, worksheet selection, and input pages
+
+```mermaid
+flowchart TD
+    Start[Choose CSV or XLSX] --> Source{Input method}
+    Source -->|Browser upload| Upload[POST /bulk-reg/files]
+    Source -->|Backend path| Path[POST /bulk-reg/files/path]
+    Upload --> Validate[read_frame validates extension bytes size workbook]
+    Path --> Enabled{ALLOW_LOCAL_FILE_PATHS}
+    Enabled -->|No| Forbidden[HTTP 403]
+    Enabled -->|Yes| ReadPath[read_path reads bounded bytes]
+    ReadPath --> Validate
+    Validate --> Preview[preview_file page 1 size 20]
+    Preview --> Save[save_input writes content-addressed bin and state.json]
+    Save --> Clear[Previous authoritative output is delinked]
+    Save --> UI[Input preview rendered]
+    UI --> Sheet{User changes XLSX sheet?}
+    Sheet -->|Yes| Stored[POST /bulk-reg/files/stored]
+    Stored --> Preview
+    UI --> Page[GET /bulk-reg/files/input?page=N]
+    Page --> Preview
+```
+
+CSV files have no worksheet selector. XLSX worksheet changes update the stored input
+metadata and invalidate output. Input pagination always reads the saved input snapshot;
+it does not resend the file from the browser.
+
+### 5. Preview conversion pipeline
+
+```mermaid
+flowchart TD
+    Request[POST /bulk-reg/convert format preview] --> Lock[workspace_locked]
+    Lock --> Revision[require_revision]
+    Revision --> Input[read_snapshot input]
+    Input --> Frame[read_frame selected sheet]
+    Frame --> School[get_school rechecks users_schools]
+    School --> Convert[convert_frame]
+    Convert --> Sort[Stable sort by lowercase FIRST NAME blanks last]
+    Sort --> Fields[Reindex 24 columns apply class gender password fixed values school]
+    Fields --> Sections[fetch_sections plus apply_section_ids]
+    Sections --> Names[Collect nonblank sorted FIRST NAME values]
+    Names --> UserQuery[fetch_available_usernames]
+    UserQuery --> Assign[apply_available_usernames]
+    Assign --> Emails[fill_blank_emails]
+    Emails --> Quality[Collect missing sections classes genders first/full names]
+    Quality --> Persist[Save authoritative CSV snapshot]
+    Persist --> Summary[paginated_summary page 20 rows]
+    Summary --> UI[Workspace summary updates React]
+```
+
+`convert_frame()` records each original spreadsheet row number before sorting. Warning
+tables therefore identify the original source row even though output is sorted by first
+name.
+
+### 6. Username allocation for unique and duplicate first names
+
+```mermaid
+flowchart TD
+    Rows[Sorted output rows] --> Filter{FIRST NAME blank?}
+    Filter -->|Yes| Blank[Leave user_name blank and add correction record]
+    Filter -->|No| Prefix[Trim and lowercase first name]
+    Prefix --> Rank[ROW_NUMBER per repeated prefix]
+    Rank --> Candidates[Generate suffixes 001 through 1999]
+    Candidates --> Existing[LEFT JOIN users.user_name]
+    Existing --> Available[Remove usernames already in database]
+    Available --> Match[Match prefix rank to available-number rank]
+    Match --> Assign[Assign query results to sorted nonblank rows]
+    Assign --> Count{Every row allocated?}
+    Count -->|No| Exhausted[HTTP 409 prefix exhausted]
+    Count -->|Yes| Continue[Continue email generation]
+```
+
+For two students named `aditya`, the prefix rows receive ranks 1 and 2. If `aditya001`
+and `aditya003` already exist, the first two available results are `aditya002` and
+`aditya004`. The query result order is aligned with the sorted output rows by
+`apply_available_usernames()`.
+
+### 7. Email generation
+
+```mermaid
+flowchart TD
+    Row[Output record] --> Existing{Uploaded EMAIL nonblank?}
+    Existing -->|Yes| Preserve[Preserve uploaded value]
+    Existing -->|No| Username{Generated username nonblank?}
+    Username -->|No| Leave[Leave EMAIL blank]
+    Username -->|Yes| CleanSchool[Normalize school name to ASCII lowercase letters and digits]
+    CleanSchool --> Valid{Clean school component nonblank?}
+    Valid -->|No| Error[HTTP 409 unusable school name]
+    Valid -->|Yes| Generate[username plus @ plus schoolname plus .com]
+```
+
+The same `_email_component()` cleanup is applied to the generated username and school
+component. Uploaded nonblank email text is not rewritten during generation; explicit
+verification normalizes it for comparison.
+
+### 8. Username and email verification
+
+```mermaid
+flowchart LR
+    Saved[(Authoritative output snapshot)] --> U[GET verify-usernames]
+    Saved --> E[GET verify-emails]
+    U --> U1[Duplicate usernames in preview]
+    U --> U2[Existing users.user_name values]
+    U --> U3[Numeric suffix removal matches FIRST NAME]
+    U --> U4[Blank usernames]
+    E --> E1[Duplicate emails in preview]
+    E --> E2[Existing users.user_email values]
+    E --> E3[Blank emails]
+    U1 --> Records[attach_failed_records]
+    U2 --> Records
+    U3 --> Records
+    U4 --> Records
+    E1 --> Records
+    E2 --> Records
+    E3 --> Records
+    Records --> Result[Collapsible stage results and failed-student tables]
+```
+
+Verification never checks only the visible page. Both endpoints reload the complete
+authoritative snapshot. React stores each result with `workspace_id:revision`; after a
+new conversion or reset, an old result is no longer displayed.
+
+### 9. Pagination and downloads
+
+```mermaid
+flowchart TD
+    InputPage[Input page request] --> InputSnapshot[(Saved input bin)]
+    InputSnapshot --> InputSlice[preview_file returns 20-row slice]
+    OutputPage[Output page request] --> OutputSnapshot[(Authoritative output bin)]
+    OutputSnapshot --> OutputSlice[paginated_summary returns 20-row slice]
+    CSV[Download CSV] --> OutputSnapshot
+    XLSX[Download XLSX] --> OutputSnapshot
+    OutputSnapshot --> FullExport[export_frame uses every row]
+    FullExport --> Response[Attachment response]
+```
+
+Changing a page only replaces the visible summary in the browser. CSV and XLSX generation
+reads every saved output row. XLSX uses write-only cells containing literal strings so
+identifiers, passwords, and leading zeros are preserved.
+
+### 10. Clear file, reset workspace, and expiry
+
+```mermaid
+flowchart TD
+    Action{User action} -->|Clear file| Clear[DELETE /bulk-reg/file]
+    Action -->|Reset all| Reset[DELETE /bulk-reg/workspace]
+    Clear --> Keep[Keep workspace ID and increment revision]
+    Keep --> RemoveRefs[Remove input output and referenced bins]
+    Reset --> Delete[Delete old workspace directory]
+    Delete --> Create[Create new workspace and cookie]
+    RemoveRefs --> Broadcast[Broadcast accepted revision]
+    Create --> Broadcast
+    Broadcast --> Tabs[Other tabs refresh]
+    Expiry[24 hours inactive] --> DeleteExpired[Delete expired UUID directory]
+    DeleteExpired --> Next[Next read returns missing or expired]
+    Next --> Initialize[Frontend initializes a new workspace]
+```
+
+All route operations that use snapshots run under `workspace_locked()`. This prevents a
+writer from deleting a referenced binary while a reader is still using it in the
+supported single-worker deployment.

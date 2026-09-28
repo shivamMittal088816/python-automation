@@ -86,3 +86,12 @@ def store_file(snapshot, filename=None):
 # Wrap each workbook as a disk-backed snapshot using its export filename.
 def store_exports(exports):
     return {name: store_file(snapshot, name) for name, snapshot in exports.items()}
+
+# Purpose: Generic disk-backed file snapshots shared by mapping services and the frontend.
+# Its public interface includes StoredFile, SessionFile, store_file, store_exports.
+# It supplies reusable helpers without owning endpoint or workflow state.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.api.file_workflow_session_storage.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

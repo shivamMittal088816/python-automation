@@ -30,3 +30,12 @@ for workflow_router in (
     file_downloads.router,
 ):
     router.include_router(workflow_router)
+
+# Purpose: Assemble mapping API routes, grouped by their purpose.
+# It primarily establishes package exports, constants, or module-level configuration.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.main.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

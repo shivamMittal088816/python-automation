@@ -75,3 +75,12 @@ def convert_dump(data, name, output_format, sheet=0):
                 if cell.data_type == "f":
                     cell.data_type = "s"
     return buffer.getvalue()
+
+# Purpose: Workbook conversion, status normalization and manual row transfers.
+# Its public interface includes move_students, remove_original_columns, convert_dump.
+# It supplies reusable helpers without owning endpoint or workflow state.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.api.file_workflow_helpers, app.routes.file_workflow_routes.file_downloads, app.routes.file_workflow_routes.mapping_preview_results.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

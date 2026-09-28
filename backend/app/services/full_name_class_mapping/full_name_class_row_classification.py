@@ -40,3 +40,12 @@ def classify_full_name_class_rows(school, lookup, name_column, class_column):
     rows["full_name_class_username"] = usernames
     rows["full_name_class_user_id"] = user_ids
     return rows, groups
+
+# Purpose: Classify concatenated full name and class matches and duplicate accounts.
+# Its public interface includes classify_full_name_class_rows.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.full_name_class_mapping.full_name_class_mapping_pipeline.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

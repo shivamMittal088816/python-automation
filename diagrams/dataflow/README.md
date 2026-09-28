@@ -144,3 +144,19 @@ full-canvas perceptual review are not claimed. The supplementary
 
 No application code or runtime routes were changed. Bulk registration is outside
 this mapping data-flow scope.
+
+## Current session-sync detail
+
+The context-level data flow is implemented by focused hooks: initialization restores or
+creates the cookie session, state normalizes/publishes summaries, synchronization reloads
+authoritative state after browser events, and mutation handles locking, revisions, and
+recovery. All backend calls still pass through the focused frontend services and shared
+`request()` transport.
+
+## Bulk registration data flow
+
+Bulk input bytes and metadata are saved in an independent cookie workspace. Preview
+conversion produces an authoritative sorted frame, then section, username, and email
+lookups enrich it before snapshot persistence. Page reads return slices; verification and
+downloads read the complete snapshot. Revisions and broadcast refresh prevent stale
+cross-tab responses from replacing newer state.

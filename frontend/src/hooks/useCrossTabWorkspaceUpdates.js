@@ -26,3 +26,12 @@ export function useCrossTabWorkspaceUpdates(onUpdate, onCleanup) {
 
   return useCallback(() => channel.current?.announceWorkspaceChanged(), []);
 }
+
+// This hook listens for mapping workspace changes announced by other browser tabs.
+// It calls the supplied update function when a message arrives or this tab becomes visible.
+// A window-focus listener also requests an update when the user returns to the tab.
+// References keep the update and cleanup functions current without recreating listeners.
+// When no longer used, it closes the channel, removes listeners, and calls the cleanup function.
+// It returns a function that lets this tab announce a workspace change to other tabs.
+// Used by useWorkspaceSynchronization.js to trigger a fresh read of the server workspace.
+// Its returned announcement function is also passed to initialization and mutation hooks.

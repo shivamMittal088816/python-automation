@@ -193,3 +193,17 @@ whose manual/admin use cannot be ruled out from repository callers. The tested
 CLI compatibility path remains intentionally supported. Runtime data/logs are
 preserved. No other uncertain legacy source was deleted. Temporary dependency-map,
 constraint and verification scripts are removed after report generation.
+
+## Current status note
+
+This cleanup evidence remains unchanged. Subsequent organization made
+`WorkspaceContext.jsx` a thin composition layer over focused workspace hooks and added
+module responsibility notes throughout `backend/app`. See [Module guide](MODULE_GUIDE.md)
+and [External database contract](EXTERNAL_DATABASE_SCHEMA.md) for the current structure.
+
+## Bulk registration status
+
+Bulk registration remains an active, independently routed feature. Its focused route
+modules, conversion service, storage service, mappings, repositories, frontend hooks and
+components, and E2E tests are deliberate architecture rather than migration leftovers.
+Generated snapshots and exports remain runtime data and should not be restored as source.

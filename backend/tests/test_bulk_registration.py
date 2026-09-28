@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 import pandas as pd
 from fastapi import HTTPException
 
-from app.routes.bulk_registration import FilePathInput, load_path, preview_file, upload_file, clear_workspace
+from app.routes.bulk_registration import FilePathInput, load_path, preview_file, clear_workspace
 from app.routes.bulk_registration import convert_file, get_school
 from app.services.bulk_registration import (
     OUTPUT_HEADERS, FIXED_VALUES, apply_available_usernames, blank_first_name_records,

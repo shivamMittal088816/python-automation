@@ -211,3 +211,36 @@ Tests use fixture repositories and isolated storage; they do not claim live MySQ
 or production-data acceptance. [CLEANUP_REPORT.md](CLEANUP_REPORT.md) describes the
 earlier migration cleanup checkpoint, before the Preview screen lock and Jobs/Review students
 removal.
+
+## Current frontend service and workspace split
+
+The browser API boundary is `frontend/src/services/api.js`; focused services supply the
+endpoint, HTTP method, body, query parameters, and revision. The actual `fetch()` is made
+only by the shared `request()` function.
+
+`WorkspaceContext.jsx` now composes `useWorkspaceState`, `useWorkspaceInitialization`,
+`useWorkspaceSynchronization`, `useWorkspaceMutation`, and `useWorkspaceMetadata`.
+This preserves the context consumed by pages while separating session restoration,
+state publication, cross-tab refresh, mutation recovery, and metadata caching.
+
+On the backend, `app/routes` owns HTTP endpoints, `app/api` owns shared HTTP/workflow
+support, `app/services` owns business rules, and `app/repositories` owns SQL. See
+[External database contract](EXTERNAL_DATABASE_SCHEMA.md) for table ownership.
+
+## Bulk registration flow
+
+Bulk registration is intentionally separate from the mapping workspace. The React route
+renders `BulkRegistrationPage`, whose `useBulkRegistration` hook owns user actions and
+whose `useBulkRegistrationWorkspace` hook owns restoration, drafts, revisions, and
+cross-tab refresh. Both call `bulkRegistrationApi`, which uses the shared `request()`
+transport.
+
+The backend request enters a focused module under `app/routes/bulk_registration`.
+Conversion routes call `convert_frame`, section/class/gender mappings, username and email
+repositories, and bulk snapshot storage. The saved authoritative frame is the source for
+pagination, verification, CSV, and XLSX, so changing the visible page never changes the
+downloaded data.
+
+Username verification checks preview uniqueness, existing database values, first-name
+prefix agreement, and blanks. Email verification checks preview uniqueness, existing
+database values, and blanks. Each failed stage returns the associated output records.

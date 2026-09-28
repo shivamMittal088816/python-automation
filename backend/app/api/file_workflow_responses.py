@@ -3,7 +3,7 @@ import hashlib
 from fastapi import HTTPException
 from app.api.file_workflow_constants import FILES, STAGES
 from app.api.file_workflow_configuration import admission_configuration
-from app.api.file_workflow_snapshots import read_snapshot, sheets
+from app.api.file_workflow_snapshots import sheets
 from app.utils.table_queries import preview_page_bounds, search_dump
 from app.services.email_mapping.email_input import email_input_signature
 
@@ -54,3 +54,13 @@ def page_response(rows,page,limit,query='',columns=None):
         page,pages,offset,end=1,1,0,len(results)
     return {'columns':list(rows.columns),'rows':records(results.iloc[offset:end]),'total':len(rows),
         'found':len(results),'page':page,'pages':pages,'offset':offset,'end':end}
+
+
+# Purpose: Shapes internal workflow state and tables into frontend response payloads.
+# records converts DataFrame rows into JSON-safe record dictionaries with blank nulls.
+# mapping_run_columns reports columns from committed runs rather than unsaved selections.
+# summary combines files, settings, configuration, exports, versions, and readiness.
+# page_response applies search and pagination and returns counts plus visible rows.
+# Used by: session, upload, admission, email, and full-name routes return summary results.
+# Source/result preview routes use page_response and records for their table APIs.
+# The frontend workspace context consumes these stable response structures.

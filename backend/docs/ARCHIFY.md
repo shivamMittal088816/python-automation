@@ -58,3 +58,18 @@ To disable Archify's optional update check for the current terminal:
 ```powershell
 $env:ARCHIFY_UPDATE_CHECK_DISABLED = '1'
 ```
+
+## Current project structure note
+
+Archify commands operate independently of the React/FastAPI module split. When reviewing
+an archive, use `frontend/src/services` to locate browser API calls, `backend/app/routes`
+for endpoints, and `backend/app/repositories` for database queries. External database
+ownership is recorded in [External database contract](EXTERNAL_DATABASE_SCHEMA.md).
+
+## Bulk registration in archived code
+
+When reviewing an archive, retain `frontend/src/pages/BulkRegistration`,
+`bulkRegistrationApi.js`, `useBulkRegistrationWorkspace.js`, the backend
+`routes/bulk_registration` package, `bulk_registration.py`,
+`bulk_registration_storage.py`, mappings, repositories, and tests together. Removing one
+layer leaves the `/bulk-reg` workflow incomplete.

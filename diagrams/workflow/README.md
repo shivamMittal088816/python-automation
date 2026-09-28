@@ -23,3 +23,17 @@ if ($LASTEXITCODE -ne 0) { throw 'Workflow visual check failed' }
 
 Edit the JSON source and regenerate the HTML; do not edit generated HTML or
 visual-check artifacts manually.
+
+## Current implementation note
+
+The workflow behavior is unchanged, but React workspace responsibilities are now split
+between `useWorkspaceInitialization`, `useWorkspaceState`,
+`useWorkspaceSynchronization`, and `useWorkspaceMutation`. The diagram may group these
+behind `WorkspaceContext` when showing a high-level workflow.
+
+## Bulk registration diagram scope
+
+The bulk workflow should appear as a separate branch: React bulk page and hooks ->
+`bulkRegistrationApi` -> FastAPI bulk routes -> conversion/mapping services -> repository
+lookups and bulk snapshot storage -> preview, verification, or download response. It must
+not be drawn as a child of the admission/email/full-name mapping session.

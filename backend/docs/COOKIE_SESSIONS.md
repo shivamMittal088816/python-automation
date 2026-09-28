@@ -38,3 +38,17 @@ start empty.
 
 This change does not add login or school authorization. Those remain necessary
 before exposing saved school data to untrusted production users.
+
+## Current frontend session integration
+
+Cookie-session restoration is performed by `useWorkspaceInitialization`; successful
+mutations and 409/session recovery are handled by `useWorkspaceMutation`; and refreshes
+from other tabs are handled by `useWorkspaceSynchronization`. These hooks are composed
+by `WorkspaceContext.jsx`, so pages continue to consume one stable context API.
+
+## Bulk registration cookie session
+
+Bulk registration uses a separate HTTP-only cookie and storage root from the mapping
+workflow. `useBulkRegistrationWorkspace` restores its summary, keeps drafts local to the
+tab, refreshes on focus/broadcast messages, and rejects responses from an older revision
+or replaced workspace. Clearing a file retains the workspace; reset replaces it.

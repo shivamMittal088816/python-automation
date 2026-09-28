@@ -175,3 +175,12 @@ def delete_workspace(workspace_id):
     with LOCK:
         if folder.is_dir() and not folder.is_symlink():
             shutil.rmtree(folder)
+
+# Purpose: Persistent bulk-registration manifests and file snapshots with inactivity expiry.
+# Its public interface includes workspace_locked, create_workspace, cleanup_expired_workspaces, load_workspace, read_snapshot, save_workspace and 4 additional helpers.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.routes.bulk_registration.compatibility, app.routes.bulk_registration.conversion_routes, app.routes.bulk_registration.file_routes.
+# It also has 3 additional direct importers in the backend.
+# Tests and higher-level workflows exercise this behavior through its public callers.

@@ -28,3 +28,12 @@ async def get_students(cursor: int | None = Query(None, ge=0), limit: int = Quer
         data=StudentMappingStudentDTO.transform_many(response["data"]),
         pagination=response["pagination"],
     )
+
+# Purpose: Health and existing-student browsing; file workflows use their own router.
+# Its public interface includes health, get_students.
+# It translates HTTP input into service calls and returns API responses.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.main.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

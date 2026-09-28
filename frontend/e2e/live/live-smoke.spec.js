@@ -54,7 +54,7 @@ test('live mapping with synthetic files, page navigation and cross-tab invalidat
   for (const route of ['/school_file_page', '/dump_file_page', '/admission_preview_page',
     '/email_mapping_page', '/full_name_class_mapping_page', '/mapping_rules_page']) {
     await page.goto(route);
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open sidebar', exact: true })).toBeVisible();
     await expect(page.getByRole('alert')).toHaveCount(0);
   }
   await page.goto('/admission_file_page');

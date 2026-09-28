@@ -46,7 +46,7 @@ export function AdmissionMappingForm() {
 }
 
 function UploadedDumpSchoolIndex() {
-  const { workspace, id, busy, run } = useWorkspace();
+  const { workspace, busy, run } = useWorkspace();
   const saved = workspace.files.dump.school_index || '';
   const [index, setIndex] = useState(saved);
   return <form className="mt-3 space-y-3" onSubmit={event => {

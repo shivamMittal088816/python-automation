@@ -111,3 +111,13 @@ def workspace(session_id, persist=True, expected_revision=None):
             if persist:
                 sync_email_stage(state)
                 save_state(folder, state)
+
+
+# Purpose: Owns workflow-session creation, expiry cleanup, locking, and state access.
+# It validates UUID session paths and prevents access outside the session storage root.
+# Expired sessions are safely removed, while active reads update their activity timestamp.
+# create_session builds a new workspace; workspace loads it under a process lock.
+# Mutations enforce revisions, synchronize email state, and persist only after success.
+# Used by: every mapping/file route opens state through the workspace context manager.
+# session_cookie uses session_folder to validate incoming workflow cookies.
+# Session creation routes call create_session; state tests exercise expiry and conflicts.

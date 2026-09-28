@@ -55,3 +55,13 @@ def add_snapshot(state,kind,name,data,**metadata):
     if Path(name).suffix.lower() not in ('.csv','.xlsx'):
         fail('Enter a CSV or XLSX file path.')
     state[FILES[kind]]={'name':Path(name).name,'data':data,'source':name,**metadata}
+
+
+# Purpose: Converts stored file snapshots into tables and manages worksheet selection.
+# read_snapshot temporarily materializes bytes so the admission reader can parse them.
+# sheets safely discovers XLSX worksheet names without treating CSV files as workbooks.
+# selected_sheet combines an explicit request, saved settings, and a sensible fallback.
+# add_snapshot validates file kind/extension and registers bytes plus file metadata.
+# Used by: file-input routes register uploaded, path-based, and fetched dump files.
+# Preview, mapping, download, and configuration modules read the registered snapshots.
+# Response summaries call sheets to expose available worksheet choices to the frontend.

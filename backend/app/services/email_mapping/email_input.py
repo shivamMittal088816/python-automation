@@ -39,3 +39,12 @@ def sync_email_stage(state):
         clear_class_mapping(state)
     state["email_source_signature"] = signature
     return ready
+
+# Purpose: Prepare the school file and invalidate stale email results.
+# Its public interface includes email_input_signature, sync_email_stage.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.api.file_workflow_responses, app.services.email_mapping.email_file_mapping.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

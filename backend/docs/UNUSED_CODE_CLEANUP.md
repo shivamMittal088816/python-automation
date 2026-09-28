@@ -61,3 +61,17 @@ Browser verification: eight tests passed in the full-suite run. The remaining
 email-handoff test was corrected to click the visible search-scope label and
 assert the hidden radio's checked state; its targeted rerun passed. All nine
 browser tests have now passed with the corrected fixtures and selectors.
+
+## Current status note
+
+This report remains a historical record of the cleanup it describes. Current modules now
+include end-of-file responsibility and usage notes, and the latest ownership map is in
+[Module guide](MODULE_GUIDE.md). External platform tables are documented separately in
+[External database contract](EXTERNAL_DATABASE_SCHEMA.md).
+
+## Bulk registration retention
+
+Bulk-registration routes, mappings, storage, verification services, repositories, React
+hooks, components, and Playwright tests are active code and must not be classified as
+unused merely because the admission-mapping pages do not import them. The feature is
+entered independently through `/bulk-reg` and maintains its own workspace lifecycle.

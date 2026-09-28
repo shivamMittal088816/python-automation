@@ -52,3 +52,13 @@ def set_session_cookie(response: Response, session_id: str):
                         samesite=settings.SESSION_COOKIE_SAMESITE, path='/',
                         max_age=COOKIE_MAX_AGE_SECONDS)
     response.headers['Cache-Control'] = 'no-store'
+
+
+# Purpose: Implements the cookie transport and request security for mapping sessions.
+# It selects secure or development cookie names and validates mutating-request origins.
+# require_session resolves the cookie to a valid session folder and migrates legacy cookies.
+# SessionId and WorkspaceRevision provide reusable FastAPI dependency annotations.
+# set_session_cookie writes an HTTP-only cookie and disables response caching.
+# Used by: the file-workflow router applies verify_origin to all mapping endpoints.
+# Session creation writes the cookie, while protected route functions depend on SessionId.
+# Mutating admission, email, file, and class routes depend on WorkspaceRevision.

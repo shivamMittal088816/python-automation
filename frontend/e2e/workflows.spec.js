@@ -61,6 +61,7 @@ test('email metadata is cached across navigation and refreshed after admission r
     if (new URL(request.url()).pathname.endsWith('/table-previews/school')) requests++;
   });
   async function openSidebar(group, link) {
+    await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
     await page.locator('summary').filter({ hasText: group }).click();
     await page.getByRole('link', { name: link, exact: true }).click();
   }
@@ -99,6 +100,7 @@ test('class concatenation caches both sources and dump metadata across navigatio
     for (const kind of Object.keys(requests)) if (path.endsWith(`/table-previews/${kind}`)) requests[kind]++;
   });
   async function navigate(group, link) {
+    await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
     await page.locator('summary').filter({ hasText: group }).click();
     await page.getByRole('link', { name: link, exact: true }).click();
   }
@@ -180,6 +182,7 @@ for (const kind of ['school', 'dump']) {
 
 test('email handoff, separate dump, full-name/class mapping, search and downloads', async ({ page }) => {
   await mapAdmission(page);
+  await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Download mapping results', exact: true })).toBeEnabled();
   const admissionResults = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download mapping results', exact: true }).click();
@@ -206,6 +209,7 @@ test('email handoff, separate dump, full-name/class mapping, search and download
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download CSV', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('full_name_class_matched.csv');
+  await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
   const finalDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download mapping results', exact: true }).click();
   expect((await finalDownload).suggestedFilename()).toBe('automation-914-school.xlsx');
@@ -237,6 +241,7 @@ test('email handoff, separate dump, full-name/class mapping, search and download
 
 test('removed Jobs and Review links, routes and APIs are unavailable', async ({ page, request }) => {
   await page.goto('/admission_file_page');
+  await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
   const sidebar = page.getByRole('navigation', { name: 'Main navigation' });
   await expect(sidebar.getByRole('link', { name: 'Jobs', exact: true })).toHaveCount(0);
   await expect(sidebar.getByRole('link', { name: 'Review', exact: true })).toHaveCount(0);
@@ -271,7 +276,7 @@ test('file path inputs, SQL dump loading, loading/error states and responsive na
   await page.unroute('**/table-previews/school?**');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/school_file_page');
-  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open sidebar', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'School file', exact: true })).toBeVisible();
 });
 

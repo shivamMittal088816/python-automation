@@ -61,3 +61,25 @@ uv run python -m unittest discover -s tests -p "test_*.py"
 
 See the [documentation index](docs/README.md) for architecture, workflow,
 deployment, CORS, session, query, and production-readiness references.
+
+## Backend module boundaries
+
+FastAPI route definitions are under `app/routes`. Shared cookie, workflow-state,
+snapshot, validation, and response helpers are under `app/api`. Business operations
+live in `app/services`, database access in `app/repositories`, HTTP contracts in
+`app/schemas`, and application-owned ORM tables in `app/models`.
+
+Existing platform tables are queried through repositories and are not created by this
+service. Their ownership and consumed columns are documented in
+`docs/EXTERNAL_DATABASE_SCHEMA.md`.
+
+## Bulk registration backend flow
+
+The bulk router is assembled from the modules in `app/routes/bulk_registration`.
+`file_routes.py` handles file intake and input pages, `school_routes.py` validates school
+identity, `conversion_routes.py` generates output pages, verification results, and
+downloads, and `workspace_routes.py` restores or clears the independent workspace.
+
+Routes call `app/services/bulk_registration.py` for conversion, username/email generation,
+verification, and export behavior. Snapshot persistence is isolated in
+`bulk_registration_storage.py`; SQL lookups are isolated in `app/repositories`.

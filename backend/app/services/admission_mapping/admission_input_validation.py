@@ -24,3 +24,12 @@ def validate_inputs(school, dump, school_admission_column, dump_admission_column
     conflicts = set(RESULT_COLUMNS).intersection(school.columns)
     if conflicts:
         raise ValueError(f"School file already contains output columns: {sorted(conflicts)}")
+
+# Purpose: Validate selected columns and reserve names for mapping evidence.
+# Its public interface includes validate_inputs.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.admission_mapping.admission_mapping_pipeline, app.services.email_mapping.email_result_exports.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

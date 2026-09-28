@@ -72,3 +72,14 @@ export const bulkRegistrationApi = {
     return withSessionLock(() => request('/bulk-reg/workspace', { method: 'DELETE', revision }));
   },
 };
+
+/*
+ * Purpose: Defines all backend operations for the independent bulk-registration flow.
+ * It restores or creates its workspace and serializes session recovery across tabs.
+ * It verifies schools, uploads files, loads paths, and selects workbook sheets.
+ * It generates previews/downloads and retrieves paginated input and output records.
+ * It also verifies usernames/emails and clears files or resets the whole workspace.
+ * Used by: useBulkRegistrationWorkspace for initial state and shared-tab refreshes.
+ * useBulkRegistration uses the remaining methods for page actions and verification.
+ * BulkRegistrationPage receives the resulting state and actions through those hooks.
+ */

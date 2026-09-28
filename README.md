@@ -156,3 +156,89 @@ See the [documentation index](backend/docs/README.md),
 [backend setup](backend/README.md), [frontend setup](frontend/README.md),
 [mapping workflow](backend/docs/MAPPING_WORKFLOW.md), and
 [session/data flow](backend/docs/SESSION_AND_DATA_FLOW.md).
+
+## Current code organization
+
+Frontend HTTP requests are defined in `frontend/src/services`; the shared `request()`
+function in `api.js` performs the actual `fetch()`. Mapping workspace state is composed
+by `WorkspaceContext.jsx` from focused initialization, state, synchronization, mutation,
+and metadata hooks. Backend endpoints live under `backend/app/routes`, shared HTTP/session
+support under `backend/app/api`, business rules under `backend/app/services`, and SQL under
+`backend/app/repositories`.
+
+The platform tables `users`, `paid_users`, `users_schools`, and `users_sections` are
+externally managed. See `backend/docs/EXTERNAL_DATABASE_SCHEMA.md` for the ownership
+boundary and consumed columns.
+
+## Bulk registration execution path
+
+`/bulk-reg` uses a separate workspace from student mapping. The page calls
+`useBulkRegistration`, which uses `bulkRegistrationApi` for school verification, file
+intake, worksheet selection, preview conversion, pagination, username/email checks, and
+downloads. FastAPI routes under `backend/app/routes/bulk_registration` delegate conversion
+to `backend/app/services/bulk_registration.py`, database lookups to repositories, and
+durable temporary state to `bulk_registration_storage.py`.
+
+The generated preview is sorted by first name. Usernames are allocated from lowercase
+first-name prefixes, blank emails become lowercase `username@schoolname.com` values after
+school-name cleanup, and CSV/XLSX downloads use the complete saved output.
+
+### Bulk registration flow
+
+```mermaid
+flowchart TD
+    Page[BulkRegistrationPage] --> Hook[useBulkRegistration]
+    Hook --> State[useBulkRegistrationWorkspace]
+    Hook --> Client[bulkRegistrationApi]
+    State --> Client
+    Client --> HTTP[api.js request and fetch]
+    HTTP --> Routes[FastAPI bulk registration routes]
+
+    Routes --> School[Verify school in users_schools]
+    Routes --> File[Upload CSV or XLSX and select worksheet]
+    File --> Input[(Saved input snapshot)]
+    School --> Convert[Conversion pipeline]
+    Input --> Convert
+
+    Convert --> Sort[Sort records by first name]
+    Sort --> Values[Map class gender section fixed values and passwords]
+    Values --> Usernames[Allocate available usernames from users.user_name]
+    Usernames --> Emails[Preserve or generate email addresses]
+    Emails --> Output[(Authoritative output snapshot)]
+
+    Output --> Warnings[Missing first/full names sections classes and genders]
+    Output --> Preview[Paginated output preview]
+    Output --> Verify[Username and email verification]
+    Output --> Download[Complete CSV or XLSX download]
+
+    Warnings --> Hook
+    Preview --> Hook
+    Verify --> Hook
+    Download --> Page
+```
+
+The bulk workflow proceeds as follows:
+
+1. The browser restores or creates the independent cookie-selected bulk workspace.
+2. The user verifies a numeric school index against `users_schools`.
+3. One CSV/XLSX input is uploaded or loaded from an allowed backend path. XLSX inputs
+   can select a worksheet, and the input preview is paginated independently.
+4. Preview generation validates the saved revision, reads the complete input, sorts rows
+   by lowercase first name with blanks last, and produces the fixed 24-column output.
+5. Sections are matched against `users_sections`. Repeated first names receive successive
+   available username suffixes from `001` through `1999` after checking `users.user_name`.
+6. Existing nonblank emails are preserved. Blank values with a generated username become
+   lowercase `username@schoolname.com` after removing spaces and punctuation from the
+   school-name component.
+7. The backend saves one authoritative output snapshot. Pagination returns 20-row slices,
+   while verification and downloads always use the complete saved output.
+8. Username verification checks preview duplicates, database duplicates, first-name
+   prefix agreement, and blanks. Email verification checks preview duplicates, database
+   duplicates, and blanks.
+9. Clear file retains the workspace but removes input/output. Reset replaces the entire
+   workspace. Revisions and cross-tab refresh prevent stale responses from restoring old
+   data.
+
+See [bulk registration conversion](backend/docs/BULK_REGISTRATION.md) for the detailed
+module, sequence, conversion, username, email, verification, pagination, and reset
+diagrams.

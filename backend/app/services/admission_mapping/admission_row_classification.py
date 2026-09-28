@@ -109,3 +109,12 @@ def classify_school_rows(school, school_admission_column, name_column, name_is_f
             "mapping_reason": reason,
         })
     return records
+
+# Purpose: Classify admissions by missing values, dump occurrences and first names.
+# Its public interface includes classify_school_rows.
+# It contains business behavior independently of FastAPI route registration.
+# Callers receive focused behavior without duplicating this module's implementation details.
+# Keeping this responsibility isolated makes changes easier to test and review.
+# Used by: app.services.admission_mapping.admission_mapping_pipeline.
+# Those callers use its public interface instead of reproducing its logic.
+# Tests and higher-level workflows exercise this behavior through its public callers.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DataTable } from '../../../components/tables/DataTable';
 
 export function RegistrationPreviews({ file, output, busy, onOutputPage, onInputPage, usernameVerification, onVerifyUsernames, emailVerification, onVerifyEmails }) {
   const inputPage = file?.page || 1;
@@ -57,12 +58,12 @@ export function RegistrationPreviews({ file, output, busy, onOutputPage, onInput
         <summary className="bulk-preview-title"><div><p className="bulk-card-eyebrow">Data preview</p><h2>Preview records</h2></div><div className="bulk-preview-title-controls"><span className="bulk-page-count">Page {output.page || 1} of {output.total_pages || 1}</span><span className="bulk-collapse-chevron" aria-hidden="true">&#8964;</span></div></summary>
         <p role="status" className="bulk-hint">Showing {output.rows.length} of {output.row_count} generated records.</p>
         {output.sheet !== undefined && output.sheet !== (file?.sheet ?? null) && <p className="bulk-context-note">Showing results from {output.sheet || 'the previous input'}. Generate preview to replace them with the selected worksheet. Downloads use the displayed results' worksheet.</p>}
-        <PreviewTable data={output} />
+        <DataTable variant="preview" rows={output.rows} columns={output.columns} ariaLabel="Generated registration records" />
         {(output.total_pages || 1) > 1 && <nav className="bulk-pagination" aria-label="Output preview pages"><span>Rows {(output.page - 1) * output.page_size + 1}&ndash;{Math.min(output.page * output.page_size, output.row_count)} of {output.row_count}</span><div className="bulk-pagination-controls"><button className="bulk-button bulk-secondary" disabled={busy || output.page <= 1} onClick={() => onOutputPage(output.page - 1)}>Previous</button><PageJump idPrefix="output" page={output.page} totalPages={output.total_pages} busy={busy} onGo={onOutputPage} /><button className="bulk-button bulk-secondary" disabled={busy || output.page >= output.total_pages} onClick={() => onOutputPage(output.page + 1)}>Next</button></div></nav>}
       </details>
     </>}
 
-    {file && <details className="bulk-card bulk-input-preview"><summary>Input preview <span>{file.name}</span></summary><p className="bulk-hint">Showing {file.rows.length} of {file.row_count} source records.</p><PreviewTable data={file} />{inputTotalPages > 1 && <nav className="bulk-pagination" aria-label="Input preview pages"><span>Rows {(inputPage - 1) * inputPageSize + 1}&ndash;{Math.min(inputPage * inputPageSize, file.row_count)} of {file.row_count}</span><div className="bulk-pagination-controls"><button className="bulk-button bulk-secondary" disabled={busy || inputPage <= 1} onClick={() => onInputPage(inputPage - 1)}>Previous</button><PageJump idPrefix="input" page={inputPage} totalPages={inputTotalPages} busy={busy} onGo={onInputPage} /><button className="bulk-button bulk-secondary" disabled={busy || inputPage >= inputTotalPages} onClick={() => onInputPage(inputPage + 1)}>Next</button></div></nav>}</details>}
+    {file && <details className="bulk-card bulk-input-preview"><summary>Input preview <span>{file.name}</span></summary><p className="bulk-hint">Showing {file.rows.length} of {file.row_count} source records.</p><DataTable variant="preview" rows={file.rows} columns={file.columns} ariaLabel="Input registration records" />{inputTotalPages > 1 && <nav className="bulk-pagination" aria-label="Input preview pages"><span>Rows {(inputPage - 1) * inputPageSize + 1}&ndash;{Math.min(inputPage * inputPageSize, file.row_count)} of {file.row_count}</span><div className="bulk-pagination-controls"><button className="bulk-button bulk-secondary" disabled={busy || inputPage <= 1} onClick={() => onInputPage(inputPage - 1)}>Previous</button><PageJump idPrefix="input" page={inputPage} totalPages={inputTotalPages} busy={busy} onGo={onInputPage} /><button className="bulk-button bulk-secondary" disabled={busy || inputPage >= inputTotalPages} onClick={() => onInputPage(inputPage + 1)}>Next</button></div></nav>}</details>}
   </>;
 }
 
@@ -104,7 +105,7 @@ function UsernameVerification({ verification, kind = 'username' }) {
       {!stage.passed && stage.failed_records?.row_count > 0 && <details className="bulk-failed-records">
         <summary>Preview students who failed ({stage.failed_records.row_count})</summary>
         <p className="bulk-hint">Complete student records for this check. Preview row refers to the full generated output.</p>
-        <PreviewTable data={stage.failed_records} />
+        <DataTable variant="preview" rows={stage.failed_records.rows} columns={stage.failed_records.columns} ariaLabel="Students who failed verification" />
       </details>}
     </article>)}</div>
   </details>;
@@ -120,6 +121,3 @@ function formatVerificationIssues(stage) {
   return stage.issues.join(', ');
 }
 
-function PreviewTable({ data }) {
-  return <div className="bulk-table-scroll" tabIndex={0} role="region" aria-label="Scrollable file data"><table><thead><tr>{data.columns.map((column, i) => <th scope="col" key={i}>{column}</th>)}</tr></thead><tbody>{data.rows.map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody></table></div>;
-}
