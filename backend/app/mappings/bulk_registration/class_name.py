@@ -32,24 +32,9 @@ def class_id(value):
 
 
 def missing_class_records(output):
-    """Describe students whose source class is blank or has no built-in mapping."""
-    missing = []
-    source_rows = output.attrs.get('source_row_numbers', range(2, len(output) + 2))
-    for position, value in enumerate(output['Class Number']):
-        display = str(value).strip()
-        if class_id(display) == '':
-            row = output.iloc[position]
-            full_name = str(row['FULL NAME']).strip() or ' '.join(
-                part for part in (str(row['FIRST NAME']).strip(), str(row['LAST NAME']).strip()) if part
-            )
-            missing.append({
-                'class_name': display,
-                'full_name': full_name,
-                'admission_number': str(row['admission_number']),
-                'row_number': int(source_rows[position]),
-                'status': 'Class is blank' if not display else 'Class not exist',
-            })
-    return missing
+    """Backward-compatible entry point for class preview sanity."""
+    from app.services.bulk_reg_preview_sanity.class_number import missing_class_records as check
+    return check(output)
 
 # Purpose: Map source class names to bulk-registration class identifiers.
 # Its public interface includes class_id, missing_class_records.

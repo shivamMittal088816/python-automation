@@ -4,6 +4,7 @@ import { SchoolVerification } from './components/SchoolVerification';
 import { RegistrationFileInput } from './components/RegistrationFileInput';
 import { RegistrationDefaults } from './components/RegistrationDefaults';
 import { RegistrationActions } from './components/RegistrationActions';
+import { RegistrationSanityCheck } from './components/RegistrationSanityCheck';
 import { RegistrationPreviews } from './components/RegistrationPreviews';
 import { ConfirmResetBulkRegistration } from './components/ConfirmResetBulkRegistration';
 import './bulk-registration.css';
@@ -23,6 +24,9 @@ export function BulkRegistrationPage() {
           </div>
           <Link to="/admission_file_page" className="bulk-back">
             Back to mapping <span aria-hidden="true">&#8599;</span>
+          </Link>
+          <Link to="/bulk-reg/rules" className="bulk-help-link" aria-label="Open bulk-registration sanity rules">
+            <span className="bulk-help-icon" aria-hidden="true">?</span> Sanity rules
           </Link>
         </header>
         {(error || storageError) && (
@@ -46,7 +50,9 @@ export function BulkRegistrationPage() {
         {(working || (!ready && !storageError)) && (
           <p role="status" className="bulk-notice">Working...</p>
         )}
+        <RegistrationSanityCheck source={workflow.source} busy={busy} result={workflow.sanity} onCheck={workflow.runSanityCheck} />
         <RegistrationActions
+          sanity={workflow.sanity}
           schoolValid={workflow.schoolValid} source={workflow.source}
           busy={busy} output={workflow.output} convert={workflow.convert}
         />
@@ -54,10 +60,9 @@ export function BulkRegistrationPage() {
           file={workflow.file} output={workflow.output} busy={busy}
           onOutputPage={workflow.showOutputPage}
           onInputPage={workflow.showInputPage}
-          usernameVerification={workflow.usernameVerification}
-          onVerifyUsernames={workflow.verifyUsernames}
-          emailVerification={workflow.emailVerification}
-          onVerifyEmails={workflow.verifyEmails}
+          outputVerification={workflow.outputVerification}
+          usernameChanges={workflow.usernameChanges}
+          onVerifyOutput={workflow.verifyOutput}
         />
         <footer className="bulk-footer">
           <ConfirmResetBulkRegistration disabled={busy} onConfirm={() => workflow.clearWorkspace(true)} />

@@ -13,24 +13,9 @@ def gender_number(value):
 
 
 def missing_gender_records(output):
-    """Describe students whose gender is blank or has no predefined mapping."""
-    missing = []
-    source_rows = output.attrs.get('source_row_numbers', range(2, len(output) + 2))
-    for position, value in enumerate(output['GENDER']):
-        display = str(value).strip()
-        if gender_number(display) == '':
-            row = output.iloc[position]
-            full_name = str(row['FULL NAME']).strip() or ' '.join(
-                part for part in (str(row['FIRST NAME']).strip(), str(row['LAST NAME']).strip()) if part
-            )
-            missing.append({
-                'gender': display,
-                'full_name': full_name,
-                'admission_number': str(row['admission_number']),
-                'row_number': int(source_rows[position]),
-                'status': 'Gender is blank' if not display else 'Gender not exist',
-            })
-    return missing
+    """Backward-compatible entry point for gender preview sanity."""
+    from app.services.bulk_reg_preview_sanity.gender import missing_gender_records as check
+    return check(output)
 
 # Purpose: Map source gender labels to bulk-registration numeric identifiers.
 # Its public interface includes gender_number, missing_gender_records.

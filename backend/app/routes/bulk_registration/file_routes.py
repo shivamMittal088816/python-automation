@@ -4,7 +4,9 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, Response, UploadFile
 
 from app.config.settings import settings
-from app.routes.bulk_registration.file_reading import preview_file, read_path
+from app.routes.bulk_registration.file_reading import preview_file, read_path, read_frame
+from app.services.bulk_registration_sanity import check_input
+from app.services.bulk_registration_sanity.trimmed_file import trim_input_file
 from app.routes.bulk_registration.models import FilePathInput, StoredFileInput
 from app.routes.bulk_registration.workspace_access import require_revision, workspace_for, workspace_summary
 from app.services.bulk_registration_storage import read_snapshot, save_workspace, workspace_locked
@@ -12,6 +14,17 @@ from app.services.bulk_registration_storage import read_snapshot, save_workspace
 
 router = APIRouter()
 Revision = Annotated[int, Header(alias='X-Workspace-Revision', ge=0)]
+
+
+@router.post('/files/sanity-check')
+@workspace_locked
+def sanity_check(request: Request, response: Response, expected_revision: Revision):
+    workspace_id, state = workspace_for(request, response)
+    require_revision(state, expected_revision)
+    if not state.get('input'):
+        raise HTTPException(409, 'Load an input file first.')
+    metadata, data = read_snapshot(workspace_id, state['input'])
+    return check_input(read_frame(metadata.get('name', ''), data, metadata.get('sheet')))
 
 
 @router.get('/files/input')
@@ -36,6 +49,8 @@ def upload_workspace_file(request: Request, response: Response, expected_revisio
         data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
     except (OSError, ValueError) as exc:
         raise HTTPException(400, 'Could not read the uploaded file.') from exc
+    preview_file(file.filename or '', data, sheet)
+    data = trim_input_file(file.filename or '', data)
     result = preview_file(file.filename or '', data, sheet)
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
@@ -50,6 +65,8 @@ def upload_workspace_file(request: Request, response: Response, expected_revisio
 def load_workspace_path(payload: FilePathInput, request: Request, response: Response,
                         expected_revision: Revision):
     name, data = read_path(payload.path)
+    preview_file(name, data, payload.sheet)
+    data = trim_input_file(name, data)
     result = preview_file(name, data, payload.sheet)
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)

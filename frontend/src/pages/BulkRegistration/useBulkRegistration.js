@@ -8,15 +8,16 @@ export function useBulkRegistration() {
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
   const [error, setError] = useState('');
-  const [usernameVerificationResult, setUsernameVerification] = useState(null);
-  const [emailVerificationResult, setEmailVerificationResult] = useState(null);
+  const [outputVerificationResult, setOutputVerificationResult] = useState(null);
+  const [sanityResult, setSanityResult] = useState(null);
   const verificationKey = `${state.workspace_id}:${state.revision}`;
   const currentVerificationKey = useRef(verificationKey);
   currentVerificationKey.current = verificationKey;
-  const emailVerification = emailVerificationResult?.key === verificationKey
-    ? emailVerificationResult.verification : null;
-  const usernameVerification = usernameVerificationResult?.key === verificationKey
-    ? usernameVerificationResult.verification : null;
+  const sanity = sanityResult?.key === verificationKey ? sanityResult.result : null;
+  const outputVerification = outputVerificationResult?.key === verificationKey
+    ? outputVerificationResult.verification : null;
+  const usernameChanges = outputVerificationResult?.key === verificationKey
+    ? outputVerificationResult.usernameChanges : [];
   const schoolValid = school?.school_index === schoolIndex.trim();
   const pending = useRef(false);
 
@@ -65,7 +66,7 @@ export function useBulkRegistration() {
       });
       if (format === 'preview') {
         replace(result, { origin });
-        setUsernameVerification(null);
+        setOutputVerificationResult(null);
       }
       else {
         const blob = await result.blob();
@@ -98,29 +99,32 @@ export function useBulkRegistration() {
     finally { pending.current = false; setWorking(false); }
   }
 
-  async function verifyUsernames() {
+  async function verifyOutput() {
     if (pending.current || !output || !ready) return;
     pending.current = true; setWorking(true); setError('');
-    setUsernameVerification(null);
-    const key = verificationKey;
+    setOutputVerificationResult(null);
+    const origin = beginOperation();
     try {
-      const verification = await bulkRegistrationApi.verifyUsernames();
-      if (currentVerificationKey.current === key) setUsernameVerification({ key, verification });
+      const result = await bulkRegistrationApi.verifyOutput(state.revision);
+      replace(result.workspace, { origin });
+      const key = `${result.workspace.workspace_id}:${result.workspace.revision}`;
+      setOutputVerificationResult({
+        key, verification: result.verification, usernameChanges: result.username_changes || [],
+      });
     }
     catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
 
-  async function verifyEmails() {
-    if (pending.current || !output || !ready) return;
+  async function runSanityCheck() {
+    if (pending.current || !source || !ready) return;
     pending.current = true; setWorking(true); setError('');
-    setEmailVerificationResult(null);
+    setSanityResult(null);
     const key = verificationKey;
     try {
-      const verification = await bulkRegistrationApi.verifyEmails();
-      if (currentVerificationKey.current === key) setEmailVerificationResult({ key, verification });
-    }
-    catch (err) { await handleError(err); }
+      const result = await bulkRegistrationApi.sanityCheck(state.revision);
+      if (currentVerificationKey.current === key) setSanityResult({ key, result });
+    } catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
 
@@ -146,10 +150,10 @@ export function useBulkRegistration() {
   }
 
   return {
-    path, file, source, schoolIndex, school, output, usernameVerification, emailVerification,
-    ready, storageError, working, busy, error, schoolValid,
+    path, file, source, schoolIndex, school, output, outputVerification, usernameChanges,
+    ready, storageError, working, busy, error, schoolValid, sanity, runSanityCheck,
     edit,
     load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
-    verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyUsernames, verifyEmails, upload, clearWorkspace,
+    verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyOutput, upload, clearWorkspace,
   };
 }

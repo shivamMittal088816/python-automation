@@ -5,11 +5,12 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 from fastapi import HTTPException, Response
 from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.repositories.email_repository import fetch_existing_emails
 from app.routes.bulk_registration import conversion_routes
-from app.services.bulk_registration import fill_blank_emails, verify_output_emails
+from app.services.bulk_registration import (
+    fill_blank_emails, refresh_generated_emails, verify_output_emails,
+)
 from tests import test_bulk_registration_workspace as workspace_tests
 
 
@@ -85,35 +86,90 @@ class EmailVerificationTests(unittest.TestCase):
             fill_blank_emails(frame, 'विद्यालय')
         pd.testing.assert_frame_equal(frame, original)
 
+    def test_refreshes_only_email_positions_generated_from_blank_input(self):
+        frame = pd.DataFrame({
+            'EMAIL': ['old001@testschool.com', 'supplied@example.org'],
+            'user_name': ['new002', 'new003'],
+        })
+
+        refresh_generated_emails(frame, 'Test School', [0])
+
+        self.assertEqual(frame['EMAIL'].tolist(), [
+            'new002@testschool.com', 'supplied@example.org',
+        ])
+
 
 class EmailVerificationRouteTests(unittest.TestCase):
     setUp = workspace_tests.BulkWorkspaceTests.setUp
     request = workspace_tests.BulkWorkspaceTests.request
 
     def test_missing_preview_is_rejected_without_database_lookup(self):
-        with patch.object(conversion_routes, 'fetch_existing_emails') as fetch:
-            with self.assertRaises(HTTPException) as error:
-                conversion_routes.verify_output_email_addresses(self.request(), Response())
+        with self.assertRaises(HTTPException) as error:
+            conversion_routes.verify_bulk_registration_output(self.request(), Response(), 0)
         self.assertEqual(error.exception.status_code, 409)
-        fetch.assert_not_called()
 
-    def test_checks_full_saved_output_and_reports_database_failure(self):
+    def test_checks_full_saved_output_for_blank_and_duplicate_values(self):
         from app.services import bulk_registration_storage as storage
-        frame = pd.DataFrame({'EMAIL': ['ada@school.com'] * 21 + ['existing@school.com']})
+        frame = pd.DataFrame({
+            'FIRST NAME': ['Ada'] * 21 + ['Blank'],
+            'LAST NAME': [''] * 22,
+            'FULL NAME': ['Ada Student'] * 21 + ['Blank Student'],
+            'Section': ['A'] * 22,
+            'Class Number': ['Class I'] * 22,
+            'GENDER': ['Female'] * 22,
+            'user_name': ['ada001'] * 21 + [''],
+            'EMAIL': ['ada@school.com'] * 21 + ['existing@school.com'],
+            'admission_number': [str(index) for index in range(22)],
+        })
         state = storage.load_workspace(self.workspace_id)
         state['output'] = {'row_count': 22, 'rows': [['ada@school.com']] * 20}
         storage.save_workspace(self.workspace_id, state, {
             '_output_authoritative': ({'name': 'output.csv'}, frame.to_csv(index=False).encode()),
         })
-        with patch.object(conversion_routes, 'fetch_existing_emails', return_value={'existing@school.com'}) as fetch:
-            result = conversion_routes.verify_output_email_addresses(self.request(), Response())
-        self.assertEqual(len(fetch.call_args.args[0]), 22)
-        self.assertEqual(result['checked_emails'], 22)
-        self.assertEqual(result['stages'][0]['issues'], ['ada@school.com'])
-        self.assertEqual(result['stages'][1]['issues'], ['existing@school.com'])
-        self.assertEqual(result['stages'][0]['failed_records']['row_count'], 21)
-        self.assertEqual(result['stages'][1]['failed_records']['rows'], [[22, 'existing@school.com']])
-        with patch.object(conversion_routes, 'fetch_existing_emails', side_effect=SQLAlchemyError('offline')):
-            with self.assertRaises(HTTPException) as error:
-                conversion_routes.verify_output_email_addresses(self.request(), Response())
-        self.assertEqual(error.exception.status_code, 503)
+        with (
+            patch.object(conversion_routes, 'fetch_existing_usernames', return_value=set()),
+            patch.object(conversion_routes, 'fetch_existing_emails', return_value=set()),
+            patch.object(conversion_routes, 'fetch_available_usernames',
+                         side_effect=lambda names: [f'{name.lower()}{index:03d}' for index, name in enumerate(names, 1)]),
+        ):
+            result = conversion_routes.verify_bulk_registration_output(self.request(), Response(), 0)
+        self.assertEqual(result['verification']['checked_records'], 22)
+        self.assertEqual(result['verification']['stages'][0]['issues'], [])
+        self.assertEqual(result['verification']['stages'][2]['failed_records']['row_count'], 0)
+        self.assertEqual(result['verification']['stages'][3]['failed_records']['row_count'], 21)
+        self.assertEqual(len(result['username_changes']), 21)
+
+    def test_verify_refreshes_generated_email_but_preserves_supplied_email(self):
+        from app.services import bulk_registration_storage as storage
+        frame = pd.DataFrame({
+            'FIRST NAME': ['Ada', 'Bob'], 'LAST NAME': ['', ''],
+            'FULL NAME': ['Ada Student', 'Bob Student'], 'Section': ['A', 'A'],
+            'Class Number': ['Class I', 'Class I'], 'GENDER': ['Female', 'Male'],
+            'user_name': ['ada001', 'bob001'],
+            'EMAIL': ['ada001@testschool.com', 'personal@example.org'],
+            'admission_number': ['1', '2'],
+        })
+        state = storage.load_workspace(self.workspace_id)
+        state['output'] = {'row_count': 2, 'rows': []}
+        metadata = {
+            'name': 'output.csv', 'school': {'school_name': 'Test School'},
+            'generated_email_positions': [0],
+        }
+        storage.save_workspace(self.workspace_id, state, {
+            '_output_authoritative': (metadata, frame.to_csv(index=False).encode()),
+        })
+        with (
+            patch.object(conversion_routes, 'fetch_existing_usernames',
+                         side_effect=[{'ada001'}, set(), set()]),
+            patch.object(conversion_routes, 'fetch_existing_emails', return_value=set()),
+            patch.object(conversion_routes, 'fetch_available_usernames',
+                         return_value=['ada002']),
+        ):
+            result = conversion_routes.verify_bulk_registration_output(
+                self.request(), Response(), 0,
+            )
+
+        rows = result['workspace']['output']['rows']
+        email_index = result['workspace']['output']['columns'].index('EMAIL')
+        self.assertEqual(rows[0][email_index], 'ada002@testschool.com')
+        self.assertEqual(rows[1][email_index], 'personal@example.org')

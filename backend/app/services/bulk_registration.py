@@ -66,37 +66,15 @@ def convert_frame(frame, school):
 
 
 def blank_first_name_records(frame):
-    """Return identifying details for rows that cannot support username generation."""
-    blank = frame['FIRST NAME'].astype(str).str.strip().eq('')
-    records = []
-    source_rows = frame.attrs.get('source_row_numbers', range(2, len(frame) + 2))
-    for position, (_, row) in enumerate(frame.iterrows()):
-        if not blank.iloc[position]:
-            continue
-        records.append({
-            'row_number': int(source_rows[position]),
-            'last_name': str(row['LAST NAME']),
-            'full_name': str(row['FULL NAME']),
-            'admission_number': str(row['admission_number']),
-            'status': 'Provide FIRST NAME for user_name generation',
-        })
-    return records
+    """Backward-compatible name for the complete first-name failure list."""
+    from app.services.bulk_reg_preview_sanity import invalid_first_name_records
+    return invalid_first_name_records(frame)
 
 
 def blank_full_name_records(frame):
-    """Identify students with empty or whitespace-only full names."""
-    blank = frame['FULL NAME'].fillna('').astype(str).str.strip().eq('')
-    source_rows = frame.attrs.get('source_row_numbers', range(2, len(frame) + 2))
-    return [
-        {
-            'row_number': int(source_rows[position]),
-            'admission_number': str(row['admission_number']),
-            'first_name': str(row['FIRST NAME']),
-            'last_name': str(row['LAST NAME']),
-            'status': 'Needs full name',
-        }
-        for position, (_, row) in enumerate(frame.iterrows()) if blank.iloc[position]
-    ]
+    """Backward-compatible entry point for full-name preview sanity."""
+    from app.services.bulk_reg_preview_sanity import blank_full_name_records as check
+    return check(frame)
 
 
 def apply_available_usernames(frame, usernames):
@@ -122,6 +100,24 @@ def fill_blank_emails(frame, school_name):
     blank_emails = frame['EMAIL'].astype(str).str.strip().eq('')
     usernames = frame['user_name'].fillna('').map(_email_component)
     can_generate = blank_emails & usernames.ne('')
+    if not can_generate.any():
+        return
+    domain = _email_component(school_name)
+    if not domain:
+        raise ValueError('The school name cannot be used to generate email addresses.')
+    frame.loc[can_generate, 'EMAIL'] = usernames[can_generate] + '@' + domain + '.com'
+
+
+def refresh_generated_emails(frame, school_name, positions):
+    """Refresh previously generated emails at zero-based output row positions."""
+    positions = {int(position) for position in positions}
+    if not positions:
+        return
+    usernames = frame['user_name'].fillna('').map(_email_component)
+    selected = usernames.ne(usernames)
+    valid_positions = [position for position in positions if 0 <= position < len(frame)]
+    selected.iloc[valid_positions] = True
+    can_generate = selected & usernames.ne('')
     if not can_generate.any():
         return
     domain = _email_component(school_name)

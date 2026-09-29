@@ -10,10 +10,10 @@ import unittest
 from unittest.mock import patch
 
 from fastapi import HTTPException, Request, Response, UploadFile
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from app.routes.bulk_registration import conversion_routes, file_routes, workspace_routes
-from app.routes.bulk_registration.models import StoredFileInput
+from app.routes.bulk_registration.models import FilePathInput, StoredFileInput
 from app.routes.bulk_registration.workspace_access import BULK_COOKIE
 from app.services import bulk_registration_storage as storage
 from app.main import create_app
@@ -33,6 +33,78 @@ class BulkWorkspaceTests(unittest.TestCase):
         return Request({'type': 'http', 'headers': [
             (b'cookie', f'{BULK_COOKIE}={self.workspace_id}'.encode()),
         ]})
+
+    def test_upload_persists_trimmed_input_and_sanity_is_read_only(self):
+        uploaded = file_routes.upload_workspace_file(
+            self.request(), Response(), 0,
+            UploadFile(filename='students.csv', file=BytesIO(b'FIRST NAME,EMAIL\n Ada , a@example.com \n Bob , A@example.com \n')),
+        )
+        before = storage.load_workspace(self.workspace_id)
+        result = file_routes.sanity_check(self.request(), Response(), uploaded['revision'])
+        self.assertEqual(uploaded['file']['rows'][0], ['Ada', 'a@example.com'])
+        self.assertEqual(result['checks'][-1]['failed_count'], 2)
+        saved = storage.load_workspace(self.workspace_id)
+        self.assertEqual(saved, before)
+        self.assertIsNone(saved['output'])
+        self.assertEqual(saved['outputs'], {})
+        _, data = storage.read_snapshot(self.workspace_id, saved['input'])
+        self.assertIn(b'Ada,a@example.com', data)
+        self.assertNotIn(b' Ada ', data)
+        self.assertEqual(file_routes.get_input_page(self.request(), Response())['file']['rows'][0],
+                         ['Ada', 'a@example.com'])
+        with self.assertRaises(HTTPException) as error:
+            file_routes.sanity_check(self.request(), Response(), 0)
+        self.assertEqual(error.exception.status_code, 409)
+
+    def test_path_loading_stores_trimmed_records(self):
+        with TemporaryDirectory() as directory:
+            source = Path(directory) / 'students.csv'
+            original = b'FIRST NAME,CONTACT\n Ada , 001234 \n'
+            source.write_bytes(original)
+            with patch.object(file_routes.settings, 'ALLOW_LOCAL_FILE_PATHS', True):
+                result = file_routes.load_workspace_path(
+                    FilePathInput(path=str(source)), self.request(), Response(), 0)
+            self.assertEqual(result['file']['rows'], [['Ada', '001234']])
+            state = storage.load_workspace(self.workspace_id)
+            _, data = storage.read_snapshot(self.workspace_id, state['input'])
+            self.assertIn(b'Ada,001234', data)
+            self.assertEqual(source.read_bytes(), original)
+
+    def test_trimmed_workbook_preserves_other_sheets_and_drives_generated_output(self):
+        workbook = Workbook()
+        workbook.active.title = 'Students'
+        workbook.active.append(['FIRST NAME', 'FULL NAME', 'CONTACT'])
+        workbook.active.append([' Ada ', ' Ada Lovelace ', ' 001234 '])
+        workbook.create_sheet('Other').append([' Untouched '])
+        workbook['Other'].append([' Trim this too '])
+        source = BytesIO()
+        workbook.save(source)
+        workbook.close()
+        result = file_routes.upload_workspace_file(self.request(), Response(), 0,
+            UploadFile(filename='students.xlsx', file=BytesIO(source.getvalue())), None)
+        self.assertEqual(result['file']['rows'][0], ['Ada', 'Ada Lovelace', '001234'])
+        state = storage.load_workspace(self.workspace_id)
+        _, data = storage.read_snapshot(self.workspace_id, state['input'])
+        saved = load_workbook(BytesIO(data))
+        self.assertEqual(saved['Students']['A2'].value, 'Ada')
+        self.assertEqual(saved['Other']['A1'].value, ' Untouched ')
+        self.assertEqual(saved['Other']['A2'].value, 'Trim this too')
+        saved.close()
+        with patch.object(conversion_routes, 'get_school', return_value={
+            'school_index': '914', 'school_name': 'Test School',
+        }), patch.object(conversion_routes, 'fetch_sections', return_value=[]), patch.object(
+            conversion_routes, 'fetch_available_usernames', return_value=['ada001'],
+        ):
+            preview = conversion_routes.convert_workspace_file(
+                self.request(), Response(), 1, '914', 'preview',
+                file=None, path=None, sheet=None, page=1)
+            output = preview['output']
+            self.assertEqual(output['rows'][0][output['columns'].index('FIRST NAME')], 'Ada')
+            download = conversion_routes.convert_workspace_file(
+                self.request(), Response(), 2, '914', 'csv',
+                file=None, path=None, sheet=None, page=1)
+            self.assertIn(b'Ada Lovelace', download.body)
+            self.assertNotIn(b' Ada ', download.body)
 
     def test_stale_upload_after_reset_cannot_replace_the_cookie(self):
         app = create_app()
