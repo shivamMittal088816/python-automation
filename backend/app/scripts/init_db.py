@@ -10,7 +10,7 @@ if not __package__:
 from app.config.database import Base
 from app.config.database import engine
 
-from app.models.student_model import Student
+from app.models import Student, WorkflowInvitation, WorkflowMember
 
 Base.metadata.create_all(bind=engine)
 
