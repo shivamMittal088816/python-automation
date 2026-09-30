@@ -274,7 +274,7 @@ class BulkRegistrationTests(unittest.TestCase):
 
         self.assertEqual(result, {'alice001'})
         statement, parameters = connection.execute.call_args.args
-        self.assertIn('WHERE u.user_name IN', str(statement))
+        self.assertIn('WHERE LOWER(TRIM(u.user_name)) IN', str(statement))
         self.assertEqual(parameters, {'usernames': ['alice001', 'bob001']})
 
     def test_username_verification_reports_all_three_stages(self):

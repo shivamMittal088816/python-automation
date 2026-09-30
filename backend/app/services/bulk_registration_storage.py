@@ -47,6 +47,7 @@ def create_workspace():
     save_workspace(workspace_id, {
         'workspace_id': workspace_id, 'revision': 0, 'path': '', 'file': None,
         'school_index': '', 'school': None, 'output': None, 'outputs': {},
+        'output_verified': False,
     })
     return workspace_id
 

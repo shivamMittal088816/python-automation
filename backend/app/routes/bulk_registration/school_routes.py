@@ -37,7 +37,8 @@ def set_school(payload: SchoolInput, request: Request, response: Response, expec
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
     state.update({'school_index': school['school_index'], 'school': school,
-                  'output': None, 'outputs': {}, 'revision': expected_revision + 1})
+                  'output': None, 'outputs': {}, 'output_verified': False,
+                  'revision': expected_revision + 1})
     save_workspace(workspace_id, state)
     return workspace_summary(state)
 

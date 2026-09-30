@@ -68,12 +68,12 @@ ORDER BY rp.prefix, an.n''')
 
 
 def fetch_existing_usernames(usernames):
-    values = sorted({str(username).strip() for username in usernames if str(username).strip()})
+    values = sorted({str(username).strip().lower() for username in usernames if str(username).strip()})
     if not values:
         return set()
     query = text('''SELECT u.user_name
 FROM users AS u
-WHERE u.user_name IN :usernames''').bindparams(bindparam('usernames', expanding=True))
+WHERE LOWER(TRIM(u.user_name)) IN :usernames''').bindparams(bindparam('usernames', expanding=True))
     from app.config.database import engine
     with engine.connect() as connection:
         rows = connection.execute(query, {'usernames': values}).all()

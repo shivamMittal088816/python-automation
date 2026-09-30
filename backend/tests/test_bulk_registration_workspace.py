@@ -100,9 +100,21 @@ class BulkWorkspaceTests(unittest.TestCase):
                 file=None, path=None, sheet=None, page=1)
             output = preview['output']
             self.assertEqual(output['rows'][0][output['columns'].index('FIRST NAME')], 'Ada')
-            download = conversion_routes.convert_workspace_file(
-                self.request(), Response(), 2, '914', 'csv',
-                file=None, path=None, sheet=None, page=1)
+            with self.assertRaises(HTTPException) as unverified:
+                conversion_routes.convert_workspace_file(
+                    self.request(), Response(), 2, '914', 'csv',
+                    file=None, path=None, sheet=None, page=1)
+            self.assertEqual(unverified.exception.status_code, 409)
+            self.assertIn('verify successfully', unverified.exception.detail)
+            state = storage.load_workspace(self.workspace_id)
+            state['output_verified'] = True
+            storage.save_workspace(self.workspace_id, state)
+            with patch.object(conversion_routes, 'fetch_existing_usernames', return_value=set()), patch.object(
+                conversion_routes, 'fetch_existing_emails', return_value=set(),
+            ), patch.object(conversion_routes, 'verify_final_output', return_value={'passed': True}):
+                download = conversion_routes.convert_workspace_file(
+                    self.request(), Response(), 2, '914', 'csv',
+                    file=None, path=None, sheet=None, page=1)
             self.assertIn(b'Ada Lovelace', download.body)
             self.assertNotIn(b' Ada ', download.body)
 
@@ -243,7 +255,13 @@ class BulkWorkspaceTests(unittest.TestCase):
             conversion_routes, 'fetch_available_usernames', return_value=['ada001'],
         ):
             preview = convert(1)
-            before = convert(2, 'csv').body
+            state = storage.load_workspace(self.workspace_id)
+            state['output_verified'] = True
+            storage.save_workspace(self.workspace_id, state)
+            with patch.object(conversion_routes, 'fetch_existing_usernames', return_value=set()), patch.object(
+                conversion_routes, 'fetch_existing_emails', return_value=set(),
+            ), patch.object(conversion_routes, 'verify_final_output', return_value={'passed': True}):
+                before = convert(2, 'csv').body
             changed = file_routes.load_stored_file(
                 StoredFileInput(sheet='Empty'), self.request(), Response(), 2,
             )
@@ -252,7 +270,10 @@ class BulkWorkspaceTests(unittest.TestCase):
             with self.assertRaises(HTTPException) as failure:
                 convert(3)
             self.assertEqual(failure.exception.status_code, 400)
-            self.assertEqual(convert(3, 'csv').body, before)
+            with patch.object(conversion_routes, 'fetch_existing_usernames', return_value=set()), patch.object(
+                conversion_routes, 'fetch_existing_emails', return_value=set(),
+            ), patch.object(conversion_routes, 'verify_final_output', return_value={'passed': True}):
+                self.assertEqual(convert(3, 'csv').body, before)
             state = storage.load_workspace(self.workspace_id)
             self.assertEqual(state['revision'], 3)
             self.assertEqual(state['output'], preview['output'])

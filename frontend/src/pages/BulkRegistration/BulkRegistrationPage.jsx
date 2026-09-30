@@ -54,7 +54,8 @@ export function BulkRegistrationPage() {
         <RegistrationActions
           sanity={workflow.sanity}
           schoolValid={workflow.schoolValid} source={workflow.source}
-          busy={busy} output={workflow.output} convert={workflow.convert}
+          busy={busy} output={workflow.output} outputVerified={workflow.outputVerified}
+          convert={workflow.convert}
         />
         <RegistrationPreviews
           file={workflow.file} output={workflow.output} busy={busy}

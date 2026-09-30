@@ -4,7 +4,7 @@ import { useBulkRegistrationWorkspace } from '../../hooks/useBulkRegistrationWor
 
 export function useBulkRegistration() {
   const { state, ready, storageError, replace, edit: editState, refresh, beginOperation } = useBulkRegistrationWorkspace();
-  const { path, file, source, schoolIndex, school, output } = state;
+  const { path, file, source, schoolIndex, school, output, outputVerified } = state;
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
   const [error, setError] = useState('');
@@ -150,7 +150,7 @@ export function useBulkRegistration() {
   }
 
   return {
-    path, file, source, schoolIndex, school, output, outputVerification, usernameChanges,
+    path, file, source, schoolIndex, school, output, outputVerified, outputVerification, usernameChanges,
     ready, storageError, working, busy, error, schoolValid, sanity, runSanityCheck,
     edit,
     load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),

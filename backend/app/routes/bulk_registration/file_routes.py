@@ -54,7 +54,7 @@ def upload_workspace_file(request: Request, response: Response, expected_revisio
     result = preview_file(file.filename or '', data, sheet)
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
-    state.update({'file': result, 'path': '', 'output': None, 'outputs': {},
+    state.update({'file': result, 'path': '', 'output': None, 'outputs': {}, 'output_verified': False,
                   'revision': expected_revision + 1})
     save_workspace(workspace_id, state, {'input': ({'name': file.filename or '', 'sheet': result['sheet']}, data)})
     return workspace_summary(state)
@@ -70,7 +70,7 @@ def load_workspace_path(payload: FilePathInput, request: Request, response: Resp
     result = preview_file(name, data, payload.sheet)
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
-    state.update({'file': result, 'path': payload.path, 'output': None, 'outputs': {},
+    state.update({'file': result, 'path': payload.path, 'output': None, 'outputs': {}, 'output_verified': False,
                   'revision': expected_revision + 1})
     metadata = {'name': name, 'sheet': result['sheet'], 'source_path': payload.path}
     save_workspace(workspace_id, state, {'input': (metadata, data)})

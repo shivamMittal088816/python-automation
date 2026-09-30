@@ -47,6 +47,7 @@ def workspace_summary(state):
         'file': state.get('file'), 'source': {'stored': True} if state.get('input') else None,
         'schoolIndex': state.get('school_index', ''), 'school': state.get('school'),
         'output': state.get('output'),
+        'outputVerified': bool(state.get('output_verified')),
     }
 
 # Purpose: Cookie lookup, revision checks, and browser-safe workspace responses.

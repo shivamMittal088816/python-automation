@@ -144,6 +144,8 @@ def verify_bulk_registration_output(
         raise HTTPException(409, str(exc)) from exc
 
     verification = verify_final_output(output, existing_usernames, existing_emails)
+    state['output_verified'] = bool(verification['passed'])
+    state['revision'] = int(state.get('revision', 0)) + 1
     if username_changes:
         page = int(state.get('output', {}).get('page', 1))
         state['output'] = paginated_summary(
@@ -152,10 +154,11 @@ def verify_bulk_registration_output(
             metadata.get('missing_classes'), metadata.get('missing_genders'),
             metadata.get('duplicate_email_records', []),
         )
-        state['revision'] = int(state.get('revision', 0)) + 1
         save_workspace(workspace_id, state, {
             '_output_authoritative': (metadata, export_frame(output, 'csv')),
         })
+    else:
+        save_workspace(workspace_id, state)
     return {
         'workspace': workspace_summary(state),
         'verification': verification,
@@ -205,7 +208,8 @@ def convert_workspace_file(
             duplicate_emails=input_duplicate_emails,
         )
         state.update({'school_index': school['school_index'], 'school': school,
-                      'output': summary, 'outputs': {}, 'revision': expected_revision + 1})
+                      'output': summary, 'outputs': {}, 'output_verified': False,
+                      'revision': expected_revision + 1})
         metadata = {
             'name': f'bulk-registration-{school["school_index"]}.csv',
             'source_name': name, 'school_index': school['school_index'],
@@ -224,9 +228,30 @@ def convert_workspace_file(
 
     if not state.get('output'):
         raise HTTPException(409, 'Generate the output preview before downloading.')
+    if not state.get('output_verified'):
+        raise HTTPException(409, 'Run Bulk-reg verify successfully before downloading the final file.')
     metadata, output = read_authoritative_output(workspace_id, state)
     if metadata.get('school_index') != school['school_index']:
         raise HTTPException(409, 'The saved output belongs to another school. Generate the preview again.')
+    try:
+        usernames = output['user_name'].fillna('').astype(str).str.strip().tolist()
+        emails = output['EMAIL'].fillna('').astype(str).str.strip().tolist()
+        final_check = verify_final_output(
+            output, fetch_existing_usernames(usernames), fetch_existing_emails(emails),
+        )
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            503, 'Could not recheck usernames and emails before download. '
+                 'Check the database connection and try again.'
+        ) from exc
+    if not final_check['passed']:
+        state['output_verified'] = False
+        state['revision'] = int(state.get('revision', 0)) + 1
+        save_workspace(workspace_id, state)
+        raise HTTPException(
+            409, 'The database changed after verification. Run Bulk-reg verify again '
+                 'to regenerate conflicting usernames before downloading.'
+        )
     filename = f'bulk-registration-{school["school_index"]}.{file_format}'
     try:
         exported = export_frame(output, file_format)

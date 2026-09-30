@@ -32,7 +32,7 @@ def initialize_workspace(request: Request, response: Response):
 def clear_file(request: Request, response: Response, expected_revision: Revision):
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
-    state.update({'file': None, 'path': '', 'output': None, 'outputs': {},
+    state.update({'file': None, 'path': '', 'output': None, 'outputs': {}, 'output_verified': False,
                   'revision': expected_revision + 1})
     state.pop('input', None)
     save_workspace(workspace_id, state)

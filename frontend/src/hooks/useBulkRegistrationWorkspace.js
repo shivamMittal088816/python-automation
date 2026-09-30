@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { bulkRegistrationApi } from '../services/bulkRegistrationApi';
 
 const CHANNEL = 'bulk-registration-updates';
-const EMPTY = { workspace_id: null, revision: 0, path: '', file: null, source: null, schoolIndex: '', school: null, output: null };
+const EMPTY = { workspace_id: null, revision: 0, path: '', file: null, source: null, schoolIndex: '', school: null, output: null, outputVerified: false };
 
 export function useBulkRegistrationWorkspace() {
   const [state, setState] = useState(EMPTY);

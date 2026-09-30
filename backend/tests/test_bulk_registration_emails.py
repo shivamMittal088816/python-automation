@@ -116,7 +116,10 @@ class EmailVerificationRouteTests(unittest.TestCase):
             'FULL NAME': ['Ada Student'] * 21 + ['Blank Student'],
             'Section': ['A'] * 22,
             'Class Number': ['Class I'] * 22,
+            'CLASS': ['1'] * 22,
             'GENDER': ['Female'] * 22,
+            'Gender Number': ['2'] * 22,
+            'section_index': ['1'] * 22,
             'user_name': ['ada001'] * 21 + [''],
             'EMAIL': ['ada@school.com'] * 21 + ['existing@school.com'],
             'admission_number': [str(index) for index in range(22)],
@@ -134,10 +137,11 @@ class EmailVerificationRouteTests(unittest.TestCase):
         ):
             result = conversion_routes.verify_bulk_registration_output(self.request(), Response(), 0)
         self.assertEqual(result['verification']['checked_records'], 22)
-        self.assertEqual(result['verification']['stages'][0]['issues'], [])
-        self.assertEqual(result['verification']['stages'][2]['failed_records']['row_count'], 0)
-        self.assertEqual(result['verification']['stages'][3]['failed_records']['row_count'], 21)
-        self.assertEqual(len(result['username_changes']), 21)
+        stages = {stage['id']: stage for stage in result['verification']['stages']}
+        self.assertEqual(stages['blank_user_name']['issues'], [22])
+        self.assertEqual(stages['duplicate_user_name']['failed_records']['row_count'], 0)
+        self.assertEqual(stages['duplicate_email']['failed_records']['row_count'], 21)
+        self.assertEqual(len(result['username_changes']), 20)
 
     def test_verify_refreshes_generated_email_but_preserves_supplied_email(self):
         from app.services import bulk_registration_storage as storage
@@ -145,6 +149,8 @@ class EmailVerificationRouteTests(unittest.TestCase):
             'FIRST NAME': ['Ada', 'Bob'], 'LAST NAME': ['', ''],
             'FULL NAME': ['Ada Student', 'Bob Student'], 'Section': ['A', 'A'],
             'Class Number': ['Class I', 'Class I'], 'GENDER': ['Female', 'Male'],
+            'CLASS': ['1', '1'], 'Gender Number': ['2', '1'],
+            'section_index': ['1', '1'],
             'user_name': ['ada001', 'bob001'],
             'EMAIL': ['ada001@testschool.com', 'personal@example.org'],
             'admission_number': ['1', '2'],

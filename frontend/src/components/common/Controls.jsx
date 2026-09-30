@@ -18,9 +18,21 @@ function Field({ label, children }) {
   const generatedId = useId(), id = children.props.id || generatedId;
   return <div className="flex min-w-0 flex-col gap-1 text-sm font-medium text-slate-700"><label htmlFor={id}>{label}</label>{cloneElement(children, { id })}</div>;
 }
-export function Select({ label, options, ...props }) {
+export function Select({ label, options, columnOptions = false, ...props }) {
+  let columnIndex = 0;
+  const showColumnReferences = columnOptions || /column/i.test(label);
+  const excelColumn = index => {
+    let value = index + 1, name = '';
+    while (value > 0) { value -= 1; name = String.fromCharCode(65 + (value % 26)) + name; value = Math.floor(value / 26); }
+    return name;
+  };
   return <Field label={label}><select className="input" {...props}>{options.map(option => {
     const item = typeof option === 'object' && option !== null ? option : { value: option ?? '', label: option ?? 'Choose a column' };
+    if (showColumnReferences && (typeof option !== 'object' || option === null)) {
+      const reference = excelColumn(columnIndex++);
+      const header = String(item.label).trim();
+      item.label = `${reference} (${!header || /^Unnamed:\s*\d+(?:\.\d+)?$/i.test(header) ? 'No header' : header})`;
+    }
     return <option key={String(item.value)} value={item.value}>{item.label}</option>;
   })}</select></Field>;
 }

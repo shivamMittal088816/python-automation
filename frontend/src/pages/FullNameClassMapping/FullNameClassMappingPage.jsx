@@ -71,8 +71,8 @@ function SourceFields({ source }) {
       <h3 className="text-sm font-semibold text-blue-900">Class concatenation <RunColumns stage="full_name_class" pass="1" /></h3>
       <p className="mb-3 mt-2 text-sm leading-5 text-slate-600">Loaded {total.toLocaleString()} students from the selected source. Choose full name and class columns from the school file headers.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Select label="Full name" options={[{ value: '', label: 'Choose a full name column' }, ...columns]} value={name} disabled={!!busy} onChange={event => update({ full_name_class_name_column: event.target.value })} />
-        <Select label="Class Number" options={[{ value: '', label: 'Choose a class column' }, ...columns]} value={classColumn} disabled={!!busy} onChange={event => update({ full_name_class_class_column: event.target.value })} />
+        <Select label="Full name" columnOptions options={[{ value: '', label: 'Choose a full name column' }, ...columns]} value={name} disabled={!!busy} onChange={event => update({ full_name_class_name_column: event.target.value })} />
+        <Select label="Class Number" columnOptions options={[{ value: '', label: 'Choose a class column' }, ...columns]} value={classColumn} disabled={!!busy} onChange={event => update({ full_name_class_class_column: event.target.value })} />
       </div>
       <div className="mt-3"><Button primary disabled={!!busy || !name || !classColumn} onClick={() => run('Running class concatenation mapping...', revision => runFullNameClassMapping({
         name_column: name,

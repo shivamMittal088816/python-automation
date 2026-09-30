@@ -66,6 +66,7 @@ aside nav summary { color: #475569; }
   padding: 3px 8px;
   color: #526580;
 }
+.mapping-app main .mapping-replace-file { padding: 4px 12px; }
 label:has(input:focus-visible) { outline: 2px solid #2563eb; outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
@@ -123,6 +124,52 @@ label:has(input:focus-visible) { outline: 2px solid #2563eb; outline-offset: 3px
 .dump-actions > a { min-height: 34px; padding: 6px 10px; color: #1d4ed8; border-color: #c6d7f4; background: linear-gradient(#fff, #f1f6ff); box-shadow: inset 0 1px 0 #fff; }
 .dump-actions > details { min-width: 0; max-width: 100%; padding-top: 5px; }
 .dump-actions summary { color: #334c73; }
+
+/* Admission mapping page hierarchy. Each workflow phase has its own quiet visual cue. */
+.grid:has(> .dump-panel) {
+  padding: 4px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eaf1fb, #f8fafc 45%, #edf4ff);
+}
+.grid:has(> .dump-panel) > section {
+  position: relative;
+  overflow: hidden;
+  border-color: #d5e0ee;
+  box-shadow: 0 8px 22px -18px #1e3a8a80;
+}
+.grid:has(> .dump-panel) > section:first-child { border-top: 3px solid #0d9488; }
+.grid:has(> .dump-panel) > .dump-panel { border-top: 3px solid #2563eb; }
+.grid:has(> .dump-panel) > section:first-child > :first-child span:first-child {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+.mapping-file-input [role='tablist'] { background: #eef2f7; }
+
+section:has(> h3 + .mapping-fields) {
+  border-left: 4px solid #64748b;
+  background: linear-gradient(105deg, #fff, #f8fafc);
+}
+.mapping-settings {
+  border-left: 4px solid #7c3aed !important;
+  background: linear-gradient(105deg, #fff, #faf7ff);
+  box-shadow: 0 7px 20px -18px #6d28d980 !important;
+}
+.mapping-settings > :first-child span:first-child {
+  border-color: #ddd6fe;
+  background: #f5f3ff;
+  color: #6d28d9;
+}
+.mapping-settings + .grid > section {
+  border-left: 4px solid #2563eb;
+  background: linear-gradient(105deg, #eff6ff, #f8fbff);
+  box-shadow: 0 8px 22px -18px #1d4ed880;
+}
+
+@media (min-width: 640px) {
+  .mapping-settings + .grid > section > div:first-child { flex: 1 1 auto; }
+  .mapping-settings + .grid > section button { margin-left: 24px; }
+}
 
 .school-identity {
   background: linear-gradient(115deg, #ccfbf1 0%, #f0fdfa 55%, #ecfeff 100%);
