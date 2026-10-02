@@ -17,7 +17,7 @@ class Base(DeclarativeBase):
 DATABASE_URL = URL.create(
     "mysql+pymysql",
     username=settings.DB_USER,
-    password=settings.DB_PASSWORD,
+    password=settings.DB_PASSWORD.get_secret_value(),
     host=settings.DB_HOST,
     port=settings.DB_PORT,
     database=settings.DB_NAME,

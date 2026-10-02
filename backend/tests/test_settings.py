@@ -32,6 +32,19 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(configured.CORS_ORIGINS, 'https://app.example.com')
         self.assertEqual(configured.SESSION_COOKIE_SAMESITE, 'none')
 
+    def test_database_password_is_masked_in_settings_diagnostics(self):
+        password = 'synthetic-database-password-for-test'
+        configured = Settings(_env_file=None, **self.values(DB_PASSWORD=password))
+        self.assertEqual(configured.DB_PASSWORD.get_secret_value(), password)
+        self.assertNotIn(password, repr(configured))
+        self.assertNotIn(password, configured.model_dump_json())
+
+    def test_invalid_settings_do_not_echo_input_values(self):
+        private_value = 'synthetic-private-value-for-test'
+        with self.assertRaises(ValidationError) as raised:
+            Settings(_env_file=None, **self.values(DB_PORT=private_value))
+        self.assertNotIn(private_value, str(raised.exception))
+
 
 if __name__ == '__main__':
     unittest.main()

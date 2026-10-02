@@ -22,6 +22,22 @@ uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 API documentation is available at `http://127.0.0.1:8000/docs`.
 
+## Secrets and passwords
+
+Keep database credentials in the ignored `backend/.env` file or inject them as
+backend environment variables through the deployment platform. Commit only
+`.env.example` templates with placeholder values. The backend masks `DB_PASSWORD`
+in settings diagnostics and reads its actual value only to configure the database.
+
+Frontend `VITE_*` values are bundled into public browser JavaScript; use them only
+for public configuration such as the API address. Never put database passwords,
+private keys or service credentials in frontend environment variables.
+
+Account passwords are supplied by users and stored only as salted scrypt hashes
+in the database. Authentication and invitation tokens are generated randomly at
+runtime; their database records store hashes. These values are not shared
+application secrets to configure in `.env`. Test passwords are synthetic fixtures.
+
 Start the frontend in a second terminal using the [startup guide](docs/RUNNING.md).
 The independent bulk registration intake endpoints are `POST /api/v1/bulk-reg/files`
 and `POST /api/v1/bulk-reg/files/path`. Local paths require

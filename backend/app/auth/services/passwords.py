@@ -27,4 +27,4 @@ def verify_password(password, encoded):
 
 
 # Match password work for nonexistent accounts to reduce timing disclosure.
-DUMMY_HASH = hash_password('unavailable-account-dummy-password')
+DUMMY_HASH = hash_password(secrets.token_urlsafe(32))

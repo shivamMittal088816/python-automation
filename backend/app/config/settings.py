@@ -2,7 +2,7 @@
 # The cached settings object is shared by imports throughout the API.
 
 from pydantic_settings import BaseSettings
-from pydantic import Field, model_validator
+from pydantic import Field, SecretStr, model_validator
 from functools import lru_cache
 from typing import Literal
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
     DB_USER: str
-    DB_PASSWORD: str
+    DB_PASSWORD: SecretStr
     DB_NAME: str
 
     API_V1_PREFIX: str = "/api/v1"
@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     # Read settings from the local .env file.
     class Config:
         env_file = ".env"
+        hide_input_in_errors = True
 
 
 # Load validated settings once; lru_cache reuses the object on subsequent calls.
