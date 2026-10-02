@@ -19,9 +19,11 @@ test('all active pages remain readable at desktop, tablet and mobile widths', as
   await capture('empty-school');
   await page.goto('/admission_file_page');
   await capture('admission-empty');
-  await page.getByLabel('Add school file').setInputFiles({ name: 'School_records_with_a_very_long_filename_for_operations_review_September_2026.csv', mimeType: 'text/csv', buffer: await (await import('node:fs/promises')).readFile(school) });
-  await expect(page.getByText(/^Loaded: School_records/)).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(dump);
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles({ name: 'School_records_with_a_very_long_filename_for_operations_review_September_2026.csv', mimeType: 'text/csv', buffer: await (await import('node:fs/promises')).readFile(school) });
+  await expect(page.getByTestId('school-input').getByText(/^School_records/)).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(dump);
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();

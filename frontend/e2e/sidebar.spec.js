@@ -11,11 +11,12 @@ for (const width of [1440, 390]) {
     const closedBounds = await page.locator('main').boundingBox();
     expect(closedBounds.x).toBe(0);
     expect(closedBounds.width).toBe(width);
-    await page.getByLabel('Add school file').setInputFiles({
+    await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+    await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles({
       name: 'sidebar-check.csv', mimeType: 'text/csv',
       buffer: Buffer.from('admission_number,first_name\n001,Ada'),
     });
-    await expect(page.getByText('Loaded: sidebar-check.csv', { exact: true })).toBeVisible();
+    await expect(page.getByText('sidebar-check.csv', { exact: true }).first()).toBeVisible();
     await open.click();
     const close = page.getByRole('button', { name: 'Close sidebar', exact: true });
     await expect(close).toHaveAttribute('aria-expanded', 'true');
@@ -24,7 +25,7 @@ for (const width of [1440, 390]) {
     await page.screenshot({ path: test.info().outputPath(`sidebar-open-${width}.png`) });
     await close.click();
     await expect(navigation).toBeHidden();
-    await expect(page.getByText('Loaded: sidebar-check.csv', { exact: true })).toBeVisible();
+    await expect(page.getByText('sidebar-check.csv', { exact: true }).first()).toBeVisible();
     expect((await page.locator('main').boundingBox()).width).toBe(width);
     await page.screenshot({ path: test.info().outputPath(`sidebar-closed-${width}.png`) });
     await open.click();

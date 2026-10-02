@@ -7,6 +7,7 @@ test('sanity check scans all input rows and clears when the file changes', async
   await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   const rows = Array.from({ length: 25 }, (_, i) => `Ada,Ada Lovelace,A,Class I,Female,ada${i}@example.com`);
   rows[24] = ' ,,,, , ADA0@EXAMPLE.COM ';
+  await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   await page.getByLabel('Upload registration file').setInputFiles({
     name: 'sanity.csv', mimeType: 'text/csv',
     buffer: Buffer.from(`FIRST NAME,FULL NAME,Section,Class Number,GENDER,EMAIL\n${rows.join('\n')}`),
@@ -24,6 +25,7 @@ test('sanity check scans all input rows and clears when the file changes', async
   await expect(panel.getByRole('cell', { name: '26', exact: true })).toBeVisible();
   await expect(panel.getByRole('cell').filter({ hasText: 'First name missing' })).toContainText('Duplicate email in input file');
   await expect(panel.getByRole('button', { name: 'Download trimmed CSV' })).toHaveCount(0);
+  await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   await page.getByLabel('Upload registration file').setInputFiles({
     name: 'clean.csv', mimeType: 'text/csv',
     buffer: Buffer.from('FIRST NAME,FULL NAME,Section,Class Number,GENDER,EMAIL\nAda,Ada Lovelace,A,Class I,Female,ada@example.com'),

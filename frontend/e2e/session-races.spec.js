@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/browser-audit';
 
-test('a delayed bulk refresh cannot replace the reset cookie or hide a new upload', async ({ page, context }) => {
+test('a delayed bulk refresh cannot replace the reset selection or hide a new upload', async ({ page, context }) => {
   await page.goto('/bulk-reg');
   await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   const second = await context.newPage();
@@ -34,25 +34,28 @@ test('a delayed bulk refresh cannot replace the reset cookie or hide a new uploa
     await second.getByLabel('Upload registration file').setInputFiles({
       name: 'after-reset.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nSavedAfterReset'),
     });
-    await expect(second.getByText('File loaded', { exact: false })).toBeVisible();
+    await expect(second.getByText('File ready', { exact: true })).toBeVisible();
     release(); await done;
     expect(staleStatus).toBe(409);
     expect(staleCookie).toBeUndefined();
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect(page.getByRole('alert').first()).toContainText('active workspace changed');
+    await expect(page.getByLabel('Upload registration file')).toBeDisabled();
+    await page.reload();
     await second.reload();
     for (const tab of [page, second]) {
       await expect(tab.getByText('after-reset.csv', { exact: true }).first()).toBeVisible();
-      await expect(tab.getByText('File loaded', { exact: false })).toBeVisible();
+      await expect(tab.getByText('File ready', { exact: true })).toBeVisible();
     }
   } finally { release(); }
 });
 
 test('mapping startup rechecks changes broadcast while its snapshot is delayed', async ({ page, context }) => {
   await page.goto('/admission_file_page');
-  await expect(page.getByLabel('Add school file')).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeVisible();
   const second = await context.newPage();
   await second.goto('/admission_file_page');
-  await expect(second.getByLabel('Add school file')).toBeVisible();
+  await expect(second.getByLabel(/^(Add|Replace) school file$/)).toBeVisible();
   let release, intercepted;
   const gate = new Promise(resolve => { release = resolve; });
   const captured = new Promise(resolve => { intercepted = resolve; });
@@ -73,13 +76,14 @@ test('mapping startup rechecks changes broadcast while its snapshot is delayed',
         channel.onmessage = () => { channel.close(); resolve(); };
       });
     });
-    await second.getByLabel('Add school file').setInputFiles({
+    await expect(second.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+    await second.getByLabel(/^(Add|Replace) school file$/).setInputFiles({
       name: 'new-from-tab-b.csv', mimeType: 'text/csv', buffer: Buffer.from('admission_number,first_name\n001,Ada'),
     });
-    await expect(second.getByText('Loaded: new-from-tab-b.csv', { exact: true })).toBeVisible();
+    await expect(second.getByText('new-from-tab-b.csv', { exact: true }).first()).toBeVisible();
     await page.evaluate(() => window.qaUpdateReceived);
     release();
     // No focus/reload should be needed to repair the initial snapshot.
-    await expect(page.getByText('Loaded: new-from-tab-b.csv', { exact: true })).toBeVisible();
+    await expect(page.getByText('new-from-tab-b.csv', { exact: true }).first()).toBeVisible();
   } finally { release(); }
 });

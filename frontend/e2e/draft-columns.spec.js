@@ -5,7 +5,8 @@ test('mapping dropdown edits make no requests and only a run saves the columns',
   const requests = [];
   page.on('request', request => { if (request.url().includes('/api/v1/')) requests.push(request); });
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add school file').setInputFiles(fileURLToPath(new URL('./fixtures/school.csv', import.meta.url)));
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(fileURLToPath(new URL('./fixtures/school.csv', import.meta.url)));
   await page.getByLabel('Fetch from SQL', { exact: true }).check();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();

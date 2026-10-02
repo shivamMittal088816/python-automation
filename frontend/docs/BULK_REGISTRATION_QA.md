@@ -43,15 +43,39 @@ smaller screens retain vertical scrolling.
 Local evidence: `.test-temp/bulk-review-2026-10-03/` contains screenshots,
 `results.json`, and the downloaded fixture files.
 
-## Regression results and limits
+## Full regression follow-up
 
-Four focused browser checks passed across the verification runs:
-independent file loading, temporary storage recovery, draft preservation across
-tabs without BroadcastChannel, and full-file sanity checking/replacement.
-Production build and patch whitespace checks passed.
+The local regression follow-up replaces older Verify emails/Verify usernames
+tests with **Bulk-reg verify**, grouped review records, blank account fields,
+and downloads disabled until successful final verification. Successful download
+fixtures now include the required school, name, class, section, and gender data.
 
-The full historical bulk browser suite was not rerun in this pass. Earlier
-coverage includes stale expectations for removed Verify emails/Verify usernames
-controls and superseded result sections. The focused results above do not claim
-that the full suite is green. Live SQL integrations, production data, and other
-browser engines were not exercised.
+Mapping tests now recognize both Add and Replace file controls. Loaded-file
+assertions match the current upload, path, and SQL source presentations. Tests
+wait for enabled controls before editing or uploading during first-use setup.
+The browser fixture's username allocator now returns candidates absent from its
+simulated database and unique within the allocation. The standard Playwright
+configuration starts Vite directly, preserving port flags on Windows.
+
+The full run also exposed a product race: a delayed bulk operation could clear a
+workspace-selection conflict after another tab reset the workspace. The hook now
+retains that conflict until reload or an accepted reset in the same tab, rejecting
+late operation responses and background reads. Tests confirm that the stale tab
+stays disabled and reload restores the new selection; temporary read failures
+can still recover normally.
+
+- Full backend regression suite: **282 tests passed**.
+- Full local browser suite: **82 scenarios exercised**. Initial run: 69 passed,
+  13 failed. After corrections, all 13 failures and two related refresh checks
+  passed in a **15-test rerun**. All 82 scenarios have passing coverage across
+  these runs; this does not claim one uninterrupted all-green run.
+- Final late-response and overlapping-refresh verification: **3 tests passed**.
+- Production build and patch whitespace checks: **passed**.
+
+Local logs are `.test-temp/full-backend-regression.log`,
+`.test-temp/full-browser-regression.log`, and
+`.test-temp/final-browser-regression.log`. Playwright captures diagnostics per
+scenario under `frontend/test-results/` (ignored by Git).
+
+The configured local suite excludes `e2e/live/`. Live SQL integrations,
+production data, deployments, and other browser engines were not exercised.

@@ -32,8 +32,10 @@ for (const workflow of ['mapping', 'bulk_registration']) {
         if (detection === 'refresh') {
           await page.evaluate(() => window.dispatchEvent(new Event('focus')));
         } else if (workflow === 'mapping') {
-          await page.getByLabel('Add school file').setInputFiles({ name: 'school.csv', mimeType: 'text/csv', buffer: Buffer.from('admission_number,first_name\n001,Alice\n') });
+          await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+          await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles({ name: 'school.csv', mimeType: 'text/csv', buffer: Buffer.from('admission_number,first_name\n001,Alice\n') });
         } else {
+          await expect(page.getByLabel('Upload registration file')).toBeEnabled();
           await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nAda') });
         }
         const removed = page.getByRole('heading', { name: 'Workspace removed', exact: true });

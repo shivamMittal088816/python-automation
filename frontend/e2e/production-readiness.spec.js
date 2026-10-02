@@ -7,11 +7,13 @@ const output = page => page.getByRole('region', { name: 'Output preview', exact:
 
 async function readyBulk(page) {
   await page.goto('/bulk-reg');
+  await expect(page.getByLabel('School index', { exact: true })).toBeEnabled();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Verify school index' }).click();
   await expect(page.getByLabel('School name fetched')).toBeVisible();
+  await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   await page.getByLabel('Upload registration file').setInputFiles(file());
-  await expect(page.getByText('File loaded', { exact: false })).toBeVisible();
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
 }
 
 test('simultaneous fresh mapping tabs create one shared session', async ({ page, context }) => {
@@ -26,13 +28,14 @@ test('simultaneous fresh mapping tabs create one shared session', async ({ page,
   });
   const second = await context.newPage();
   await Promise.all([page.goto('/admission_file_page'), second.goto('/admission_file_page')]);
-  await expect(page.getByLabel('Add school file')).toBeVisible();
-  await expect(second.getByLabel('Add school file')).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeVisible();
+  await expect(second.getByLabel(/^(Add|Replace) school file$/)).toBeVisible();
   expect(creates).toBe(1);
-  await page.getByLabel('Add school file').setInputFiles(file('shared.csv', 'admission_number,first_name\n001,Ada'));
-  await expect(second.getByText('Loaded: shared.csv', { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(file('shared.csv', 'admission_number,first_name\n001,Ada'));
+  await expect(second.getByText('shared.csv', { exact: true }).first()).toBeVisible();
   await second.reload();
-  await expect(second.getByText('Loaded: shared.csv', { exact: true })).toBeVisible();
+  await expect(second.getByText('shared.csv', { exact: true }).first()).toBeVisible();
 });
 
 test('failed replacement and offline conversion preserve output and recover', async ({ page, context }) => {
@@ -40,6 +43,7 @@ test('failed replacement and offline conversion preserve output and recover', as
   await page.getByRole('button', { name: 'Generate preview' }).click();
   await expect(output(page)).toBeVisible();
   const failedUpload = page.waitForResponse(response => response.url().endsWith('/bulk-reg/files'));
+  await expect(page.getByLabel('Upload registration file')).toBeEnabled();
   await page.getByLabel('Upload registration file').setInputFiles(file('empty.csv', ''));
   expect((await failedUpload).status()).toBe(400);
   await expect(page.getByRole('alert')).toContainText('HTTP 400; request');
@@ -95,6 +99,7 @@ test('confirmation dismisses when another tab replaces the file', async ({ page,
   await expect(second.getByRole('button', { name: 'Clear file', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Clear file', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(second.getByLabel('Upload registration file')).toBeEnabled();
   await second.getByLabel('Upload registration file').setInputFiles(file('replacement.csv', 'FIRST NAME\nGrace'));
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await expect(page.getByText('replacement.csv', { exact: true }).first()).toBeVisible();
@@ -104,6 +109,7 @@ test('confirmation dismisses when another tab replaces the file', async ({ page,
 
 test('server errors display HTTP status and request ID and permit retry', async ({ page }) => {
   await page.goto('/bulk-reg');
+  await expect(page.getByLabel('School index', { exact: true })).toBeEnabled();
   await page.getByLabel('School index', { exact: true }).fill('914');
   for (const status of [400, 404, 413, 422, 500, 503]) {
     await page.route('**/bulk-reg/school', route => route.fulfill({
@@ -139,7 +145,8 @@ test('real API status codes and diagnostic headers are readable in the browser',
     }
     return results;
   });
-  expect(results.map(result => result.status)).toEqual([200, 401, 404, 422]);
+  // This fixture account is authenticated, but has not opened a mapping workspace.
+  expect(results.map(result => result.status)).toEqual([200, 409, 404, 422]);
   for (const result of results) {
     expect(result.id).toMatch(/^[a-f0-9-]{36}$/);
     expect(result.cache).toBe('no-store');

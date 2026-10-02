@@ -4,8 +4,9 @@ test('dump pages all rows and searches beyond the visible page', async ({ page }
   const csv = 'admission_number,user_firstname,user_name,user_edu_class,user_edu_major\n' +
     Array.from({ length: 120 }, (_, i) => `${i + 1},Student${i + 1},user${i + 1},3,A`).join('\n');
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add dump file').setInputFiles({ name: 'large-dump.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
-  await expect(page.getByText('Loaded: large-dump.csv', { exact: true })).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles({ name: 'large-dump.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.getByText('large-dump.csv', { exact: true }).first()).toBeVisible();
   const response = page.waitForResponse(r => r.url().includes('/table-previews/dump?') && r.status() === 200);
   await page.getByRole('button', { name: 'Open sidebar', exact: true }).click();
   await page.getByRole('link', { name: 'Dump file', exact: true }).click();

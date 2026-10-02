@@ -52,9 +52,22 @@ school_routes.fetch_school = fetch_bulk_school
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
 conversion_routes.fetch_existing_emails = lambda emails: {'existing@testschool.com'} & set(emails)
 conversion_routes.fetch_existing_usernames = lambda usernames: {'ada001'} & set(usernames)
-conversion_routes.fetch_available_usernames = lambda names: [
-    f'{str(name).strip().lower()}{index:03d}' for index, name in enumerate(names, start=1)
-]
+def fetch_available_usernames(names):
+    # Match the allocator contract: candidates must be absent from the database
+    # and unique within this allocation, including repeated first names.
+    allocated = set()
+    result = []
+    for index, name in enumerate(names, start=1):
+        prefix = str(name).strip().lower()
+        candidate = f'{prefix}{index:03d}'
+        while candidate in allocated or conversion_routes.fetch_existing_usernames([candidate]):
+            index += 1
+            candidate = f'{prefix}{index:03d}'
+        allocated.add(candidate)
+        result.append(candidate)
+    return result
+
+conversion_routes.fetch_available_usernames = fetch_available_usernames
 app=create_app()
 from tests.invitation_fixture import invitation_database, override_database
 from tests.invitation_fixture import authenticated_client

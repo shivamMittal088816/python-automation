@@ -24,11 +24,12 @@ sys.stdout.buffer.write(output.getvalue())
 
 test('school viewer resets sheet-dependent columns and keeps statistics usable', async ({ page }) => {
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add school file').setInputFiles(workbook('classes.xlsx', [
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(workbook('classes.xlsx', [
     ['Original', [['name', 'class', 'section'], ['Ada', '1', 'A']]],
     ['Other', [['student', 'grade', 'group'], ['Grace', '2', 'B']]],
   ]));
-  await expect(page.getByText('Loaded: classes.xlsx', { exact: true })).toBeVisible();
+  await expect(page.getByText('classes.xlsx', { exact: true }).first()).toBeVisible();
   await page.goto('/school_file_page');
   await page.getByLabel('Class column', { exact: true }).selectOption('class');
   await page.getByLabel('Section column', { exact: true }).selectOption('section');
@@ -52,11 +53,13 @@ test('school viewer resets sheet-dependent columns and keeps statistics usable',
 
 test('mapping can recover from an empty first worksheet and subsequent invalid selections', async ({ page }) => {
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add school file').setInputFiles(workbook('students.xlsx', [
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(workbook('students.xlsx', [
     ['Empty', []], ['Students', [['admission_number', 'first_name'], ['001', 'Alice']]],
   ]));
-  await expect(page.getByText('Loaded: students.xlsx', { exact: true })).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(dump);
+  await expect(page.getByText('students.xlsx', { exact: true }).first()).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(dump);
   await expect(page.getByText('Both files must contain column headers.', { exact: true })).toBeVisible();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
@@ -75,14 +78,16 @@ test('mapping can recover from an empty first worksheet and subsequent invalid s
 
 test('CSV download uses the replacement workbook sheet without reloading', async ({ page }) => {
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add dump file').setInputFiles(workbook('old.xlsx', [
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(workbook('old.xlsx', [
     ['Old', [['user_name'], ['Ada']]],
   ]));
-  await expect(page.getByText('Loaded: old.xlsx', { exact: true })).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(workbook('new.xlsx', [
+  await expect(page.getByText('old.xlsx', { exact: true }).first()).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(workbook('new.xlsx', [
     ['New', [['user_name'], ['Grace']]],
   ]));
-  await expect(page.getByText('Loaded: new.xlsx', { exact: true })).toBeVisible();
+  await expect(page.getByText('new.xlsx', { exact: true }).first()).toBeVisible();
   await page.locator('summary').filter({ hasText: /^Download dump$/ }).click();
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download dump file', exact: true }).click();

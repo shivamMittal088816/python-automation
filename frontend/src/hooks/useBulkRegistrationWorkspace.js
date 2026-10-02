@@ -12,6 +12,9 @@ export function useBulkRegistrationWorkspace() {
   const saved = useRef(EMPTY);
   const drafts = useRef({});
   const readSequence = useRef(0);
+  // Keep a selection conflict until reload (or this tab's accepted reset), so
+  // a response already in flight cannot re-enable the old workspace.
+  const selectionChanged = useRef(false);
 
   const publish = useCallback(result => {
     if (saved.current.workspace_id && saved.current.workspace_id !== result.workspace_id) {
@@ -25,7 +28,7 @@ export function useBulkRegistrationWorkspace() {
     const sequence = ++readSequence.current;
     try {
       const result = await bulkRegistrationApi.getWorkspace();
-      if (sequence !== readSequence.current) return;
+      if (sequence !== readSequence.current || selectionChanged.current) return;
       if (result.workspace_id === saved.current.workspace_id && result.revision < saved.current.revision) return;
       // An unchanged read must preserve selected output pages and open dialogs.
       if (result.workspace_id !== saved.current.workspace_id || result.revision !== saved.current.revision
@@ -36,6 +39,7 @@ export function useBulkRegistrationWorkspace() {
       setReady(true);
     } catch (error) {
       if (sequence !== readSequence.current) return;
+      if (error.selectionConflict) selectionChanged.current = true;
       setReady(false);
       setStorageError(`Could not load the bulk registration workspace. ${error.message} Reload to retry.`);
     }
@@ -63,11 +67,13 @@ export function useBulkRegistrationWorkspace() {
   }, []);
 
   const replace = useCallback((result, { origin, committed = [], reset = false, announce = true } = {}) => {
-    if ((origin && origin !== saved.current.workspace_id)
+    if ((!reset && selectionChanged.current)
+        || (origin && origin !== saved.current.workspace_id)
         || (!reset && result.workspace_id === saved.current.workspace_id && result.revision < saved.current.revision)) {
       throw new Error('Bulk registration changed in another tab or request. Review the updated workspace and try again.');
     }
     ++readSequence.current;
+    if (reset) selectionChanged.current = false;
     if (reset) drafts.current = {};
     else for (const key of committed) delete drafts.current[key];
     publish(result);

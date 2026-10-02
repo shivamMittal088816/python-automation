@@ -12,12 +12,14 @@ test('mapping runs only after an explicit start action, never on navigation or r
   await page.setViewportSize({ width: 1366, height: 640 });
   await page.goto('/admission_file_page');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByLabel('Add school file')).toBeAttached();
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeAttached();
   await page.screenshot({ path: testInfo.outputPath('homepage-empty.png') });
-  await page.getByLabel('Add school file').setInputFiles(school);
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(school);
   await expect(page.getByTestId('school-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(dump);
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(dump);
   await expect(page.getByTestId('dump-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
@@ -52,9 +54,11 @@ test('mapping runs only after an explicit start action, never on navigation or r
 
 async function mapAdmission(page) {
   await page.goto('/admission_file_page');
-  await page.getByLabel('Add school file').setInputFiles(school);
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(dump);
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles(school);
+  await expect(page.getByText('school.csv', { exact: true }).first()).toBeVisible();
+  await expect(page.getByLabel(/^(Add|Replace) dump file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) dump file$/).setInputFiles(dump);
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
@@ -91,11 +95,12 @@ test('email metadata is cached across navigation and refreshed after admission r
   await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(2);
   await openSidebar('Admission No. Mapping', 'Admission mapping');
-  await page.getByLabel('Add school file').setInputFiles({
+  await expect(page.getByLabel(/^(Add|Replace) school file$/)).toBeEnabled();
+  await page.getByLabel(/^(Add|Replace) school file$/).setInputFiles({
     name: 'changed-school.csv', mimeType: 'text/csv',
     buffer: Buffer.from(readFileSync(school, 'utf8') + '\n'),
   });
-  await expect(page.getByText('Loaded: changed-school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByText('changed-school.csv', { exact: true }).first()).toBeVisible();
   await openSidebar('Email mapping', 'Email mapping');
   await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(3);
@@ -168,11 +173,12 @@ test('admission upload, locked preview, workbook downloads and refresh', async (
 for (const kind of ['school', 'dump']) {
   test(`${kind} changes clear stale results while direct mapping remains available`, async ({ page }) => {
     await mapAdmission(page);
-    await page.getByLabel(kind === 'school' ? 'Add school file' : 'Add dump file').setInputFiles({
+    await expect(page.getByLabel(kind === 'school' ? /^(Add|Replace) school file$/ : /^(Add|Replace) dump file$/)).toBeEnabled();
+    await page.getByLabel(kind === 'school' ? /^(Add|Replace) school file$/ : /^(Add|Replace) dump file$/).setInputFiles({
       name: `changed-${kind}.csv`, mimeType: 'text/csv',
       buffer: Buffer.from(readFileSync(kind === 'school' ? school : dump, 'utf8') + '\n'),
     });
-    await expect(page.getByText(`Loaded: changed-${kind}.csv`, { exact: true })).toBeVisible();
+    await expect(page.getByText(`changed-${kind}.csv`, { exact: true }).first()).toBeVisible();
     await page.goto('/admission_preview_page');
     await expect(page.getByText('No results available in this session. Map your files first to preview the results.', { exact: true })).toBeVisible();
     await page.goto('/admission_file_page');
@@ -269,7 +275,8 @@ test('file path inputs, SQL dump loading, loading/error states and responsive na
   await page.getByTestId('school-input').getByRole('tab', { name: 'File path', exact: true }).click();
   await page.getByTestId('school-input').getByLabel('File path', { exact: true }).fill(school);
   await page.getByRole('button', { name: 'Use file path', exact: true }).click();
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await page.getByTestId('school-input').getByRole('tab', { name: 'Upload', exact: true }).click();
+  await expect(page.getByText('school.csv', { exact: true }).first()).toBeVisible();
   await page.getByLabel('Fetch from SQL', { exact: true }).check();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();
