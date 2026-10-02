@@ -286,6 +286,7 @@ test('a delayed verification cannot restore a workspace reset in another tab', a
 test('focus preserves drafts and restores committed changes without BroadcastChannel', async ({ page, context }) => {
   await context.addInitScript(() => { window.BroadcastChannel = class { constructor() { throw new Error('Unavailable'); } }; });
   await page.goto('/bulk-reg');
+  await expect(page.getByLabel('School index', { exact: true })).toBeEnabled();
   await page.getByLabel('School index', { exact: true }).pressSequentially('1234567890');
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('1234567890');
   await page.locator('summary').filter({ hasText: 'Use a file path instead' }).click();

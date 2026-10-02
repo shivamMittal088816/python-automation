@@ -27,6 +27,7 @@ export function useWorkspaceMutation({
         ? await navigator.locks.request('student-mapping-operation', perform)
         : await perform();
     } catch (error) {
+      if (error.workspaceRemoved) return null;
       if (error.status === 409) {
         try {
           publish(await admissionMappingApi.getSession());

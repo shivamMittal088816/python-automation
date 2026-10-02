@@ -1,11 +1,12 @@
 import { Icon } from '../common/Presentation';
 
-export function WorkspaceRow({ item, current, switching, onSelect, onRename }) {
+export function WorkspaceRow({ item, current, switching, onSelect, onRename, onDelete }) {
     const name = item.name, access = item.role === 'owner' ? 'Owner' : item.role === 'viewer' ? 'Viewer' : 'Editor';
     return <div className="workspace-selector-row-wrap"><button key={item.id} type="button" data-workspace-id={item.id} onClick={() => onSelect(item)} disabled={switching || item.status !== 'active'} aria-current={current ? 'true' : undefined} className={`workspace-selector-row${current ? ' is-current' : ''}`}>
     <span className={`workspace-selector-row-icon${access !== 'Owner' ? ' is-shared' : ''}`}><Icon name={access === 'Owner' ? 'grid' : 'link'} className="size-4" /></span>
-    <div className="workspace-selector-row-copy"><strong>{name}</strong><span>{item.status !== 'active' ? `Access ${item.status}` : access === 'Owner' ? 'Your personal space' : item.owner_email || 'Shared with you'}</span></div>
+    <div className="workspace-selector-row-copy"><strong title={name}>{name}</strong><span title={item.owner_email}>{item.status !== 'active' ? `Access ${item.status}` : access === 'Owner' ? 'Your personal space' : item.owner_email || 'Shared with you'}</span></div>
     <span className={`workspace-selector-role role-${access.toLowerCase()}`}>{access}</span>
     <span className="workspace-selector-selection">{current && <Icon name="check" className="size-3" />}</span>
-  </button>{item.owned && item.status === 'active' && <button type="button" className="workspace-selector-rename" aria-label={`Rename ${item.name}`} title="Rename workspace" disabled={switching} onClick={() => onRename(item)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m14 5 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg></button>}</div>;
+  </button>{item.owned && item.status === 'active' && <button type="button" className="workspace-selector-rename" aria-label={`Rename ${item.name}`} title="Rename workspace" disabled={switching} onClick={() => onRename(item)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m14 5 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14z" /></svg></button>}
+  {item.owned && <button type="button" className="workspace-selector-delete" aria-label={`Delete ${item.name}`} title="Delete workspace" disabled={switching} onClick={() => onDelete(item)}><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg></button>}</div>;
   }

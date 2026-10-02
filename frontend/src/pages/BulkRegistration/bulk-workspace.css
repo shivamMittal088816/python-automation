@@ -1,0 +1,116 @@
+/* Compact workspace surfaces, scoped away from the sanity rules page. */
+.bulk-workspace-page { padding: 14px 24px 20px; background: #f4f7fb; }
+.bulk-workspace-page .bulk-shell { max-width: 1280px; }
+.bulk-workspace-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 10px; padding: 6px 12px; min-height: 46px;
+  border: 1px solid #cbd8e3; border-radius: 10px; background: #fff;
+  box-shadow: 0 3px 12px rgb(26 54 66 / 6%);
+}
+.bulk-workspace-page .bulk-header {
+  gap: 16px; margin-bottom: 12px; padding: 12px 16px;
+  border: 1px solid #c4d6df; border-left: 3px solid #168577;
+  border-radius: 11px; background: #fff;
+  box-shadow: 0 4px 14px rgb(26 54 66 / 6%);
+}
+.bulk-workspace-page .bulk-header h1 { margin: 2px 0; font-size: 24px; line-height: 1.2; }
+.bulk-workspace-page .bulk-eyebrow { font-size: 9px; }
+.bulk-workspace-page .bulk-subtitle { font-size: 12px; }
+.bulk-header-actions { display: grid; gap: 7px; flex-shrink: 0; }
+.bulk-header-links, .bulk-workspace-page .bulk-collaboration { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.bulk-workspace-page .bulk-collaboration { margin: 0; }
+.bulk-workspace-page .bulk-back, .bulk-workspace-page .bulk-help-link {
+  display: inline-flex; align-items: center; min-height: 30px; padding: 4px 9px;
+  border: 1px solid #cbd9df; border-radius: 7px; background: #f8fbfc; font-size: 11px;
+}
+.bulk-workspace-page .bulk-help-icon { width: 17px; height: 17px; font-size: 10px; }
+.bulk-workspace-page .bulk-workspace-fields { margin: 0; padding: 0; }
+.bulk-workspace-page .bulk-grid { grid-template-columns: minmax(0, 1fr) 290px; gap: 12px; align-items: stretch; }
+.bulk-workspace-page .bulk-setup { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 12px; align-items: start; }
+.bulk-workspace-page .bulk-card {
+  padding: 14px; border-color: #c3d3df; border-radius: 11px;
+  box-shadow: 0 5px 16px -5px rgb(26 54 66 / 15%), 0 1px 3px rgb(26 54 66 / 5%);
+}
+.bulk-workspace-page .bulk-setup > .bulk-card { height: 100%; border-top: 3px solid #168577; }
+.bulk-workspace-page .bulk-setup > .bulk-file-card { border-top-color: #3b72da; }
+.bulk-workspace-page .bulk-section-title { gap: 8px; align-items: flex-start; }
+.bulk-workspace-page .bulk-section-title > div { min-width: 0; }
+.bulk-workspace-page .bulk-section-title h2 { font-size: 14px; }
+.bulk-workspace-page .bulk-section-title p { font-size: 11px; line-height: 1.5; }
+.bulk-workspace-page .bulk-step { width: 28px; height: 28px; border-radius: 7px; }
+.bulk-workspace-page .bulk-inline-form { margin-top: 12px; flex-wrap: wrap; gap: 8px; }
+.bulk-workspace-page .bulk-field { flex-basis: 130px; }
+.bulk-workspace-page input:not([type=file]), .bulk-workspace-page .bulk-button { min-height: 34px; }
+.bulk-workspace-page input:not([type=file]) { height: 34px; padding: 6px 9px; }
+.bulk-workspace-page .bulk-button { padding: 6px 10px; font-size: 11px; }
+.bulk-workspace-page .bulk-secondary, .bulk-workspace-page .bulk-primary { box-shadow: 0 2px 4px rgb(26 54 66 / 8%); }
+.bulk-workspace-page .bulk-verified { margin-top: 10px; padding: 9px; }
+.bulk-workspace-page .bulk-verified p { margin-bottom: 7px; }
+.bulk-workspace-page .bulk-drop { min-height: 100px; margin-top: 12px; padding: 14px; gap: 12px; box-shadow: inset 0 1px 4px rgb(26 54 66 / 4%); }
+.bulk-workspace-page .bulk-drop svg { flex-shrink: 0; }
+.bulk-workspace-page .bulk-drop-type { display: none; }
+.bulk-workspace-page .bulk-loaded-file { margin-top: 12px; }
+.bulk-workspace-page .bulk-loaded-file-main { gap: 9px; padding: 10px; grid-template-columns: auto minmax(0, 1fr); }
+.bulk-workspace-page .bulk-file-actions { grid-column: 1 / -1; justify-content: flex-end; }
+.bulk-workspace-page .bulk-file-icon { width: 32px; height: 32px; border-radius: 8px; }
+.bulk-workspace-page .bulk-sheet-row { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 9px 10px; }
+.bulk-workspace-page .bulk-path-disclosure { margin-top: 10px; padding-top: 9px; }
+.bulk-workspace-page .bulk-path-disclosure summary { gap: 8px; }
+.bulk-workspace-page .bulk-path-disclosure summary span { display: none; }
+.bulk-workspace-page .bulk-path-disclosure .bulk-inline-form { margin-top: 0; }
+.bulk-workspace-page .bulk-defaults { background: #fbfdfd; border-top: 3px solid #168577; }
+.bulk-workspace-page .bulk-defaults-title { margin-bottom: 8px; }
+.bulk-workspace-page .bulk-defaults h2 { font-size: 14px; font-weight: 700; }
+.bulk-defaults-description { margin-top: 3px; color: #637583; font-size: 11px; }
+.bulk-defaults-summary { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 6px; margin: 12px 0; }
+.bulk-defaults-summary > div { padding: 8px; border: 1px solid #d3e1e5; border-radius: 7px; background: #fff; }
+.bulk-defaults-summary dt { color: #637583; font-size: 10px; }
+.bulk-defaults-summary dd { margin-top: 3px; font-size: 12px; font-weight: 700; }
+.bulk-defaults-details { border: 1px solid #cadbe1; border-radius: 7px; background: #fff; }
+.bulk-defaults-details summary { padding: 9px; color: #315f58; font-size: 11px; font-weight: 650; cursor: pointer; }
+.bulk-defaults-details[open] summary { border-bottom: 1px solid #dce5e8; }
+.bulk-workspace-page .bulk-defaults caption { margin-bottom: 8px; font-size: 14px; }
+.bulk-workspace-page .bulk-defaults caption span { margin-top: 2px; }
+.bulk-workspace-page .bulk-defaults table { font-size: 11px; }
+.bulk-workspace-page .bulk-defaults th, .bulk-workspace-page .bulk-defaults td { padding: 6px 7px; }
+.bulk-workspace-page .bulk-defaults td { overflow-wrap: anywhere; }
+.bulk-workspace-page .bulk-output-note { margin-top: 10px; padding-top: 9px; font-size: 11px; }
+.bulk-workspace-page .bulk-output-note p { margin-top: 4px; font-size: 10px; line-height: 1.5; }
+.bulk-workspace-page .bulk-sanity { margin: 10px 0 0; padding: 10px 14px; border-left: 3px solid #3b72da; }
+.bulk-workspace-page .bulk-action-bar {
+  margin-top: 10px; padding: 10px 14px; gap: 10px;
+  border-color: #a8d3c9; background: #edf8f4;
+  box-shadow: 0 4px 12px rgb(26 54 66 / 7%);
+}
+.bulk-workspace-page .bulk-action-bar .bulk-section-title { align-items: center; flex: 1 1 280px; }
+.bulk-workspace-page .bulk-output-summary, .bulk-workspace-page .bulk-username-verification,
+.bulk-workspace-page .bulk-quality-card, .bulk-workspace-page .bulk-preview-records,
+.bulk-workspace-page .bulk-input-preview { margin-top: 10px; }
+.bulk-workspace-page .bulk-output-summary h2, .bulk-workspace-page .bulk-preview-records h2,
+.bulk-workspace-page .bulk-username-verification h2, .bulk-workspace-page .bulk-quality-card h2 { font-size: 15px; }
+.bulk-workspace-page .bulk-verification-stages { margin-top: 12px; }
+.bulk-workspace-page .bulk-verification-stage { padding: 9px 10px; }
+.bulk-workspace-page .bulk-error, .bulk-workspace-page .bulk-notice { margin-top: 10px; padding: 9px 12px; font-size: 12px; border: 1px solid #bdddd3; }
+.bulk-workspace-page .bulk-error { border-color: #f2d6d3; }
+.bulk-workspace-page .bulk-top-error { margin-top: 0; margin-bottom: 10px; }
+.bulk-workspace-page .bulk-footer { margin-top: 12px; padding: 10px 12px; border: 1px solid #cbd8e3; border-radius: 9px; background: #fff; box-shadow: 0 2px 8px rgb(26 54 66 / 4%); }
+@media (min-width: 901px) and (max-width: 1099px) {
+  .bulk-workspace-page .bulk-setup { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  .bulk-workspace-page .bulk-grid { grid-template-columns: minmax(0, 1fr); }
+  .bulk-workspace-page .bulk-defaults { align-self: start; }
+}
+@media (max-width: 640px) {
+  .bulk-workspace-page { padding: 10px 12px 16px; }
+  .bulk-workspace-page .bulk-header { align-items: flex-start; flex-direction: column; gap: 10px; padding: 12px; }
+  .bulk-workspace-page .bulk-header h1 { font-size: 22px; }
+  .bulk-header-actions { width: 100%; }
+  .bulk-header-links, .bulk-workspace-page .bulk-collaboration { justify-content: flex-start; }
+  .bulk-workspace-page .bulk-setup { grid-template-columns: minmax(0, 1fr); }
+  .bulk-workspace-toolbar { gap: 8px; padding: 6px 8px; }
+  .bulk-workspace-page .bulk-output-summary, .bulk-workspace-page .bulk-verification-heading { flex-wrap: wrap; gap: 10px; }
+  .bulk-workspace-page .bulk-pagination { flex-wrap: wrap; }
+  .bulk-workspace-page .bulk-pagination-controls { flex-wrap: wrap; }
+  .bulk-workspace-page .bulk-sanity-header { flex-wrap: wrap; gap: 8px; }
+}

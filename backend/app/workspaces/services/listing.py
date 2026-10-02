@@ -15,7 +15,8 @@ def list_account_workspaces(db, owner_id, workflow):
     joined = db.execute(select(Workspace, WorkflowMember, User).select_from(Workspace).join(WorkflowMember,
         (WorkflowMember.workspace_id == Workspace.id) & (WorkflowMember.workflow_type == Workspace.workflow_type))
         .join(User, Workspace.owner_user_id == User.id).options(load_only(User.id, User.name, User.email))
-        .where(WorkflowMember.user_id == owner_id, Workspace.workflow_type == workflow)
+        .where(WorkflowMember.user_id == owner_id, Workspace.workflow_type == workflow,
+               Workspace.deleted_at.is_(None))
         .order_by(WorkflowMember.joined_at.desc(), WorkflowMember.id.desc())).all()
     results = [{'id': item.public_id, 'name': item.name, 'needs_name': not item.name_confirmed, 'role': 'owner', 'workflow': workflow,
                 'status': 'active' if storage_available(item) else 'unavailable', 'owned': True} for item in owned]
@@ -28,4 +29,5 @@ def list_account_workspaces(db, owner_id, workflow):
                         'workspace_name': item.name, 'owner_name': person.name, 'owner_email': person.email})
     active = db.get(WorkspacePreference, (owner_id, workflow))
     selected = db.get(Workspace, active.active_workspace_id) if active else None
-    return {'active_workspace_id': selected.public_id if selected else None, 'workspaces': results}
+    return {'active_workspace_id': selected.public_id if selected and selected.deleted_at is None else None,
+            'workspaces': results}

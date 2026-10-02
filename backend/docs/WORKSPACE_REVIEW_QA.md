@@ -1,32 +1,56 @@
-# Workspace cleanup review and QA — 2026-10-02
+# Workspace changes: code review and QA
 
-## Scope and finding
+Reviewed on 2026-10-03. No blocking defects were found in the reviewed changes.
+No application code changes were needed during this QA pass.
 
-Reviewed the recent unused-code cleanup, database query reductions, account/session access, workspace creation and naming, invitation acceptance, and workspace selector integration.
+## Code review
 
-Found and fixed a keyboard focus regression: opening a naming dialog closes its workspace dropdown, so restoring focus to the original dropdown button could leave focus on the page. The dialog now receives the selector reference and returns focus to its visible summary on close. Existing requests, validation, permissions and save behavior remain unchanged.
+Reviewed the soft-delete route and service, workspace listing and access checks,
+schema/index upgrade, API error parsing, removal recovery, deletion confirmation,
+and the homepage, sidebar, and workspace selector styles.
 
-Regression assertions cover Cancel, Escape and successful save. Added coverage for a first-time invitee accepting a shared workspace while retaining an unnamed personal workspace, and naming that personal workspace after switching to it.
+- Only the actual owner can delete a workspace.
+- Setting `deleted_at` and changing the owner's selection commit together; failures roll back.
+- Repeating deletion preserves the original deletion timestamp.
+- Files and related records remain retained, while deleted workspaces disappear from lists.
+- The deletion-specific 410 code triggers recovery in both supported workflows.
+- Switching after deletion stays within the same workflow and chooses the oldest available owned workspace.
 
-## Verification
+## Browser walkthrough and visual review
 
-- Frontend production build: passed.
-- Targeted backend checks: 13 passed across database efficiency, workspace naming and settings tests. The earlier full backend run passed 277 tests; backend code was unchanged during this review.
-- Combined browser run: all 24 tests passed across authentication, naming, switching, review QA, invitation join and invitation links.
-- An additional browser walkthrough scenario passed: 320px rename dialog with a 100-character name, Escape and focus return, simulated HTTP 503, retained input, Enter to retry successfully, focus return after save, and logout. Total: 25 distinct passing browser scenarios.
-- Manually inspected screenshots of desktop and narrow-screen rename dialogs, the failed-save state, and accepted-member dropdown. No clipping or horizontal dialog overflow was observed.
-- Browser mutation scenarios used isolated fixture accounts/storage, rather than modifying production account data.
+Used headless Microsoft Edge with isolated fixture accounts and a temporary
+database, followed by visual inspection of screenshots. This was a scripted
+browser walkthrough, rather than an interactive human browser session.
 
-Browser interactions were driven through Playwright; visual QA consisted of manual screenshot inspection. This does not represent multi-worker deployment or load testing.
+Checked:
 
-## Evidence
+- School CSV upload, SQL dump fetch, school identity display, and admission mapping results.
+- Sidebar opening, Escape dismissal, and keyboard focus restoration.
+- Homepage, sidebar, and switcher layout at desktop width and 390px/320px mobile widths.
+- Twelve long workspace names: truncation, internal list scrolling, and visible create/join actions.
+- Delete confirmation cancellation with Escape.
+- Owner deletion and automatic selection of another workspace.
+- Member removal message and recovery to their personal workspace.
 
-Screenshot paths are relative to the repository root and are ignored by Git:
+All 11 walkthrough checks passed. No uncaught browser page errors were captured.
+No horizontal overflow was detected in the sidebar or switcher at the checked widths.
 
-- `.test-temp/workspace-naming/rename-desktop.png`
-- `.test-temp/workspace-naming/rename-mobile.png`
-- `.test-temp/review-qa/rename-mobile-320.png`
-- `.test-temp/review-qa/rename-save-error-desktop.png`
-- `.test-temp/invitation-qa/workspace-members-desktop.png`
+Local walkthrough evidence is under
+`.test-temp/workspace-review-2026-10-03/`, including `results.json` and screenshots.
 
-No unresolved blocking issue was found in the reviewed scope. Changes remain local and have not been pushed by this review.
+## Regression checks
+
+- Backend deletion, switching, naming, and invitation regression suites: **40 tests passed**.
+- Browser deletion/recovery suites: **9 tests passed**, covering both mapping and bulk registration,
+  last-workspace deletion, retry/cancellation, operation/focus detection, and inactive shared deletion.
+- Frontend production build: **passed**.
+
+## Expected behavior and coverage limits
+
+Members detect removal on their next API request or focus refresh. There is no
+live push notification. If the owner deletes their last workspace, existing page
+initialization creates a fresh workspace and may ask for its name.
+
+This remains soft deletion: no purge job or automatic permanent deletion was added.
+The browser checks used fixture data; production database concurrency and live
+external integrations were not exercised in this pass.

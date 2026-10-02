@@ -10,7 +10,7 @@ export function RegistrationPreviews({ file, output, busy, onOutputPage, onInput
     {output && <>
       <section className="bulk-card bulk-output-summary" aria-labelledby="output-summary-title">
         <div><p className="bulk-card-eyebrow">Generated output</p><h2 id="output-summary-title">{output.sheet || 'Registration records'}</h2><p>{output.row_count} rows prepared across 24 columns.</p></div>
-        <div className="bulk-preview-actions"><span className="bulk-badge"><span aria-hidden="true">&#10003;</span> Ready to export</span></div>
+        <div className="bulk-preview-actions"><span className="bulk-badge"><span aria-hidden="true">&#10003;</span> Preview generated</span></div>
       </section>
 
       {!!output.review_records?.length && <details open className="bulk-card bulk-quality-card is-error" aria-labelledby="preview-review-title">

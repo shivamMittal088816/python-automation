@@ -1,2 +1,3 @@
 import { AdmissionMappingForm } from './AdmissionMappingForm';
-export function AdmissionMappingPage() { return <AdmissionMappingForm />; }
+import './admission-home.css';
+export function AdmissionMappingPage() { return <div className="admission-home"><AdmissionMappingForm /></div>; }

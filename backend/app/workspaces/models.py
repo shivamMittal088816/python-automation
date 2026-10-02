@@ -15,7 +15,7 @@ class Workspace(Base):
     owner_user_id: Mapped[str] = mapped_column(ForeignKey('app_users.id'), index=True)
     storage_id: Mapped[str] = mapped_column(String(36))
     created_at: Mapped[datetime] = mapped_column(DateTime)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     __table_args__ = (UniqueConstraint('workflow_type', 'storage_id', name='uq_workspace_storage'),)
 
 

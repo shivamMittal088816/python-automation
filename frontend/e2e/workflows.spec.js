@@ -4,15 +4,19 @@ import { readFileSync } from 'node:fs';
 const school = fileURLToPath(new URL('./fixtures/school.csv', import.meta.url));
 const dump = fileURLToPath(new URL('./fixtures/dump.csv', import.meta.url));
 
-test('mapping runs only after an explicit start action, never on navigation or reload', async ({ page }) => {
+test('mapping runs only after an explicit start action, never on navigation or reload', async ({ page }, testInfo) => {
   const actions = [];
   page.on('request', request => {
     if (request.method() === 'POST' && /\/(?:admission-mapping\/run|email-mapping\/run|full-name-class-mapping\/run|duplicate-accounts\/reconcile)$/.test(new URL(request.url()).pathname)) actions.push(new URL(request.url()).pathname.split('/').slice(-2).join('/'));
   });
+  await page.setViewportSize({ width: 1366, height: 640 });
   await page.goto('/admission_file_page');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByLabel('Add school file')).toBeAttached();
+  await page.screenshot({ path: testInfo.outputPath('homepage-empty.png') });
   await page.getByLabel('Add school file').setInputFiles(school);
   await expect(page.getByTestId('school-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
   await page.getByLabel('Add dump file').setInputFiles(dump);
   await expect(page.getByTestId('dump-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await page.getByLabel('School index', { exact: true }).fill('914');
@@ -23,6 +27,10 @@ test('mapping runs only after an explicit start action, never on navigation or r
   await page.getByRole('button', { name: 'Run mapping', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
   expect(actions).toEqual(['admission-mapping/run']);
+  await page.screenshot({ path: testInfo.outputPath('homepage-loaded-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath('homepage-loaded-mobile.png') });
+  await page.setViewportSize({ width: 1366, height: 640 });
   await page.goto('/email_mapping_page');
   await expect(page.getByRole('button', { name: 'Run mapping', exact: true })).toBeEnabled();
   expect(actions).toEqual(['admission-mapping/run']);

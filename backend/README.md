@@ -88,6 +88,7 @@ focused route, schema and service modules. The frontend has corresponding
 account, invitation and workspace component folders. See
 [code organization](docs/CODE_ORGANIZATION.md) for the folder map and responsibilities.
 Workspace setup and owner-only renaming are documented in [workspace names](docs/WORKSPACE_NAMING.md).
+Owner-only soft deletion is documented in [workspace deletion](docs/WORKSPACE_DELETION.md).
 The latest fixes and browser evidence are in [code review and QA](docs/CODE_REVIEW_QA.md).
 
 FastAPI route definitions are under `app/routes`. Shared cookie, workflow-state,

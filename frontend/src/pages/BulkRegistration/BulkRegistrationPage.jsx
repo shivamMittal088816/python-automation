@@ -4,6 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import { JoinWorkflowDialog } from '../../components/invitations/JoinWorkflowDialog';
 import { InviteWorkflowDialog } from '../../components/invitations/InviteWorkflowDialog';
 import { WorkspaceSelector } from '../../components/workspaces/WorkspaceSelector';
+import { WorkspaceRemoved } from '../../components/workspaces/WorkspaceRemoved';
+import { useWorkspaceRemoved } from '../../hooks/useWorkspaceRemoved';
 import { useBulkRegistration } from './useBulkRegistration';
 import { SchoolVerification } from './components/SchoolVerification';
 import { RegistrationFileInput } from './components/RegistrationFileInput';
@@ -13,8 +15,10 @@ import { RegistrationSanityCheck } from './components/RegistrationSanityCheck';
 import { RegistrationPreviews } from './components/RegistrationPreviews';
 import { ConfirmResetBulkRegistration } from './components/ConfirmResetBulkRegistration';
 import './bulk-registration.css';
+import './bulk-workspace.css';
 
 export function BulkRegistrationPage() {
+  const removed = useWorkspaceRemoved('bulk_registration');
   const workflow = useBulkRegistration();
   const { error, storageError, working, ready, busy, edit } = workflow;
   const location = useLocation();
@@ -29,29 +33,34 @@ export function BulkRegistrationPage() {
     navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
   }
 
+  if (removed) return <WorkspaceRemoved workflow="bulk_registration" />;
   return (
-    <main className="bulk-page">
+    <main className="bulk-page bulk-workspace-page">
       {joinOpen && <JoinWorkflowDialog onClose={closeJoin} initialCode={new URLSearchParams(location.search).get('invite') || ''} />}
       {inviteOpen && <InviteWorkflowDialog workflow="bulk" onClose={() => setInviteOpen(false)} />}
       <div className="bulk-shell">
-        <div className="mb-4 flex items-center justify-between">{ready || storageError ? <WorkspaceSelector role={workflow.role} workflow="bulk_registration" /> : <span className="text-sm text-slate-500" role="status">Opening workspace…</span>}<AccountMenu /></div>
+        <div className="bulk-workspace-toolbar">{ready || storageError ? <WorkspaceSelector role={workflow.role} workflow="bulk_registration" /> : <span className="text-sm text-slate-500" role="status">Opening workspace…</span>}<AccountMenu /></div>
         <header className="bulk-header">
           <div>
             <p className="bulk-eyebrow">FILE CONVERSION</p>
             <h1>Bulk registration</h1>
             <p className="bulk-subtitle">Your student data, ready for registration.</p>
           </div>
-          <Link to="/admission_file_page" className="bulk-back">
-            Back to mapping <span aria-hidden="true">&#8599;</span>
-          </Link>
-          <Link to="/bulk-reg/rules" className="bulk-help-link" aria-label="Open bulk-registration sanity rules">
-            <span className="bulk-help-icon" aria-hidden="true">?</span> Sanity rules
-          </Link>
+          <div className="bulk-header-actions">
+            <div className="bulk-header-links">
+              <Link to="/admission_file_page" className="bulk-back">
+                Back to mapping <span aria-hidden="true">&#8599;</span>
+              </Link>
+              <Link to="/bulk-reg/rules" className="bulk-help-link" aria-label="Open bulk-registration sanity rules">
+                <span className="bulk-help-icon" aria-hidden="true">?</span> Sanity rules
+              </Link>
+            </div>
+            <div className="bulk-collaboration">
+              <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setJoinOpen(true)}>Join with invitation code</button>
+              {workflow.role === 'owner' && <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setInviteOpen(true)}>Invite to workflow</button>}
+            </div>
+          </div>
         </header>
-        <div className="bulk-collaboration">
-          <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setJoinOpen(true)}>Join with invitation code</button>
-          {workflow.role === 'owner' && <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setInviteOpen(true)}>Invite to workflow</button>}
-        </div>
         {viewer && <p className="bulk-notice">Viewer access: you can view this shared workspace. Editing is disabled.</p>}
         {(error || storageError) && (
           <p role="alert" className="bulk-error bulk-top-error">{error || storageError}</p>

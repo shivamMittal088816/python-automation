@@ -62,13 +62,17 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     if (response.status === 401 && response.headers.get('X-Authentication-Required') === '1') window.dispatchEvent(new Event('auth-expired'));
     let payload = {};
     try { payload = await response.json(); } catch { /* Use the status fallback for non-JSON errors. */ }
-    const detail = payload.detail || payload.message;
+    const detail = payload.detail?.message || payload.detail || payload.message;
     const error = new Error(Array.isArray(detail) ? detail.map(item => {
       const field = (item.loc || []).filter(part => !['body', 'query', 'path'].includes(part)).join('.');
       const message = cleanMessage(item.msg);
       return field ? `${field}: ${message}` : message;
     }).join('; ') : cleanMessage(detail) || `Request failed (${response.status}).`);
     error.status = response.status;
+    error.workspaceRemoved = response.status === 410 && payload.detail?.code === 'workspace_removed';
+    if (workflow && error.workspaceRemoved) {
+      window.dispatchEvent(new CustomEvent('workspace-removed', { detail: { workflow } }));
+    }
     error.selectionConflict = response.headers.get('X-Workspace-Selection-Conflict') === '1';
     const requestId = response.headers.get('X-Request-ID');
     if (requestId && /^[A-Za-z0-9_.-]{1,64}$/.test(requestId)) {

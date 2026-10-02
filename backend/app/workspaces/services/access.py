@@ -9,8 +9,13 @@ from app.workspaces.services.storage import storage_available
 
 
 def access_to(db, owner_id, record):
-    if record is None or record.deleted_at:
+    if record is None:
         raise HTTPException(410, 'This workspace is unavailable. Select another workspace.')
+    if record.deleted_at:
+        raise HTTPException(410, {
+            'code': 'workspace_removed',
+            'message': 'The owner deleted this workspace. Select another workspace to continue.',
+        })
     if record.owner_user_id == owner_id:
         role = 'owner'
     else:

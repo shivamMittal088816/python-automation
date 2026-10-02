@@ -1,0 +1,63 @@
+.workspace-removed-page {
+  min-height: 100dvh;
+  padding: 0 20px 24px;
+  background: radial-gradient(ellipse at 50% 15%, #eaf0ff 0, #f4f7fb 65%);
+}
+.workspace-removed-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1000px;
+  height: 60px;
+  margin: 0 auto;
+  border-bottom: 1px solid #dce4f0;
+}
+.workspace-removed-topbar > span { font-size: 13px; font-weight: 600; color: #64748b; }
+.workspace-removed-card {
+  width: min(100%, 520px);
+  margin: 32px auto 0;
+  padding: 24px;
+  border: 1px solid #cbd7eb;
+  border-top: 3px solid #7860ce;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 44px -16px #233b6940, 0 2px 8px #233b6910;
+}
+.workspace-removed-message { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 20px; }
+.workspace-removed-icon { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border: 1px solid #e1d9f6; border-radius: 12px; color: #7860ce; background: #f4f0ff; }
+.workspace-removed-icon svg { width: 23px; height: 23px; }
+.workspace-removed-message h1 { margin: 0 0 6px; font-size: 20px; line-height: 1.3; font-weight: 650; letter-spacing: -.4px; color: #202939; }
+.workspace-removed-message p { margin: 0; font-size: 13px; line-height: 1.6; color: #64748b; }
+.workspace-removed-hint { margin: 12px 0 0; font-size: 11px; line-height: 1.5; color: #7a879b; }
+.workspace-selector-recovery { width: 100%; }
+.workspace-selector-recovery > summary { height: 40px; padding: 6px 10px; border-color: #ddd6ef; background: #f8f6fd; }
+.workspace-selector-recovery .workspace-selector-chevron { margin-left: auto; }
+.workspace-selector-recovery .workspace-selector-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  margin-top: 8px;
+  border-color: #dce3ef;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px #233b690a;
+  overflow: hidden;
+}
+.workspace-selector-recovery .workspace-selector-panel-header { display: none; }
+.workspace-selector-recovery .workspace-selector-list { max-height: clamp(100px, calc(100dvh - 365px), 250px); overflow-y: auto; overscroll-behavior: contain; }
+.workspace-selector-recovery .workspace-selector-panel section { padding: 8px 0 0; }
+.workspace-selector-recovery .workspace-selector-panel h3 { padding: 0 10px 5px; color: #718096; font-size: 10px; }
+.workspace-selector-recovery .workspace-selector-row { padding: 7px 6px; gap: 8px; }
+.workspace-selector-recovery .workspace-selector-row-icon { width: 28px; height: 28px; border-radius: 7px; }
+.workspace-selector-recovery .workspace-selector-row-copy { gap: 2px; }
+.workspace-selector-recovery .workspace-selector-actions { margin-top: 8px; padding: 4px; }
+.workspace-selector-recovery .workspace-selector-actions button { padding: 7px 8px; font-size: 11px; }
+.workspace-selector-recovery .workspace-selector-note { padding: 8px 14px; font-size: 10px; }
+@media (max-width: 520px) {
+  .workspace-removed-page { padding: 0 12px 16px; }
+  .workspace-removed-topbar { height: 52px; }
+  .workspace-removed-card { margin-top: 20px; padding: 18px; border-radius: 12px; }
+  .workspace-removed-message { gap: 10px; margin-bottom: 16px; }
+  .workspace-removed-icon { width: 34px; height: 34px; border-radius: 9px; }
+  .workspace-removed-message h1 { font-size: 18px; }
+  .workspace-selector-recovery .workspace-selector-panel { position: static; width: 100%; }
+}

@@ -12,7 +12,10 @@ def upgrade():
                   WorkflowInvitation, WorkflowMember):
         model.__table__.create(engine, checkfirst=True)
     workspace_columns = {item['name'] for item in inspect(engine).get_columns('workspaces')}
+    workspace_indexes = {item['name'] for item in inspect(engine).get_indexes('workspaces')}
     with engine.begin() as connection:
+        if 'ix_workspaces_deleted_at' not in workspace_indexes:
+            connection.execute(text('CREATE INDEX ix_workspaces_deleted_at ON workspaces (deleted_at)'))
         if 'name_confirmed' not in workspace_columns:
             connection.execute(text('ALTER TABLE workspaces ADD COLUMN name_confirmed BOOLEAN NOT NULL DEFAULT 0'))
             connection.execute(text("UPDATE workspaces SET name_confirmed = 1 WHERE name <> 'My workspace' AND name NOT REGEXP '^My workspace [0-9]+$'"))

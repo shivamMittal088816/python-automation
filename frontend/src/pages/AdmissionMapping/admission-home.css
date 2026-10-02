@@ -1,0 +1,72 @@
+/* Compact admission workspace surfaces; other workflow pages keep their layout. */
+.mapping-home-page > header { box-shadow: 0 2px 10px #233b6910; border-color: #ced9e9; }
+.mapping-home-page > main { padding-top: 12px; padding-bottom: 16px; }
+.mapping-home-page .school-identity {
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  gap: 12px;
+  border-color: #b4ded9;
+  box-shadow: inset 0 1px 0 #fff, 0 4px 12px -5px #0f766e26;
+}
+.mapping-home-page .school-identity > div:first-child { padding: 5px 12px; }
+.mapping-home-page .school-identity > div:first-child > p:last-child { font-size: 18px; line-height: 24px; }
+.mapping-home-page .school-identity > div:last-child > p:first-child { margin-bottom: 2px; }
+.mapping-home-page .school-identity > div:last-child > p:last-child { font-size: 15px; line-height: 21px; }
+.admission-home .page-stack > * + * { margin-top: 10px; }
+.admission-home .page-stack > header {
+  padding: 10px 14px;
+  border: 1px solid #cbd7e9;
+  border-left: 3px solid #2563eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 10px #233b690a;
+}
+.admission-home .page-stack > header > p:first-child { margin-bottom: 2px; font-size: 9px; }
+.admission-home .page-stack > header h2 { font-size: 20px; line-height: 26px; }
+.admission-home .page-stack > header > p:last-child { margin-top: 2px; font-size: 12px; line-height: 18px; }
+.admission-home .page-stack > header + div {
+  padding: 8px 12px;
+  gap: 8px;
+  border-color: #bde6df;
+  box-shadow: 0 3px 10px #0f766e0a;
+}
+.admission-home .page-stack > header + div p { font-size: 12px; }
+.admission-home .page-stack > header + div a { min-height: 32px; padding: 5px 10px; font-size: 12px; }
+.admission-home .page-stack > ol { padding: 6px; border-color: #cbd7e9; box-shadow: 0 3px 10px #233b690a; }
+.admission-home .page-stack > ol > li { padding: 6px 10px; }
+.admission-home .grid:has(> .dump-panel) { gap: 12px; padding: 0; background: transparent; }
+.mapping-home-page .admission-home section {
+  padding: 12px;
+  border-color: #c2d0e4;
+  border-radius: 11px;
+  box-shadow: 0 5px 14px -5px #233b6920, 0 1px 3px #233b690a;
+}
+.admission-home .grid:has(> .dump-panel) > section > :first-child { margin-bottom: 10px; }
+.admission-home .grid:has(> .dump-panel) > section > :first-child p { font-size: 11px; line-height: 16px; }
+.admission-home .dump-panel fieldset { margin-bottom: 10px; }
+.admission-home .dump-panel fieldset legend { margin-bottom: 5px; font-size: 12px; }
+.admission-home .dump-panel fieldset label { padding: 8px 10px; font-size: 12px; }
+.admission-home .dump-panel fieldset label > span { margin-top: 2px; font-size: 10px; line-height: 16px; }
+.admission-home .mapping-file-input > * + * { margin-top: 8px; }
+.admission-home .mapping-file-input [role='tab'] { min-height: 30px; padding: 4px 16px; font-size: 12px; }
+.mapping-home-page .admission-home .mapping-file-input > label { padding: 12px; }
+.admission-home .mapping-file-input > label > span:first-child { margin-bottom: 6px; padding: 7px; }
+.admission-home .mapping-file-input > label > span { font-size: 12px; }
+.admission-home .mapping-file-input > label > span:last-of-type { margin-top: 6px; font-size: 10px; }
+.admission-home .mapping-file-input > div:not([role='tablist']) { padding: 10px 12px; }
+.admission-home .mapping-file-input > div:not([role='tablist']) > span:first-child { margin-bottom: 5px; padding: 6px; }
+.admission-home .mapping-file-input > div:not([role='tablist']) > div { margin-top: 8px; }
+.admission-home .mapping-file-input > p, .admission-home .caption { font-size: 11px; line-height: 17px; }
+.admission-home .dump-school { margin-top: 8px; padding: 9px; border-color: #c9d9ef; }
+.admission-home .dump-actions { gap: 6px 12px; }
+.admission-home .dump-actions > a { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+.admission-home .dump-actions summary { font-size: 12px; }
+.admission-home .mapping-settings { padding: 12px; }
+.admission-home .mapping-settings > :first-child { margin-bottom: 8px; }
+@media (max-width: 639px) {
+  .mapping-home-page > main { padding: 12px; }
+  .admission-home .page-stack > header { padding: 9px 11px; }
+  .admission-home .page-stack > header h2 { font-size: 18px; }
+  .admission-home .page-stack > ol > li { padding: 6px; }
+  .admission-home .grid:has(> .dump-panel) { gap: 10px; }
+}
