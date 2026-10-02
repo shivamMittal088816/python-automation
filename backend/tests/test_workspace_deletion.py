@@ -1,5 +1,6 @@
 """Owner-only soft deletion retains data and blocks access for both workflows."""
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import patch
 
 from sqlalchemy import inspect, select
@@ -109,3 +110,46 @@ class WorkspaceDeletionTests(unittest.TestCase):
             record = db.scalar(select(Workspace).where(Workspace.public_id == identifier))
             self.assertIsNone(record.deleted_at)
             self.assertEqual(db.get(WorkspacePreference, (self.owner.user_id, 'mapping')).active_workspace_id, record.id)
+
+    def test_replacement_is_oldest_usable_owned_workspace_in_same_workflow(self):
+        for workflow in ('mapping', 'bulk_registration'):
+            with self.subTest(workflow=workflow):
+                ids = []
+                for name in ('Already deleted', 'Unavailable', 'Oldest usable', 'Newer usable', 'Delete current'):
+                    response = self.owner.post('/api/v1/workspaces', json={'workflow': workflow, 'name': name})
+                    self.assertEqual(response.status_code, 201, response.text)
+                    ids.append(response.json()['active_workspace_id'])
+                other_workflow = 'bulk_registration' if workflow == 'mapping' else 'mapping'
+                other_id = self.spaces(self.owner, other_workflow)['active_workspace_id']
+                with self.factory() as db:
+                    records = [db.scalar(select(Workspace).where(Workspace.public_id == identifier)) for identifier in ids]
+                    for index, record in enumerate(records):
+                        record.created_at = datetime(2020, 1, 1) + timedelta(days=index)
+                    records[0].deleted_at = datetime(2020, 2, 1)
+                    unavailable_id = records[1].id
+                    db.commit()
+                from app.workspaces.services.deletion import storage_available
+                with patch('app.workspaces.services.deletion.storage_available',
+                           side_effect=lambda item: item.id != unavailable_id and storage_available(item)):
+                    deleted = self.delete(self.owner, ids[-1])
+                self.assertEqual(deleted.status_code, 200, deleted.text)
+                self.assertEqual(deleted.json()['active_workspace_id'], ids[2])
+                self.assertEqual(self.spaces(self.owner, workflow)['active_workspace_id'], ids[2])
+                self.assertEqual(self.spaces(self.owner, other_workflow)['active_workspace_id'], other_id)
+
+    def test_commit_failure_rolls_back_replacement_in_both_workflows(self):
+        from app.workspaces.services.deletion import soft_delete_workspace
+        for workflow in ('mapping', 'bulk_registration'):
+            with self.subTest(workflow=workflow):
+                for name in ('Replacement', 'Current'):
+                    response = self.owner.post('/api/v1/workspaces', json={'workflow': workflow, 'name': name})
+                    self.assertEqual(response.status_code, 201, response.text)
+                identifier = response.json()['active_workspace_id']
+                with self.factory() as db:
+                    with patch.object(db, 'commit', side_effect=RuntimeError('database failure')):
+                        with self.assertRaises(RuntimeError):
+                            soft_delete_workspace(db, self.owner.user_id, identifier)
+                    # Check the same session: rollback must undo even flushed changes.
+                    record = db.scalar(select(Workspace).where(Workspace.public_id == identifier))
+                    self.assertIsNone(record.deleted_at)
+                    self.assertEqual(db.get(WorkspacePreference, (self.owner.user_id, workflow)).active_workspace_id, record.id)
