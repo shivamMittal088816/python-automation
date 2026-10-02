@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getInvitedMembers } from '../../../services/invitations/api';
-import { listWorkspaces, createWorkspace, selectWorkspace } from '../../../services/workspaces/api';
+import { listWorkspaces, selectWorkspace } from '../../../services/workspaces/api';
 
 export function useWorkspaceSelector({ open, role, workflow }) {
   const shared = role === 'editor' || role === 'viewer';
@@ -11,7 +11,6 @@ export function useWorkspaceSelector({ open, role, workflow }) {
   const [spaces, setSpaces] = useState(null);
   const [switching, setSwitching] = useState(false);
   useEffect(() => {
-    if (!open) return;
     const controller = new AbortController();
     setLoading(true);
     setError('');
@@ -19,7 +18,7 @@ export function useWorkspaceSelector({ open, role, workflow }) {
       if (controller.signal.aborted) return;
       setSpaces(data);
       const selected = data.workspaces.find(item => item.id === data.active_workspace_id);
-      if (selected?.owned) {
+      if (open && selected?.owned) {
         const people = await getInvitedMembers(workflow, controller.signal);
         if (!controller.signal.aborted) setMembers(people);
       } else setMembers([]);
@@ -30,18 +29,27 @@ export function useWorkspaceSelector({ open, role, workflow }) {
     });
     return () => controller.abort();
   }, [open, shared, workflow, retry]);
+  useEffect(() => {
+    const refresh = () => setRetry(value => value + 1);
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
+  }, []);
+  function applyName(result) {
+    setSpaces(previous => previous ? { ...previous, workspaces: previous.workspaces.map(item =>
+      item.id === result.id ? { ...item, name: result.name, needs_name: false } : item) } : previous);
+    setRetry(value => value + 1);
+  }
   async function changeWorkspace(item) {
     if (switching || (item && item.id === spaces?.active_workspace_id)) return;
     setSwitching(true);
     setError('');
     try {
-      if (item) await selectWorkspace(workflow, item.id);
-      else await createWorkspace(workflow);
+      await selectWorkspace(workflow, item.id);
       window.location.assign(workflow === 'mapping' ? '/admission_file_page' : '/bulk-reg');
     } catch (err) {
       setError(err.message || 'Could not change workspace.');
       setSwitching(false);
     }
   }
-  return { shared, members, loading, error, spaces, switching, setRetry, changeWorkspace };
+  return { shared, members, loading, error, spaces, switching, setRetry, changeWorkspace, applyName };
 }

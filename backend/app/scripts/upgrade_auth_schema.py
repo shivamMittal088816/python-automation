@@ -1,10 +1,10 @@
 """Create only application-owned authentication tables, without changing student data."""
 from app.config.database import engine
-from app.auth.models import User, AuthSession, AuthRateLimit
+from app.auth.models import User, AuthSession
 
 
 def upgrade():
-    for model in (User, AuthSession, AuthRateLimit):
+    for model in (User, AuthSession):
         model.__table__.create(engine, checkfirst=True)
     print('Authentication schema is ready.')
 

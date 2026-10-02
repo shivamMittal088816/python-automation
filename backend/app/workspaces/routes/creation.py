@@ -5,8 +5,7 @@ from app.services.bulk_registration_storage import create_workspace
 from app.workspaces.schemas import CreateWorkspaceRequest
 from app.workspaces.services.identity import user_id
 from app.workspaces.services.ownership import register_owned
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 from app.config.dependencies import get_db
 
@@ -22,5 +21,5 @@ def create_owned_workspace(payload: CreateWorkspaceRequest, request: Request, re
         workspace_id = load_state(session_folder(storage_id))['workspace_id']
     else:
         storage_id = workspace_id = create_workspace(persistent=True)
-    record = register_owned(request, response, payload.workflow, workspace_id, storage_id, db)
-    return {'active_workspace_id': record.public_id}
+    record = register_owned(request, response, payload.workflow, workspace_id, storage_id, db, name=payload.name)
+    return {'active_workspace_id': record.public_id, 'name': record.name}

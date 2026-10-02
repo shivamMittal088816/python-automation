@@ -7,7 +7,7 @@ from unittest.mock import patch
 from sqlalchemy import select
 
 from app.api import file_workflow_state
-from app.auth.models import User, AuthSession, AuthRateLimit
+from app.auth.models import User, AuthSession
 from app.auth.services.cookies import cookie_name
 from app.auth.services.tokens import token_hash
 from app.common.time import now
@@ -26,7 +26,7 @@ class AuthenticationTests(unittest.TestCase):
         root = Path(temporary.name)
         self.engine, self.factory = invitation_database(root)
         self.addCleanup(self.engine.dispose)
-        for model in (User, AuthSession, AuthRateLimit):
+        for model in (User, AuthSession):
             model.__table__.create(self.engine, checkfirst=True)
         for target, attribute, value in ((settings, 'AUTH_REQUIRED', True),
                                           (settings, 'SESSION_COOKIE_SECURE', False),
@@ -102,7 +102,7 @@ class AuthenticationTests(unittest.TestCase):
             db.commit()
         self.assertEqual(self.client.post('/api/v1/mapping/session', json={}).status_code, 401)
 
-    def test_duplicate_email_validation_csrf_and_login_rate_limit(self):
+    def test_duplicate_email_validation_and_csrf(self):
         self.assertEqual(self.register(password='short').status_code, 422)
         self.assertNotIn('secretXYZ', self.register(password='secretXYZ').text)
         self.assertEqual(self.register().status_code, 201)
@@ -110,11 +110,18 @@ class AuthenticationTests(unittest.TestCase):
         cross_site = self.client.post('/api/v1/auth/logout', headers={'origin': 'https://untrusted.example'})
         self.assertEqual(cross_site.status_code, 403)
         self.assertIsNotNone(self.client.get('/api/v1/auth/me').json()['user'])
-        with self.factory() as db:
-            db.add(AuthRateLimit(key=token_hash('login:email:alex@example.com'), attempts=10, window_started_at=now()))
-            db.commit()
-        limited = self.client.post('/api/v1/auth/login', json={'email': 'alex@example.com', 'password': PASSWORD})
-        self.assertEqual(limited.status_code, 429)
+
+    def test_repeated_failed_logins_do_not_block_a_valid_login(self):
+        self.assertEqual(self.register().status_code, 201)
+        with patch('app.auth.services.accounts.verify_password', return_value=False):
+            for _ in range(11):
+                response = self.client.post('/api/v1/auth/login', json={
+                    'email': 'alex@example.com', 'password': 'wrong'})
+                self.assertEqual(response.status_code, 401)
+                self.assertNotIn('retry-after', response.headers)
+        response = self.client.post('/api/v1/auth/login', json={
+            'email': 'alex@example.com', 'password': PASSWORD})
+        self.assertEqual(response.status_code, 200, response.text)
 
     def test_account_change_clears_previous_workspace_cookies_and_secure_cookie_flags(self):
         self.register()

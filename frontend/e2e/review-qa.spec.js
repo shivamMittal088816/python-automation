@@ -55,6 +55,9 @@ test('create workspace recovers when the dropdown list request fails', async ({ 
   await page.unroute('**/api/v1/workspaces?workflow=mapping');
   const created = page.waitForResponse(response => response.url().endsWith('/api/v1/workspaces') && response.request().method() === 'POST');
   await page.getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await page.getByRole('dialog').getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace 2');
+  await page.getByRole('dialog').getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   expect((await created).status()).toBe(201);
   await expect(page.getByRole('button', { name: 'Open sidebar', exact: true })).toBeVisible();
   const spaces = await (await context.request.get(`${api}/workspaces?workflow=mapping`)).json();
@@ -103,6 +106,9 @@ test('bulk permission changes refresh the UI even without a file revision change
     await expect(guest.getByRole('alert')).toContainText('revoked');
     await guest.getByLabel('Workspace selector', { exact: true }).click();
     await guest.getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await guest.getByRole('dialog').getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace 2');
+    await guest.getByRole('dialog').getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await expect(guest.getByRole('dialog')).toHaveCount(0);
     await expect(guest.getByRole('alert')).toHaveCount(0);
     await expect(guest.getByRole('button', { name: 'Invite to workflow', exact: true })).toBeVisible();
   } finally { await recipient.close(); }

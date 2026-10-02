@@ -1,16 +1,21 @@
 """Add account workspace tables and membership identity columns; no legacy file import."""
 from sqlalchemy import inspect, text
 from app.config.database import engine
-from app.auth.models import User, AuthSession, AuthRateLimit
+from app.auth.models import User, AuthSession
 from app.workspaces.models import Workspace, WorkspacePreference
 from app.models.workflow_invitation_model import WorkflowInvitation
 from app.models.workflow_member_model import WorkflowMember
 
 
 def upgrade():
-    for model in (User, AuthSession, AuthRateLimit, Workspace, WorkspacePreference,
+    for model in (User, AuthSession, Workspace, WorkspacePreference,
                   WorkflowInvitation, WorkflowMember):
         model.__table__.create(engine, checkfirst=True)
+    workspace_columns = {item['name'] for item in inspect(engine).get_columns('workspaces')}
+    with engine.begin() as connection:
+        if 'name_confirmed' not in workspace_columns:
+            connection.execute(text('ALTER TABLE workspaces ADD COLUMN name_confirmed BOOLEAN NOT NULL DEFAULT 0'))
+            connection.execute(text("UPDATE workspaces SET name_confirmed = 1 WHERE name <> 'My workspace' AND name NOT REGEXP '^My workspace [0-9]+$'"))
     columns = {item['name']: item for item in inspect(engine).get_columns('workflow_members')}
     with engine.begin() as connection:
         if 'user_id' not in columns:

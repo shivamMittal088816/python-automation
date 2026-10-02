@@ -8,23 +8,31 @@ export const test = base.extend({
       const response = await target.request.post('http://127.0.0.1:8123/_test/sign-in', { data: {} });
       expect(response.status()).toBe(200);
     };
-    const needsAccount = !testInfo.file.endsWith('auth.spec.js');
+    const needsAccount = !testInfo.file.endsWith('auth.spec.js') && !testInfo.file.endsWith('workspace-naming.spec.js');
     if (needsAccount) {
       await seedAccount(context);
       browser.newContext = async options => {
         const target = await originalNewContext.call(browser, options);
         await seedAccount(target);
+        target.on('page', watch);
         return target;
       };
     }
     const errors = [], consoleErrors = [], requests = [], failedRequests = [];
-    const watch = page => {
+    const watch = async page => {
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => {
         if (message.type() === 'error') consoleErrors.push(message.text());
       });
+      // Existing workflow scenarios complete the new first-use naming step.
+      // Naming and auth scenarios exercise this dialog explicitly instead.
+      if (needsAccount) await page.addLocatorHandler(page.getByRole('dialog', { name: 'A space of your own' }), async dialog => {
+        await dialog.getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace');
+        await dialog.getByRole('button', { name: 'Save and continue' }).click();
+        await expect(dialog).toHaveCount(0);
+      });
     };
-    context.pages().forEach(watch);
+    await Promise.all(context.pages().map(watch));
     context.on('page', watch);
     context.on('response', response => {
       const path = new URL(response.url()).pathname;

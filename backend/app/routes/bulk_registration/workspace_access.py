@@ -21,7 +21,7 @@ def workspace_for(request: Request, response: Response, *, allow_create=False):
     from app.workspaces.services.identity import public_id
     selected = selected_access(request, 'bulk_registration')
     from app.invitations.access import member_access
-    access = member_access(request, 'bulk_registration')
+    access = member_access(request, 'bulk_registration', selected=selected) if selected else None
     if access:
         state = load_workspace(access['workspace_id'])
         state['_access_role'] = access['role']

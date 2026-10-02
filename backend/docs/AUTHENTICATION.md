@@ -8,7 +8,6 @@ Application-owned tables (separate from external student/platform users):
 
 - `app_users`: UUID, name, normalized unique email, salted password hash, active flag, creation/update timestamps.
 - `auth_sessions`: SHA-256 digest of an opaque random cookie token, user ID, creation time, expiry and revocation time. The raw token is never stored in the database or returned in JSON.
-- `auth_rate_limits`: hashed account/IP bucket keys and counters for shared, database-backed login/registration throttling.
 
 Passwords use scrypt with N=131072, r=8, p=1, a random 16-byte salt and constant-time digest comparison. Hash work is bounded to two concurrent operations per worker. Password lengths are 15–128 characters at registration. Authentication errors do not echo passwords. These parameters follow [OWASP password storage guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html).
 
@@ -31,13 +30,15 @@ Run from `backend`:
 .\.venv\Scripts\python.exe -m app.scripts.upgrade_auth_schema
 ```
 
-This additive migration was applied locally. Also run `python -m app.scripts.upgrade_workspace_schema` for account workspace tables and membership columns. Neither migration modifies external student data tables. Start the frontend and backend as usual and open `/login`; use Create an account for the first account. No seed/default credentials were created. Use `SESSION_COOKIE_SECURE=false` for local HTTP development; keep it true for production HTTPS. `AUTH_SESSION_HOURS` defaults to 168. Invitation codes expire after 72 hours; account memberships and workspace files persist until explicitly revoked, expired or removed.
+Authentication rate limiting has been removed. Login and registration no longer use attempt counters or return throttling responses. For an existing installation, run `python -m app.scripts.remove_auth_rate_limits` to drop the obsolete counters table; accounts and authentication sessions are preserved.
+
+The authentication creation migration was applied locally. Also run `python -m app.scripts.upgrade_workspace_schema` for account workspace tables and membership columns. Neither migration modifies external student data tables. Start the frontend and backend as usual and open `/login`; use Create an account for the first account. No seed/default credentials were created. Use `SESSION_COOKIE_SECURE=false` for local HTTP development; keep it true for production HTTPS. `AUTH_SESSION_HOURS` defaults to 168. Invitation codes expire after 72 hours; account memberships and workspace files persist until explicitly revoked, expired or removed.
 
 Logout clears credentials while retaining account workspaces, memberships and preferences. Signing in restores those workspaces across browsers. Email verification and password reset are not implemented.
 
 ## QA
 
-- Six authentication backend tests passed with authentication required: hashed passwords, HTTP-only/Secure cookie flags, protected API access, normalized email, generic login failures, token rotation, logout/replay, expiry, disabled users, duplicate emails, validation, CSRF, throttling and account changes.
+- Seven authentication backend tests passed with authentication required: hashed passwords, HTTP-only/Secure cookie flags, protected API access, normalized email, generic login failures, token rotation, logout/replay, expiry, disabled users, duplicate emails, validation, CSRF, account changes and successful login after repeated failed attempts.
 - The complete backend suite passed 257 tests. Legacy workflow tests explicitly disable the auth guard in their isolated test process; authentication tests enable it.
 - Four Edge auth browser tests passed with `AUTH_QA_REQUIRED=true`: login redirects/return paths, account creation, password visibility, cookie persistence, logout/replay, wrong password, keyboard submit, responsive layouts and external redirect rejection.
 - Three workspace-switching browser regression tests passed after gating the bulk selector until initial workspace restoration completes.

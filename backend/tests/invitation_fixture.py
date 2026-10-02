@@ -17,9 +17,9 @@ def invitation_database(folder):
     def enable_foreign_keys(connection, _):
         connection.execute('PRAGMA foreign_keys=ON')
 
-    from app.auth.models import User, AuthSession, AuthRateLimit
+    from app.auth.models import User, AuthSession
     from app.workspaces.models import Workspace, WorkspacePreference
-    for model in (User, AuthSession, AuthRateLimit, Workspace, WorkspacePreference):
+    for model in (User, AuthSession, Workspace, WorkspacePreference):
         model.__table__.create(engine, checkfirst=True)
 
     # The production models use MySQL-specific DDL; mirror their contract here.

@@ -24,6 +24,11 @@ test('account creation, persistent cookie sign-in, logout, and sign-in validatio
   await page.getByRole('button', { name: 'Hide password', exact: true }).click();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await expect(page.getByLabel('Account menu')).toBeVisible();
+  const setup = page.getByRole('dialog', { name: 'A space of your own' });
+  await expect(setup).toBeVisible();
+  await setup.getByRole('textbox', { name: /^Workspace name/ }).fill('Alex’s school');
+  await setup.getByRole('button', { name: 'Save and continue' }).click();
+  await expect(setup).toHaveCount(0);
   const selected = await (await context.request.get(`${api}/workspaces?workflow=mapping`)).json();
   const uploaded = await context.request.post(`${api}/mapping/files/school`, {
     headers: { origin, 'X-Workspace-Revision': '0' },

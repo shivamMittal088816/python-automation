@@ -8,7 +8,6 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.auth.models import User
 from app.auth.services.passwords import DUMMY_HASH, hash_password, verify_password
-from app.auth.services.rate_limits import rate_limit
 from app.auth.services.sessions import issue_session
 from app.common.time import now
 
@@ -17,7 +16,6 @@ logger = logging.getLogger('uvicorn.error')
 
 def register_account(payload, request, response, db):
     try:
-        rate_limit(db, request, payload.email, 'register')
         user = User(id=str(uuid4()), name=payload.name, email=payload.email,
                     password_hash=hash_password(payload.password), is_active=True,
                     created_at=now(), updated_at=now())
@@ -35,7 +33,6 @@ def register_account(payload, request, response, db):
 
 def sign_in(payload, request, response, db):
     try:
-        rate_limit(db, request, payload.email, 'login')
         user = db.scalar(select(User).where(User.email == payload.email))
         valid = verify_password(payload.password, user.password_hash if user else DUMMY_HASH)
         if not valid or not user or not user.is_active:

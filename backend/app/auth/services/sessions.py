@@ -1,6 +1,8 @@
 """Resolve, rotate and issue database-backed login sessions."""
 from datetime import timedelta
 import secrets
+from sqlalchemy import select
+from sqlalchemy.orm import load_only
 from app.auth.models import AuthSession, User
 from app.auth.services.cookies import cookie_name, clear_workflow_cookies
 from app.auth.services.tokens import token_hash
@@ -12,11 +14,10 @@ def session_user(request, db):
     token = request.cookies.get(cookie_name())
     if not token or len(token) != 43:
         return None
-    session = db.get(AuthSession, token_hash(token))
-    if not session or session.revoked_at or session.expires_at <= now():
-        return None
-    user = db.get(User, session.user_id)
-    return user if user and user.is_active else None
+    return db.scalar(select(User).join(AuthSession, AuthSession.user_id == User.id)
+        .options(load_only(User.id, User.name, User.email, User.is_active)).where(
+        AuthSession.token_hash == token_hash(token), AuthSession.revoked_at.is_(None),
+        AuthSession.expires_at > now(), User.is_active.is_(True)))
 
 
 def user_data(user):

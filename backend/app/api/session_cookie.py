@@ -30,7 +30,7 @@ def require_session(request: Request, response: Response):
         response.headers['X-Active-Workspace'] = selected['id']
         if selected['role'] != 'owner':
             from app.invitations.access import member_access
-            member_access(request, 'mapping')
+            member_access(request, 'mapping', selected=selected)
         return selected['storage_id']
     if getattr(request.state, 'auth_user', None) is not None:
         raise HTTPException(409, 'No mapping workspace is selected. Create a workspace to continue.')

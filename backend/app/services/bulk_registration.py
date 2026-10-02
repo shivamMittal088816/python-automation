@@ -65,12 +65,6 @@ def convert_frame(frame, school):
     return output
 
 
-def blank_first_name_records(frame):
-    """Backward-compatible name for the complete first-name failure list."""
-    from app.services.bulk_reg_preview_sanity import invalid_first_name_records
-    return invalid_first_name_records(frame)
-
-
 def blank_full_name_records(frame):
     """Backward-compatible entry point for full-name preview sanity."""
     from app.services.bulk_reg_preview_sanity import blank_full_name_records as check

@@ -4,8 +4,12 @@ export function listWorkspaces(workflow, signal) {
   return request('/workspaces', { params: { workflow }, signal });
 }
 
-export function createWorkspace(workflow) {
-  return request('/workspaces', { method: 'POST', body: { workflow } });
+export function createWorkspace(workflow, name) {
+  return request('/workspaces', { method: 'POST', body: { workflow, name } });
+}
+
+export function renameWorkspace(workspaceId, name) {
+  return request(`/workspaces/${workspaceId}`, { method: 'PATCH', body: { name } });
 }
 
 export function selectWorkspace(workflow, workspaceId) {

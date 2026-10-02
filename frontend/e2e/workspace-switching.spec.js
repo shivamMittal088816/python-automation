@@ -66,6 +66,9 @@ test('dropdown joins multiple workspaces, restores own files, and creates a pers
     await expect(page.getByText('viewer-school.csv', { exact: false }).first()).toBeVisible();
     panel = await dropdown(page);
     await panel.getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await page.getByRole('dialog').getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace 2');
+    await page.getByRole('dialog').getByRole('button', { name: 'Create workspace', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Open sidebar', exact: true })).toBeVisible();
     await expect(page.getByText('viewer-school.csv', { exact: false })).toHaveCount(0);
     const created = await (await page.context().request.get(`${api}/workspaces?workflow=mapping`)).json();
@@ -90,6 +93,9 @@ test('bulk workspace creation and selection preserve previous workspace', async 
   await expect(panel.getByRole('button', { name: /^My workspace Your personal space Owner$/ })).toBeVisible();
   const initial = await (await page.context().request.get(`${api}/workspaces?workflow=bulk_registration`)).json();
   await panel.getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await page.getByRole('dialog').getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace 2');
+  await page.getByRole('dialog').getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByLabel('Workspace selector', { exact: true })).toBeVisible();
   const next = await dropdown(page);
   await expect(next.getByRole('button', { name: /^My workspace 2 / })).toBeVisible();
@@ -109,6 +115,9 @@ test('an older tab cannot initialize or mutate the newly selected workspace', as
   const otherPanel = await dropdown(otherTab);
   await expect(otherPanel.getByRole('button', { name: 'Create workspace', exact: true })).toBeEnabled();
   await otherPanel.getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await otherTab.getByRole('dialog').getByRole('textbox', { name: /^Workspace name/ }).fill('My workspace 2');
+  await otherTab.getByRole('dialog').getByRole('button', { name: 'Create workspace', exact: true }).click();
+  await expect(otherTab.getByRole('dialog')).toHaveCount(0);
   await expect(otherTab.getByLabel('Workspace selector', { exact: true })).toBeVisible();
   const selected = await (await context.request.get(`${api}/workspaces?workflow=bulk_registration`)).json();
   const result = await page.evaluate(async () => {

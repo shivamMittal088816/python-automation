@@ -6,7 +6,7 @@ These features are organized by domain, with route handlers separated from valid
 backend/app/
   auth/
     dependencies.py             # Origin checks and authenticated-user guard
-    models.py                   # Account, login session and rate-limit tables
+    models.py                   # Account and login session tables
     schemas.py                  # Login and registration validation
     routes/
       __init__.py               # Router composition
@@ -16,7 +16,6 @@ backend/app/
       accounts.py               # Account creation and credential verification
       cookies.py                # Cookie naming and legacy-cookie cleanup
       passwords.py              # Scrypt hashing and verification
-      rate_limits.py            # Login/registration throttling
       sessions.py               # Session resolution, rotation and issuance
       tokens.py                 # Token digests
   invitations/

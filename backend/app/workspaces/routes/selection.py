@@ -6,7 +6,6 @@ from app.workspaces.services.identity import user_id
 from app.workspaces.services.preferences import lock_user, preference
 from app.workspaces.services.access import access_to
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from app.config.dependencies import get_db
 

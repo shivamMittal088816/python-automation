@@ -60,8 +60,8 @@ from tests.invitation_fixture import invitation_database, override_database
 from tests.invitation_fixture import authenticated_client
 invitation_engine, invitation_sessions = invitation_database(Path(temporary.name))
 override_database(app, invitation_sessions)
-from app.auth.models import User, AuthSession, AuthRateLimit
-for model in (User, AuthSession, AuthRateLimit):
+from app.auth.models import User, AuthSession
+for model in (User, AuthSession):
     model.__table__.create(invitation_engine, checkfirst=True)
 
 # This endpoint exists only on this isolated test server, never on the production app.

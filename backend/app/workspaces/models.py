@@ -1,6 +1,6 @@
 """Account-owned workspaces and per-workflow active selection."""
 from datetime import datetime
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 from app.config.database import Base
 
@@ -10,6 +10,7 @@ class Workspace(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     public_id: Mapped[str] = mapped_column(String(64), unique=True)
     name: Mapped[str] = mapped_column(String(100))
+    name_confirmed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     workflow_type: Mapped[str] = mapped_column(String(32), index=True)
     owner_user_id: Mapped[str] = mapped_column(ForeignKey('app_users.id'), index=True)
     storage_id: Mapped[str] = mapped_column(String(36))

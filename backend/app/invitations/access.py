@@ -8,9 +8,10 @@ def member_cookie_name(workflow):
     return f'{prefix}workflow-member-{workflow}'
 
 
-def member_access(request, workflow):
+def member_access(request, workflow, *, selected=None):
     from app.workspaces.services.access import selected_access
-    selected = selected_access(request, workflow)
+    if selected is None:
+        selected = selected_access(request, workflow)
     if selected is None or selected['role'] == 'owner':
         return None
     return _authorize_member(request, workflow, selected)

@@ -4,13 +4,18 @@ import { Icon } from '../common/Presentation';
 import { useWorkspaceSelector } from './hooks/useWorkspaceSelector';
 import { WorkspaceRow } from './WorkspaceRow';
 import { WorkspaceMembers } from './WorkspaceMembers';
+import { WorkspaceNameDialog } from './WorkspaceNameDialog';
 import './workspace-selector.css';
 
 export function WorkspaceSelector({ role = 'owner', workflow = 'mapping' }) {
   const dropdown = useRef(null);
   const [open, setOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
-  const { shared, members, loading, error, spaces, switching, setRetry, changeWorkspace } = useWorkspaceSelector({ open, role, workflow });
+  const [naming, setNaming] = useState(null);
+  const { shared, members, loading, error, spaces, switching, setRetry, changeWorkspace, applyName } = useWorkspaceSelector({ open, role, workflow });
+  const selected = spaces?.workspaces.find(item => item.id === spaces.active_workspace_id);
+  const acceptingInvite = new URLSearchParams(window.location.search).has('invite');
+  const nameDialog = naming || (selected?.owned && selected.needs_name && !acceptingInvite ? { mode: 'setup', workspace: selected } : null);
   const currentName = shared ? `Shared ${workflow === 'mapping' ? 'mapping' : 'registration'} workspace` : 'My workspace';
 
   useEffect(() => {
@@ -29,7 +34,19 @@ export function WorkspaceSelector({ role = 'owner', workflow = 'mapping' }) {
     }
   }
 
-  const row = item => <WorkspaceRow key={item.id} item={item} current={item.id === spaces?.active_workspace_id} switching={switching} onSelect={changeWorkspace} />;
+  function openNameDialog(mode, workspace) {
+    dropdown.current?.removeAttribute('open');
+    setNaming({ mode, workspace });
+  }
+  function savedName(result) {
+    if (nameDialog.mode === 'create') {
+      window.location.assign(workflow === 'mapping' ? '/admission_file_page' : '/bulk-reg');
+      return;
+    }
+    applyName(result);
+    setNaming(null);
+  }
+  const row = item => <WorkspaceRow key={item.id} item={item} current={item.id === spaces?.active_workspace_id} switching={switching} onSelect={changeWorkspace} onRename={item => openNameDialog('rename', item)} />;
 
   return <><details ref={dropdown} className="workspace-selector" onKeyDown={closeOnEscape} onToggle={event => setOpen(event.currentTarget.open)}>
     <summary aria-label="Workspace selector">
@@ -48,10 +65,11 @@ export function WorkspaceSelector({ role = 'owner', workflow = 'mapping' }) {
       </section>
       {!shared && <WorkspaceMembers members={members} loading={loading} error={error} />}
       <div className="workspace-selector-actions">
-        <button type="button" disabled={switching} onClick={() => changeWorkspace(null)}><span className="workspace-selector-action-icon" aria-hidden="true">+</span>Create workspace</button>
+        <button type="button" disabled={switching} onClick={() => openNameDialog('create')}><span className="workspace-selector-action-icon" aria-hidden="true">+</span>Create workspace</button>
         <button type="button" disabled={switching} onClick={() => { dropdown.current?.removeAttribute('open'); setJoinOpen(true); }}><span className="workspace-selector-action-icon"><Icon name="link" className="size-4" /></span>Join with invitation code</button>
       </div>
       <p className="workspace-selector-note" aria-live="polite">{switching ? 'Opening workspace…' : 'Your files stay in their own workspace.'}</p>
     </div>
-  </details>{joinOpen && <JoinWorkflowDialog onClose={() => setJoinOpen(false)} />}</>;
+  </details>{joinOpen && <JoinWorkflowDialog onClose={() => setJoinOpen(false)} />}
+    {nameDialog && !joinOpen && <WorkspaceNameDialog key={`${nameDialog.mode}-${nameDialog.workspace?.id || 'new'}`} {...nameDialog} workflow={workflow} onClose={() => setNaming(null)} onSaved={savedName} returnFocusRef={dropdown} />}</>;
 }
