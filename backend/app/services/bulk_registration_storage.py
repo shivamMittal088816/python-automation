@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from fastapi import HTTPException
 
 
-ROOT = Path(__file__).resolve().parents[2] / 'storage' / 'bulk_registration'
+ROOT = Path(__file__).resolve().parents[2] / 'storage' / 'workspaces' / 'bulk_registration'
 LOCK = RLock()
 WORKSPACE_TTL_SECONDS = 24 * 60 * 60
 
@@ -41,10 +41,11 @@ def _folder(workspace_id):
 
 
 @workspace_locked
-def create_workspace():
+def create_workspace(*, persistent=False):
     cleanup_expired_workspaces()
     workspace_id = str(uuid4())
     save_workspace(workspace_id, {
+        'persistent': persistent,
         'workspace_id': workspace_id, 'revision': 0, 'path': '', 'file': None,
         'school_index': '', 'school': None, 'output': None, 'outputs': {},
         'output_verified': False,
@@ -54,6 +55,11 @@ def create_workspace():
 
 def _is_expired(folder, now=None):
     manifest = folder / 'state.json'
+    try:
+        if json.loads(manifest.read_text(encoding='utf-8')).get('persistent') is True:
+            return False
+    except (OSError, ValueError, AttributeError):
+        pass
     try:
         last_activity = manifest.stat().st_mtime
     except OSError:

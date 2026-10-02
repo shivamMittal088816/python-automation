@@ -18,7 +18,7 @@ export function useWorkspaceInitialization({ revision, publish, announce, refres
         if (!alive) return null;
         let data;
         try { data = await admissionMappingApi.getSession(); }
-        catch (error) { if (![401, 404, 409].includes(error.status)) throw error; }
+        catch (error) { if (error.selectionConflict || ![401, 404, 409].includes(error.status)) throw error; }
         if (!data && alive) {
           data = await admissionMappingApi.createSession(requestedSchool());
           announce();

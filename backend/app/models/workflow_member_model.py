@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, Index, String, text
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint, text
 from sqlalchemy.dialects.mysql import BIGINT, BINARY, DATETIME
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +15,7 @@ class WorkflowMember(Base):
         Index('idx_workflow_member_workspace', 'workflow_type', 'workspace_id',
               'revoked_at'),
         Index('idx_workflow_member_invitation', 'invitation_id'),
+        UniqueConstraint('user_id', 'workflow_type', 'workspace_id', name='uq_member_user_workspace'),
     )
 
     id: Mapped[int] = mapped_column(BIGINT(unsigned=True), primary_key=True,
@@ -24,7 +25,9 @@ class WorkflowMember(Base):
         nullable=False,
     )
     workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    member_token_hash: Mapped[bytes] = mapped_column(BINARY(32), nullable=False,
+    user_id: Mapped[str | None] = mapped_column(ForeignKey('app_users.id'), nullable=True, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DATETIME(fsp=6), nullable=True)
+    member_token_hash: Mapped[bytes | None] = mapped_column(BINARY(32), nullable=True,
                                                      unique=True)
     role: Mapped[str] = mapped_column(
         Enum('owner', 'editor', 'viewer', name='workflow_member_role'),

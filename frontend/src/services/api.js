@@ -14,6 +14,9 @@ if (import.meta.env.DEV && loopbackHosts.has(apiHost.hostname) && loopbackHosts.
 const host = apiHost.toString().replace(/\/$/, '');
 const prefix = (import.meta.env.VITE_API_PREFIX || '/api/v1').replace(/^\/?/, '/').replace(/\/$/, '');
 const API_BASE_URL = `${host}${prefix}`;
+// Keep each tab's last observed workspace, so a delayed request cannot write to
+// a different selection after another tab switches the shared browser session.
+const observedWorkspaces = new Map();
 
 const cleanMessage = value => String(value || '')
   .replace(/&#x20;|&#32;/gi, ' ')
@@ -30,7 +33,14 @@ function apiUrl(path, params = {}) {
   return url.toString();
 }
 
-export async function request(path, { method = 'GET', body, params, signal, blob = false, revision } = {}) {
+export async function request(path, { method = 'GET', body, params, signal, blob = false, revision, workspaceContexts = [] } = {}) {
+  const workflow = path.startsWith('/mapping/') ? 'mapping' : path.startsWith('/bulk-reg/') ? 'bulk_registration' : null;
+  const contextHeaders = {};
+  for (const context of workspaceContexts) {
+    const header = context === 'mapping' ? 'X-Mapping-Workspace'
+      : context === 'bulk_registration' ? 'X-Bulk-Registration-Workspace' : null;
+    if (header && observedWorkspaces.has(context)) contextHeaders[header] = observedWorkspaces.get(context);
+  }
   const multipart = body instanceof FormData;
   let response;
   try {
@@ -39,6 +49,8 @@ export async function request(path, { method = 'GET', body, params, signal, blob
       headers: {
         ...(body && !multipart ? { 'Content-Type': 'application/json' } : {}),
         ...(revision !== undefined ? { 'X-Workspace-Revision': String(revision) } : {}),
+        ...(workflow && observedWorkspaces.has(workflow) ? { 'X-Active-Workspace': observedWorkspaces.get(workflow) } : {}),
+        ...contextHeaders,
       },
       body: body ? multipart ? body : JSON.stringify(body) : undefined,
     });
@@ -47,6 +59,7 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     throw new Error('Could not reach the API. Check that the backend is running and try again.');
   }
   if (!response.ok) {
+    if (response.status === 401 && response.headers.get('X-Authentication-Required') === '1') window.dispatchEvent(new Event('auth-expired'));
     let payload = {};
     try { payload = await response.json(); } catch { /* Use the status fallback for non-JSON errors. */ }
     const detail = payload.detail || payload.message;
@@ -56,6 +69,7 @@ export async function request(path, { method = 'GET', body, params, signal, blob
       return field ? `${field}: ${message}` : message;
     }).join('; ') : cleanMessage(detail) || `Request failed (${response.status}).`);
     error.status = response.status;
+    error.selectionConflict = response.headers.get('X-Workspace-Selection-Conflict') === '1';
     const requestId = response.headers.get('X-Request-ID');
     if (requestId && /^[A-Za-z0-9_.-]{1,64}$/.test(requestId)) {
       error.requestId = requestId;
@@ -63,6 +77,8 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     }
     throw error;
   }
+  const activeWorkspace = response.headers.get('X-Active-Workspace');
+  if (workflow && activeWorkspace) observedWorkspaces.set(workflow, activeWorkspace);
   if (blob) return response;
   if (response.status === 204) return null;
   let payload;

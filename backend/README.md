@@ -62,7 +62,16 @@ uv run python -m unittest discover -s tests -p "test_*.py"
 See the [documentation index](docs/README.md) for architecture, workflow,
 deployment, CORS, session, query, and production-readiness references.
 
+Invitation code setup, access behavior, and validation results are documented in
+[Invitation joining and QA](docs/INVITATION_JOIN_QA.md).
+
 ## Backend module boundaries
+
+Authentication, invitations and account workspaces use domain folders with
+focused route, schema and service modules. The frontend has corresponding
+account, invitation and workspace component folders. See
+[code organization](docs/CODE_ORGANIZATION.md) for the folder map and responsibilities.
+The latest fixes and browser evidence are in [code review and QA](docs/CODE_REVIEW_QA.md).
 
 FastAPI route definitions are under `app/routes`. Shared cookie, workflow-state,
 snapshot, validation, and response helpers are under `app/api`. Business operations

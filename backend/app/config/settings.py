@@ -10,6 +10,8 @@ from typing import Literal
 # Validate required database settings when the application configuration is loaded.
 class Settings(BaseSettings):
     APP_NAME: str = "Student Mapping API"
+    AUTH_REQUIRED: bool = True
+    AUTH_SESSION_HOURS: int = Field(default=168, ge=1, le=720)
 
     DB_HOST: str
     DB_PORT: int

@@ -6,9 +6,10 @@ import re
 from time import perf_counter
 from uuid import uuid4
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
@@ -20,6 +21,10 @@ from app.routes.student_mapping import router as student_mapping_router
 from app.routes.student_mapping import health
 from app.routes.file_workflows import router as file_workflows_router
 from app.routes.bulk_registration import router as bulk_registration_router
+from app.invitations.routes import router as invitations_router
+from app.workspaces.routes import router as workspaces_router
+from app.auth.routes import router as auth_router
+from app.auth.dependencies import require_user
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -53,6 +58,12 @@ def create_app():
         title=settings.APP_NAME,
         lifespan=lifespan,
     )
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request, exc):
+        # Authentication validation must never echo a submitted password.
+        errors = [{key: value for key, value in error.items() if key not in ('input', 'ctx')}
+                  for error in exc.errors()]
+        return JSONResponse(status_code=422, content={'detail': errors})
 
     @app.exception_handler(Exception)
     async def unexpected_error(request: Request, exc: Exception):
@@ -62,14 +73,17 @@ def create_app():
         return JSONResponse(status_code=500, content={'detail': 'An unexpected server error occurred. Please try again.'})
 
     app.add_api_route("/", health, methods=["GET"], tags=["Health"])
+    app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 
     app.include_router(
         student_mapping_router,
-        prefix=settings.API_V1_PREFIX
+        prefix=settings.API_V1_PREFIX, dependencies=[Depends(require_user)]
     )
 
-    app.include_router(file_workflows_router, prefix=settings.API_V1_PREFIX)
-    app.include_router(bulk_registration_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(file_workflows_router, prefix=settings.API_V1_PREFIX, dependencies=[Depends(require_user)])
+    app.include_router(bulk_registration_router, prefix=settings.API_V1_PREFIX, dependencies=[Depends(require_user)])
+    app.include_router(invitations_router, prefix=settings.API_V1_PREFIX, dependencies=[Depends(require_user)])
+    app.include_router(workspaces_router, prefix=settings.API_V1_PREFIX, dependencies=[Depends(require_user)])
     @app.middleware('http')
     async def prevent_workflow_caching(request, call_next):
         supplied_id = request.headers.get('X-Request-ID', '')
@@ -85,7 +99,8 @@ def create_app():
         duration_ms = (perf_counter() - started) * 1000
         response.headers['X-Request-ID'] = request_id
         response.headers['Server-Timing'] = f'app;dur={duration_ms:.1f}'
-        if request.url.path.startswith((settings.API_V1_PREFIX + '/mapping', settings.API_V1_PREFIX + '/bulk-reg')):
+        if request.url.path.startswith((settings.API_V1_PREFIX + '/mapping', settings.API_V1_PREFIX + '/bulk-reg',
+                                        settings.API_V1_PREFIX + '/invitations', settings.API_V1_PREFIX + '/workspaces', settings.API_V1_PREFIX + '/auth')):
             response.headers['Cache-Control'] = 'no-store'
         log = logger.error if response.status_code >= 500 else logger.warning if response.status_code >= 400 else logger.info
         log('%s %s completed status=%s duration_ms=%.1f request_id=%s',
@@ -97,8 +112,9 @@ def create_app():
         allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_credentials=True,
-        allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID"],
-        expose_headers=["Content-Disposition", "X-Request-ID", "X-Workspace-Revision", "Server-Timing"],
+        allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID", "X-Active-Workspace",
+                       "X-Mapping-Workspace", "X-Bulk-Registration-Workspace"],
+        expose_headers=["Content-Disposition", "X-Request-ID", "X-Workspace-Revision", "Server-Timing", "X-Active-Workspace", "X-Workspace-Selection-Conflict", "X-Authentication-Required"],
     )
 
     return app

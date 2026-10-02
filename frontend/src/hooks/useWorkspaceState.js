@@ -8,7 +8,10 @@ export function useWorkspaceState() {
   workspaceRef.current = workspace;
 
   const publish = useCallback((data) => {
-    const next = normalizeWorkspace(data);
+    const next = normalizeWorkspace({
+      ...data,
+      role: data.role || (data.workspace_id === workspaceRef.current?.workspace_id ? workspaceRef.current.role : 'owner'),
+    });
     workspaceRef.current = next;
     setWorkspace(next);
   }, []);

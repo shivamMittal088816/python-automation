@@ -23,7 +23,7 @@ export function SidebarDownloadButton() {
       disabled={!ready || downloading}
       title={ready ? 'Download available mapping result groups' : 'Run at least one mapping to enable this download'}
       onClick={download}
-      className="flex w-full items-center gap-3 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-left text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 disabled:shadow-none"
+      className="sidebar-download"
     >
       <Icon name="download" className="size-4" />
       <span className="min-w-0 flex-1">{downloading ? 'Preparing results…' : 'Download mapping results'}</span>

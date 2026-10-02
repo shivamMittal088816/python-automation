@@ -17,6 +17,7 @@ class WorkflowCollaborationModelTests(unittest.TestCase):
         self.assertEqual(set(table.columns), {
             table.c.id, table.c.token_hash, table.c.workflow_type,
             table.c.workspace_id, table.c.permission, table.c.created_at,
+            table.c.bulk_workspace_id,
             table.c.expires_at, table.c.max_uses, table.c.use_count,
             table.c.revoked_at,
         })
@@ -37,7 +38,7 @@ class WorkflowCollaborationModelTests(unittest.TestCase):
         self.assertEqual(foreign_key.ondelete, 'SET NULL')
         self.assertEqual(
             {index.name for index in table.indexes},
-            {'idx_workflow_member_workspace', 'idx_workflow_member_invitation'},
+            {'idx_workflow_member_workspace', 'idx_workflow_member_invitation', 'ix_workflow_members_user_id'},
         )
 
     def test_tables_compile_for_mysql(self):

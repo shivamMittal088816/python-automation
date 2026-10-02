@@ -16,7 +16,19 @@ def set_workspace_cookie(response, workspace_id):
 
 
 def workspace_for(request: Request, response: Response, *, allow_create=False):
-    workspace_id = request.cookies.get(BULK_COOKIE)
+    from app.workspaces.services.access import selected_access
+    from app.workspaces.services.ownership import register_owned
+    from app.workspaces.services.identity import public_id
+    selected = selected_access(request, 'bulk_registration')
+    from app.invitations.access import member_access
+    access = member_access(request, 'bulk_registration')
+    if access:
+        state = load_workspace(access['workspace_id'])
+        state['_access_role'] = access['role']
+        response.headers['X-Active-Workspace'] = public_id('bulk_registration', access['workspace_id'])
+        return access['workspace_id'], state
+    authenticated = getattr(request.state, 'auth_user', None) is not None
+    workspace_id = selected['storage_id'] if selected else (None if authenticated else request.cookies.get(BULK_COOKIE))
     try:
         state = load_workspace(workspace_id) if workspace_id else None
     except HTTPException as exc:
@@ -28,9 +40,14 @@ def workspace_for(request: Request, response: Response, *, allow_create=False):
         # and mutations must never replace a workspace created by a reset.
         if not allow_create:
             raise HTTPException(409, 'Bulk registration workspace expired or was reset. Reload and try again.')
-        workspace_id = create_workspace()
+        workspace_id = create_workspace(persistent=authenticated)
         state = load_workspace(workspace_id)
-        set_workspace_cookie(response, workspace_id)
+        if authenticated:
+            register_owned(request, response, 'bulk_registration', workspace_id, workspace_id)
+        else:
+            set_workspace_cookie(response, workspace_id)
+    state['_access_role'] = 'owner'
+    response.headers['X-Active-Workspace'] = public_id('bulk_registration', workspace_id)
     return workspace_id, state
 
 
@@ -41,6 +58,7 @@ def require_revision(state, expected_revision):
 
 def workspace_summary(state):
     return {
+        'role': state.get('_access_role', 'owner'),
         # A stable identity for reset detection, without exposing the cookie token.
         'workspace_id': sha256(state['workspace_id'].encode()).hexdigest(),
         'revision': int(state.get('revision', 0)), 'path': state.get('path', ''),

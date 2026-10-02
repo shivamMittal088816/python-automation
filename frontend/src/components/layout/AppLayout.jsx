@@ -5,16 +5,23 @@ import { Alert, Loading } from '../common/Controls';
 import { Icon } from '../common/Presentation';
 import { SchoolIdentity } from '../common/SchoolIdentity';
 import { SidebarDownloadButton } from './SidebarDownloadButton';
+import { InviteWorkflowDialog } from '../invitations/InviteWorkflowDialog';
+import { JoinWorkflowDialog } from '../invitations/JoinWorkflowDialog';
+import { WorkspaceSelector } from '../workspaces/WorkspaceSelector';
+import { AccountMenu } from '../auth/AccountMenu';
+import './sidebar.css';
 
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [inviteWorkflow, setInviteWorkflow] = useState(null);
+  const [joinOpen, setJoinOpen] = useState(() => new URLSearchParams(window.location.search).has('invite'));
   const menuButton = useRef(null);
   const closeSidebar = () => {
     setSidebarOpen(false);
     menuButton.current?.focus();
   };
   useEffect(() => {
-    if (!sidebarOpen) return;
+    if (!sidebarOpen || inviteWorkflow || joinOpen) return;
     const onKeyDown = event => {
       if (event.key === 'Escape') {
         setSidebarOpen(false);
@@ -23,9 +30,16 @@ export function AppLayout() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [sidebarOpen]);
+  }, [sidebarOpen, inviteWorkflow, joinOpen]);
   const { workspace, busy, notice } = useWorkspace(), location = useLocation();
   const school = workspace.files.dump?.school_index, navigate = useNavigate();
+  const viewer = workspace.role === 'viewer';
+  const closeJoin = () => {
+    setJoinOpen(false);
+    const params = new URLSearchParams(location.search);
+    params.delete('invite');
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+  };
   useEffect(() => {
     // Let the root redirect finish before synchronizing the school query.
     if (location.pathname === '/') return;
@@ -36,15 +50,36 @@ export function AppLayout() {
       navigate({ pathname: location.pathname, search, hash: location.hash }, { replace: true });
     }
   }, [school, location.pathname, location.search, location.hash, navigate]);
-  const link = (path, label) => <NavLink key={path} to={`${path}${school ? `?school=${encodeURIComponent(school)}` : ''}`} className={({ isActive }) => `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${isActive ? 'bg-blue-50 font-semibold text-blue-800 ring-1 ring-inset ring-blue-100' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'}`}><Icon name={path.includes('email') ? 'mail' : path.includes('mapping') ? 'grid' : 'file'} className="size-4" />{label}</NavLink>;
-  const group = (title, pages) => <details key={`${title}-${location.pathname}`} open={pages.some(([path]) => path === location.pathname)} className="mb-2"><summary className="rounded-lg px-3 py-2.5 text-xs font-semibold text-slate-500 hover:bg-slate-50">{title}</summary><div className="ml-3 space-y-1 border-l border-slate-200 py-1 pl-2">{pages.map(([path, title]) => link(path, title))}</div></details>;
-  const inviteButton = label => <button type="button" disabled title="Sharing is not implemented yet" className="mt-2 w-full rounded-lg border border-dashed border-blue-200 bg-blue-50/50 px-3 py-2.5 text-left disabled:cursor-not-allowed disabled:opacity-100"><span className="block text-xs font-semibold text-blue-800">{label}</span><span className="mt-0.5 block text-[11px] leading-4 text-slate-500">Invite friends to share the same workflow</span></button>;
+  const link = (path, label) => <NavLink key={path} to={`${path}${school ? `?school=${encodeURIComponent(school)}` : ''}`} className={({ isActive }) => `sidebar-link${isActive ? ' is-active' : ''}`}><Icon name={path.includes('email') ? 'mail' : path.includes('mapping') ? 'grid' : 'file'} className="size-4" /><span>{label}</span></NavLink>;
+  const group = (title, pages, icon) => <details key={`${title}-${location.pathname}`} open={pages.some(([path]) => path === location.pathname)} className="sidebar-group"><summary><Icon name={icon} className="size-4" /><span>{title}</span><svg className="sidebar-chevron" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="m6 4 4 4-4 4" /></svg></summary><div className="sidebar-group-links">{pages.map(([path, title]) => link(path, title))}</div></details>;
+  const inviteButton = () => <button type="button" aria-haspopup="dialog" onClick={() => setInviteWorkflow('mapping')} className="sidebar-invite"><span className="sidebar-invite-icon"><Icon name="mail" className="size-4" /></span><span><strong>Invite to workflow</strong><small>Share your workspace</small></span><span aria-hidden="true" className="sidebar-invite-arrow">&#8599;</span></button>;
   return <div className="mapping-app min-h-screen bg-slate-50 text-slate-900">
+    {inviteWorkflow && <InviteWorkflowDialog workflow={inviteWorkflow} onClose={() => setInviteWorkflow(null)} />}
+    {joinOpen && <JoinWorkflowDialog onClose={closeJoin} initialCode={new URLSearchParams(location.search).get('invite') || ''} />}
     <header className="sticky top-0 z-40 flex h-14 items-center border-b border-slate-200 bg-white px-4 sm:px-5 lg:px-6">
       <button ref={menuButton} type="button" aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'} aria-expanded={sidebarOpen} aria-controls="mapping-sidebar" onClick={() => setSidebarOpen(open => !open)} className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100">
         <Icon name="menu" />
       </button>
+      <div className="ml-3 min-w-0"><WorkspaceSelector role={workspace.role || 'owner'} /></div>
+      <div className="ml-auto"><AccountMenu /></div>
     </header>
     {sidebarOpen && <button type="button" aria-label="Dismiss sidebar" onClick={closeSidebar} className="fixed inset-x-0 bottom-0 top-14 z-20 bg-slate-900/30 md:hidden" />}
-    <aside id="mapping-sidebar" hidden={!sidebarOpen} className="fixed bottom-0 left-0 top-14 z-30 w-60 max-w-[calc(100vw-3rem)] overflow-y-auto border-r border-slate-200 bg-white p-3"><div className="mb-5 flex items-center gap-3 px-2"><span className="rounded-lg bg-blue-700 p-2 text-white"><Icon name="grid" className="size-4" /></span><div><h1 className="text-sm font-bold tracking-tight">Student Mapping</h1><p className="text-xs text-slate-500">Operations workspace</p></div></div><nav aria-label="Main navigation" onClick={event => { if (event.target.closest('a')) closeSidebar(); }}><p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Mapping</p>{group('Admission No. Mapping', [['/admission_file_page', 'Admission mapping'], ['/admission_preview_page', 'Mapping preview']])}{group('Email mapping', [['/email_mapping_page', 'Email mapping'], ['/email_preview_page', 'Mapping preview'], ['/email_dump_page', 'E-mail dump file']])}{group('Full name + class Number', [['/full_name_class_mapping_page', 'Concatenation mapping'], ['/full_name_class_preview_page', 'Mapping preview']])}{inviteButton('Invite to mapping')}<p className="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Data files</p>{link('/school_file_page', 'School file')}{link('/dump_file_page', 'Dump file')}<p className="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Exports</p><SidebarDownloadButton /><p className="mb-2 mt-5 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">Services</p><NavLink to="/bulk-reg" className="block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50">Bulk registration</NavLink>{inviteButton('Invite to bulk registration')}</nav><div className="mt-6 hidden border-t border-slate-100 px-3 pt-4 md:block"><p className="text-xs font-medium text-slate-600">Your workspace</p><p className="mt-1 text-xs leading-5 text-slate-400">Files and selections stay available as you move between pages.</p></div></aside><main className={`min-w-0 px-4 py-4 sm:px-5 lg:px-6 lg:py-5 ${sidebarOpen ? 'md:ml-60' : ''}`}><div className="w-full"><SchoolIdentity />{notice && <Alert type={notice.type}>{notice.text}</Alert>}{busy && <Loading>{busy}</Loading>}<Outlet /></div></main></div>;
+    <aside id="mapping-sidebar" hidden={!sidebarOpen} className="workspace-sidebar fixed bottom-0 left-0 top-14 z-30 w-60 max-w-[calc(100vw-3rem)]">
+      <div className="sidebar-brand"><span className="sidebar-brand-icon"><Icon name="grid" className="size-4" /></span><div><h1>Student Mapping</h1><p>Operations workspace</p></div><span className="sidebar-brand-dot" aria-hidden="true" /></div>
+      <nav aria-label="Main navigation" onClick={event => { if (event.target.closest('a')) closeSidebar(); }}>
+        <div className="sidebar-section"><p className="sidebar-section-label">Mapping</p>
+          {group('Admission No. Mapping', [['/admission_file_page', 'Admission mapping'], ['/admission_preview_page', 'Mapping preview']], 'grid')}
+          {group('Email mapping', [['/email_mapping_page', 'Email mapping'], ['/email_preview_page', 'Mapping preview'], ['/email_dump_page', 'E-mail dump file']], 'mail')}
+          {group('Full name + class Number', [['/full_name_class_mapping_page', 'Concatenation mapping'], ['/full_name_class_preview_page', 'Mapping preview']], 'grid')}
+        </div>
+        <div className="sidebar-section"><p className="sidebar-section-label">Data files</p>{link('/school_file_page', 'School file')}{link('/dump_file_page', 'Dump file')}</div>
+        <div className="sidebar-section"><p className="sidebar-section-label">Exports</p><SidebarDownloadButton /></div>
+        <div className="sidebar-section"><p className="sidebar-section-label">Services</p><NavLink to="/bulk-reg" className="sidebar-link"><Icon name="file" className="size-4" /><span>Bulk registration</span><span aria-hidden="true" className="sidebar-service-arrow">&#8599;</span></NavLink></div>
+        {(!workspace.role || workspace.role === 'owner') && inviteButton()}
+        <button type="button" className="sidebar-join" aria-haspopup="dialog" onClick={() => setJoinOpen(true)}>
+          <Icon name="link" className="size-4" /><span>Join with invitation code</span>
+        </button>
+      </nav>
+      <div className="sidebar-footer"><span className="sidebar-footer-mark"><Icon name="file" className="size-3.5" /></span><div><p>Your workspace</p><span>Files and selections stay available as you move between pages.</span></div></div>
+    </aside><main className={`min-w-0 px-4 py-4 sm:px-5 lg:px-6 lg:py-5 ${sidebarOpen ? 'md:ml-60' : ''}`}><div className="w-full"><SchoolIdentity />{viewer && <Alert type="info">Viewer access: you can view this shared workspace. Editing is disabled.</Alert>}{notice && <Alert type={notice.type}>{notice.text}</Alert>}{busy && <Loading>{busy}</Loading>}<fieldset disabled={viewer} className="min-w-0"><Outlet /></fieldset></div></main></div>;
 }

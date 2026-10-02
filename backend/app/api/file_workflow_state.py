@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 from threading import RLock
 import time
+import json
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -12,7 +13,7 @@ from app.api.file_workflow_session_storage import (
 )
 from app.services.email_mapping.email_file_mapping import sync_email_stage
 
-ROOT = Path(__file__).resolve().parents[2] / 'storage' / 'temp' / 'workflow_sessions'
+ROOT = Path(__file__).resolve().parents[2] / 'storage' / 'workspaces' / 'mapping'
 SESSION_TTL_SECONDS = 24 * 60 * 60
 LOCK = RLock()
 
@@ -46,6 +47,11 @@ def _last_activity(folder):
 
 
 def _is_expired(folder, now=None):
+    try:
+        if json.loads((folder / 'state.json').read_text(encoding='utf-8')).get('persistent') is True:
+            return False
+    except (OSError, ValueError, AttributeError):
+        pass
     last_activity = _last_activity(folder)
     return last_activity is not None and (time.time() if now is None else now) - last_activity >= SESSION_TTL_SECONDS
 
@@ -68,12 +74,13 @@ def cleanup_expired_sessions(now=None):
     return removed
 
 
-def create_session(school_index=None):
+def create_session(school_index=None, *, persistent=False):
     """Start an empty workspace, retaining an optional school index."""
     with LOCK:
         cleanup_expired_sessions()
         session_id = str(uuid4())
         state = {
+            'persistent': persistent,
             'workspace_id': str(uuid4()),
             'revision': 0,
             'admission_settings': {

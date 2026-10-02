@@ -7,12 +7,12 @@ const withSessionLock = action => navigator.locks
 export const bulkRegistrationApi = {
   async getWorkspace() {
     try { return await request('/bulk-reg/workspace'); }
-    catch (error) { if (error.status !== 409) throw error; }
+    catch (error) { if (error.selectionConflict || error.status !== 409) throw error; }
     // Recheck the current cookie under the same lock used by reset. Another
     // tab may already have recovered or reset the session since the first read.
     return withSessionLock(async () => {
       try { return await request('/bulk-reg/workspace'); }
-      catch (error) { if (error.status !== 409) throw error; }
+      catch (error) { if (error.selectionConflict || error.status !== 409) throw error; }
       return request('/bulk-reg/workspace', { method: 'POST' });
     });
   },

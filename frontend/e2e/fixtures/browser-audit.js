@@ -2,7 +2,21 @@ import { test as base, expect } from '@playwright/test';
 
 // Capture browser evidence for every scenario, including additional tabs.
 export const test = base.extend({
-  browserAudit: [async ({ context }, use, testInfo) => {
+  browserAudit: [async ({ context, browser }, use, testInfo) => {
+    const originalNewContext = browser.newContext;
+    const seedAccount = async target => {
+      const response = await target.request.post('http://127.0.0.1:8123/_test/sign-in', { data: {} });
+      expect(response.status()).toBe(200);
+    };
+    const needsAccount = !testInfo.file.endsWith('auth.spec.js');
+    if (needsAccount) {
+      await seedAccount(context);
+      browser.newContext = async options => {
+        const target = await originalNewContext.call(browser, options);
+        await seedAccount(target);
+        return target;
+      };
+    }
     const errors = [], consoleErrors = [], requests = [], failedRequests = [];
     const watch = page => {
       page.on('pageerror', error => errors.push(error.message));
@@ -22,7 +36,8 @@ export const test = base.extend({
     context.on('requestfailed', request => failedRequests.push({
       path: new URL(request.url()).pathname, error: request.failure()?.errorText,
     }));
-    await use();
+    try { await use(); }
+    finally { browser.newContext = originalNewContext; }
     await testInfo.attach('browser-diagnostics', {
       body: JSON.stringify({ errors, consoleErrors, requests, failedRequests }, null, 2),
       contentType: 'application/json',

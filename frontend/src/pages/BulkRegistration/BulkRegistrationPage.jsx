@@ -1,4 +1,9 @@
-import { Link } from 'react-router';
+import { useState } from 'react';
+import { AccountMenu } from '../../components/auth/AccountMenu';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { JoinWorkflowDialog } from '../../components/invitations/JoinWorkflowDialog';
+import { InviteWorkflowDialog } from '../../components/invitations/InviteWorkflowDialog';
+import { WorkspaceSelector } from '../../components/workspaces/WorkspaceSelector';
 import { useBulkRegistration } from './useBulkRegistration';
 import { SchoolVerification } from './components/SchoolVerification';
 import { RegistrationFileInput } from './components/RegistrationFileInput';
@@ -12,10 +17,24 @@ import './bulk-registration.css';
 export function BulkRegistrationPage() {
   const workflow = useBulkRegistration();
   const { error, storageError, working, ready, busy, edit } = workflow;
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [joinOpen, setJoinOpen] = useState(() => new URLSearchParams(window.location.search).has('invite'));
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const viewer = workflow.role === 'viewer';
+  function closeJoin() {
+    setJoinOpen(false);
+    const params = new URLSearchParams(location.search);
+    params.delete('invite');
+    navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+  }
 
   return (
     <main className="bulk-page">
+      {joinOpen && <JoinWorkflowDialog onClose={closeJoin} initialCode={new URLSearchParams(location.search).get('invite') || ''} />}
+      {inviteOpen && <InviteWorkflowDialog workflow="bulk" onClose={() => setInviteOpen(false)} />}
       <div className="bulk-shell">
+        <div className="mb-4 flex items-center justify-between">{ready || storageError ? <WorkspaceSelector role={workflow.role} workflow="bulk_registration" /> : <span className="text-sm text-slate-500" role="status">Opening workspace…</span>}<AccountMenu /></div>
         <header className="bulk-header">
           <div>
             <p className="bulk-eyebrow">FILE CONVERSION</p>
@@ -29,9 +48,15 @@ export function BulkRegistrationPage() {
             <span className="bulk-help-icon" aria-hidden="true">?</span> Sanity rules
           </Link>
         </header>
+        <div className="bulk-collaboration">
+          <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setJoinOpen(true)}>Join with invitation code</button>
+          {workflow.role === 'owner' && <button type="button" className="bulk-button bulk-secondary" aria-haspopup="dialog" onClick={() => setInviteOpen(true)}>Invite to workflow</button>}
+        </div>
+        {viewer && <p className="bulk-notice">Viewer access: you can view this shared workspace. Editing is disabled.</p>}
         {(error || storageError) && (
           <p role="alert" className="bulk-error bulk-top-error">{error || storageError}</p>
         )}
+        <fieldset disabled={viewer} className="bulk-workspace-fields">
         <div className="bulk-grid">
           <div className="bulk-setup">
             <SchoolVerification
@@ -70,6 +95,7 @@ export function BulkRegistrationPage() {
           <span>Shared across tabs on this browser</span>
           <span>File conversion only &middot; No registrations submitted</span>
         </footer>
+        </fieldset>
       </div>
     </main>
   );

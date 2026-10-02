@@ -26,7 +26,8 @@ DATABASE_URL = URL.create(
 # Check pooled connections before reuse; this helps detect connections closed by MySQL.
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True
+    pool_pre_ping=True,
+    connect_args={'connect_timeout': 5, 'read_timeout': 10, 'write_timeout': 10},
 )
 
 # Repositories explicitly commit writes; the request dependency is responsible for closing sessions.

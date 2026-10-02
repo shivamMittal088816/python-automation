@@ -45,8 +45,20 @@ def reset_workspace(request: Request, response: Response, expected_revision: Rev
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
     delete_workspace(workspace_id)
-    new_id = create_workspace()
-    set_workspace_cookie(response, new_id)
+    authenticated = getattr(request.state, 'auth_user', None) is not None
+    new_id = create_workspace(persistent=authenticated)
+    from app.workspaces.services.ownership import register_owned
+    from app.workspaces.services.identity import public_id, database
+    if authenticated:
+        from app.workspaces.models import Workspace
+        from app.common.time import now
+        db = database(request)
+        previous = db.get(Workspace, workspace_id)
+        previous.deleted_at = now()
+        register_owned(request, response, 'bulk_registration', new_id, new_id)
+    else:
+        set_workspace_cookie(response, new_id)
+    response.headers['X-Active-Workspace'] = public_id('bulk_registration', new_id)
     return workspace_summary(load_workspace(new_id))
 
 # Purpose: Workspace restoration, file clearing, and complete reset endpoints.

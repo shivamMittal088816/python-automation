@@ -150,6 +150,7 @@ export function useBulkRegistration() {
   }
 
   return {
+    role: state.role || 'owner',
     path, file, source, schoolIndex, school, output, outputVerified, outputVerification, usernameChanges,
     ready, storageError, working, busy, error, schoolValid, sanity, runSanityCheck,
     edit,

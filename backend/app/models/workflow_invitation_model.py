@@ -24,10 +24,11 @@ class WorkflowInvitation(Base):
                                     autoincrement=True)
     token_hash: Mapped[bytes] = mapped_column(BINARY(32), nullable=False, unique=True)
     workflow_type: Mapped[str] = mapped_column(
-        Enum('mapping', 'bulk_registration', name='workflow_invitation_type'),
+        Enum('mapping', 'bulk_registration', 'both', name='workflow_invitation_type'),
         nullable=False,
     )
     workspace_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    bulk_workspace_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     permission: Mapped[str] = mapped_column(
         Enum('viewer', 'editor', name='workflow_invitation_permission'),
         nullable=False,

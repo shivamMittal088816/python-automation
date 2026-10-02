@@ -193,7 +193,8 @@
 @media (max-width: 760px) {
   .bulk-page { padding: 20px 14px; }
   .bulk-grid { grid-template-columns: minmax(0, 1fr); }
-  .bulk-header { align-items: start; }
+  .bulk-header { align-items: start; flex-wrap: wrap; }
+  .bulk-header > div { flex-basis: 100%; min-width: 0; }
   .bulk-header h1 { font-size: 25px; }
   .bulk-back { font-size: 11px; }
   .bulk-card { padding: 16px; }
@@ -266,3 +267,5 @@
   .bulk-sanity-checks { gap: 5px; }
   .bulk-sanity-checks li { padding: 5px 7px; }
 }
+.bulk-collaboration { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.bulk-workspace-fields { min-width: 0; border: 0; }

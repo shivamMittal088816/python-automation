@@ -72,6 +72,8 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 coverage/
+/.test-temp/
+/.docx-qa/
 
 # Local editor and operating-system files
 .idea/

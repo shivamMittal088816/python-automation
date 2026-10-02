@@ -1,4 +1,4 @@
-"""Cookie-only workflow session transport."""
+"""Account workspace resolution and development-only legacy cookie transport."""
 from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, Response
 from app.config.settings import settings
@@ -23,6 +23,17 @@ def verify_origin(request: Request):
 
 
 def require_session(request: Request, response: Response):
+    from app.workspaces.services.access import selected_access
+    from app.workspaces.services.identity import public_id
+    selected = selected_access(request, 'mapping')
+    if selected:
+        response.headers['X-Active-Workspace'] = selected['id']
+        if selected['role'] != 'owner':
+            from app.invitations.access import member_access
+            member_access(request, 'mapping')
+        return selected['storage_id']
+    if getattr(request.state, 'auth_user', None) is not None:
+        raise HTTPException(409, 'No mapping workspace is selected. Create a workspace to continue.')
     value = request.cookies.get(cookie_name())
     legacy_name = '__Host-workflow' if settings.SESSION_COOKIE_SECURE else 'workflow_session'
     migrating = not value and bool(request.cookies.get(legacy_name))
@@ -36,6 +47,9 @@ def require_session(request: Request, response: Response):
         raise HTTPException(401, 'Workflow session cookie is invalid.')
     if migrating and (folder / 'state.json').is_file():
         set_session_cookie(response, value)
+    if (folder / 'state.json').is_file():
+        from app.api.file_workflow_session_storage import load_state
+        response.headers['X-Active-Workspace'] = public_id('mapping', load_state(folder)['workspace_id'])
     return value
 
 

@@ -28,7 +28,8 @@ export function useBulkRegistrationWorkspace() {
       if (sequence !== readSequence.current) return;
       if (result.workspace_id === saved.current.workspace_id && result.revision < saved.current.revision) return;
       // An unchanged read must preserve selected output pages and open dialogs.
-      if (result.workspace_id !== saved.current.workspace_id || result.revision !== saved.current.revision) {
+      if (result.workspace_id !== saved.current.workspace_id || result.revision !== saved.current.revision
+          || result.role !== saved.current.role) {
         publish(result);
       }
       setStorageError('');

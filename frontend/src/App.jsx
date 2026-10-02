@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useParams } from "react-router";
 import { MappingRulesPage } from "./pages/MappingRules/MappingRulesPage";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -14,6 +14,15 @@ import { FullNameClassPreviewPage } from "./pages/FullNameClassPreview/FullNameC
 import { BulkRegistrationPage } from "./pages/BulkRegistration/BulkRegistrationPage";
 import { BulkRegistrationRulesPage } from "./pages/BulkRegistration/BulkRegistrationRulesPage";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { AuthProvider } from './context/AuthContext';
+import { RequireAuth } from './components/auth/RequireAuth';
+import { AuthPage } from './pages/Auth/AuthPage';
+
+function InvitationRedirect({ bulk = false }) {
+  const { token } = useParams();
+  const destination = bulk ? '/bulk-reg' : '/admission_file_page';
+  return <Navigate replace to={`${destination}?${new URLSearchParams({ invite: token })}`} />;
+}
 
 export function App() {
   const legacy = new URLSearchParams(location.search);
@@ -24,7 +33,13 @@ export function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <AuthProvider>
         <Routes>
+          <Route path="/login" element={<AuthPage key="login" />} />
+          <Route path="/register" element={<AuthPage key="register" register />} />
+          <Route element={<RequireAuth />}>
+          <Route path="/i/:token" element={<InvitationRedirect />} />
+          <Route path="/i/b/:token" element={<InvitationRedirect bulk />} />
           <Route path="/bulk-reg" element={<BulkRegistrationPage />} />
           <Route path="/bulk-reg/rules" element={<BulkRegistrationRulesPage />} />
           <Route
@@ -78,7 +93,9 @@ export function App() {
               />
             </Route>
           </Route>
+          </Route>
         </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </ErrorBoundary>
   );

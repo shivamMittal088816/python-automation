@@ -8,6 +8,8 @@ export function Icon({ name = 'file', className = 'size-5' }) {
     upload: 'M12 16V3 m-5 5 5-5 5 5 M4 16v4h16v-4',
     download: 'M12 3v13 m-5-5 5 5 5-5 M4 20h16',
     mail: 'M3 5h18v14H3z m0 0 9 7 9-7',
+    copy: 'M9 9h12v12H9z M5 15H3V3h12v2',
+    link: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2 M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
     grid: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
     info: 'M12 11v6 M12 7h.01 M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0',
   };
