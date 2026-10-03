@@ -5,12 +5,12 @@ import pandas as pd
 from .admission_name_comparison import school_first_name
 
 def classify_school_rows(school, school_admission_column, name_column, name_is_full, lookup, counts, occurrence_rows):
-    admissions = school[school_admission_column].fillna("").astype(str).str.strip()
+    admissions = school[school_admission_column].fillna("").astype(str).str.strip().str.lower()
     duplicate_admissions = set(admissions[admissions.ne("") & admissions.duplicated(keep=False)])
     records = []
     for _, row in school.iterrows():
         value = row[school_admission_column]
-        admission = str(value).strip() if pd.notna(value) else ""
+        admission = str(value).strip().lower() if pd.notna(value) else ""
         if not admission:
             records.append({
                 "mapping_admission_number": admission,

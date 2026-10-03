@@ -9,7 +9,7 @@ def build_dump_lookup(dump, dump_admission_column, username_column, dump_first_n
     occurrence_rows = {}
     # Start at Excel row 2 because row 1 contains headers, not a student.
     for row_number, (_, row) in enumerate(dump.iterrows(), start=2):
-        admission = str(row[dump_admission_column]).strip()
+        admission = str(row[dump_admission_column]).strip().lower()
         if not admission:
             continue
         counts[admission] = counts.get(admission, 0) + 1

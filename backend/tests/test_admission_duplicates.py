@@ -8,6 +8,25 @@ from app.services.admission_mapping.admission_file_mapping import map_students, 
 
 # Protect whole-row deduplication order and duplicate/blank admission routing.
 class AdmissionDuplicateTests(unittest.TestCase):
+    def test_admission_matching_and_duplicates_ignore_case_and_outer_spaces(self):
+        school = pd.DataFrame({
+            "admission": [" ADM001 ", "adm002", " ADM002 ", "Adm003", "00123", "123"],
+            "name": ["Alice", "Bob", "Other", "Carol", "Dana", "Eve"],
+        })
+        dump = pd.DataFrame({
+            "admission": ["adm001", "ADM002", " ADM003 ", "adm003", "00123", "123"],
+            "user_firstname": ["Alice", "Bob", "Carol", "Carol", "Dana", "Eve"],
+            "username": ["alice1", "bob2", "carol3", "carol4", "dana5", "eve6"],
+        })
+        result = map_students(school, dump, "admission", "admission", "username", "name")
+        self.assertEqual(result.mapping_status.tolist(),
+                         ["Matched", "Review", "Review", "Review", "Matched", "Matched"])
+        self.assertEqual(result.mapping_admission_number.tolist(),
+                         ["adm001", "adm002", "adm002", "adm003", "00123", "123"])
+        self.assertEqual(result.mapping_reason.iloc[1:3].tolist(), ["admission number duplicate"] * 2)
+        self.assertEqual(result.mapping_reason.iloc[3], "more than one occurrence; dump rows: 4, 5")
+        pd.testing.assert_frame_equal(result[school.columns], school)
+
     def test_duplicate_matched_usernames_go_to_review_with_source_rows(self):
         school = pd.DataFrame({"admission": ["1", "2", "3"], "name": ["Alice", "Bob", "Wrong"]})
         dump = pd.DataFrame({"admission": ["1", "2", "3", "4", "5"],
