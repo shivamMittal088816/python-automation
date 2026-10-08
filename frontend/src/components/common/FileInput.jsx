@@ -17,7 +17,7 @@ export function FileInput({ kind, label }) {
   const loadUpload = event => {
     const file = event.target.files[0];
     event.target.value = '';
-    if (file) run('Loading file…', revision => fileApi.upload(kind, file, revision));
+    if (file) run('Loading file…', revision => fileApi.upload(kind, file, revision, workspace.operation_scope));
   };
 
   const loadPath = event => {

@@ -41,6 +41,12 @@ def fetch_school(school_index):
 
 
 def convert_frame(frame, school):
+    house_columns = [column for column in frame.columns
+                     if str(column).strip().casefold() == 'house']
+    if len(house_columns) > 1:
+        raise ValueError('Provide only one house column.')
+    if house_columns:
+        frame = frame.rename(columns={house_columns[0]: 'house'})
     unknown = [str(column) for column in frame.columns if column not in OUTPUT_HEADERS]
     if unknown:
         raise ValueError('Unrecognized input headers: ' + ', '.join(unknown))

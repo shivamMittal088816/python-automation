@@ -4,6 +4,7 @@ from fastapi import HTTPException, Request, Response
 
 from app.config.settings import settings
 from app.services.bulk_registration_storage import create_workspace, load_workspace
+from app.services.operation_log import operation_scope, recent_operations
 
 
 BULK_COOKIE = '__Host-bulk-registration' if settings.SESSION_COOKIE_SECURE else 'bulk_registration_workspace'
@@ -48,6 +49,8 @@ def workspace_summary(state):
         'schoolIndex': state.get('school_index', ''), 'school': state.get('school'),
         'output': state.get('output'),
         'outputVerified': bool(state.get('output_verified')),
+        'operation_scope': operation_scope('bulk', state['workspace_id']),
+        'recent_operations': recent_operations('bulk', state['workspace_id']),
     }
 
 # Purpose: Cookie lookup, revision checks, and browser-safe workspace responses.

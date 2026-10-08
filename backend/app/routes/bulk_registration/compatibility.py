@@ -10,6 +10,8 @@ from app.routes.bulk_registration.file_reading import preview_file, read_frame, 
 from app.routes.bulk_registration.models import FilePathInput
 from app.routes.bulk_registration.school_routes import get_school
 from app.repositories.username_repository import fetch_available_usernames
+from app.repositories.house_repository import fetch_house_ids
+from app.mappings.bulk_registration.house import apply_house_ids
 from app.services.bulk_registration import (
     apply_available_usernames, convert_frame, export_frame, fill_blank_emails,
 )
@@ -41,6 +43,8 @@ def convert_file(school_index, file_format='preview', file=None, path=None, shee
         name, data = read_path(path)
     school = get_school(school_index)
     output = convert_frame(read_frame(name, data, sheet), school)
+    if output['house'].astype(str).str.strip().ne('').any():
+        apply_house_ids(output, fetch_house_ids())
     input_duplicate_emails = duplicate_email_records(output)
     first_names = output.loc[
         output['FIRST NAME'].astype(str).str.strip().ne(''), 'FIRST NAME'
@@ -73,6 +77,8 @@ def convert_file(school_index, file_format='preview', file=None, path=None, shee
                 'invalid_first_name_records': first_name_records,
                 'blank_full_name_records': full_name_records,
                 'review_records': review_records}
+    if output.attrs.get('unresolved_house_positions'):
+        raise HTTPException(409, 'Resolve unknown houses before downloading the final file.')
     filename = f'bulk-registration-{school_index}.{file_format}'
     exported = export_frame(output, file_format)
     media_type = ('text/csv' if file_format == 'csv' else

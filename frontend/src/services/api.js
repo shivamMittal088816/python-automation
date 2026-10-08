@@ -1,3 +1,6 @@
+import { acknowledgeOperation } from '../utils/operationNotifications';
+import { beginPendingUpload, removePendingOperation } from '../utils/pendingOperations';
+
 const defaultHost = import.meta.env.DEV
   ? `${window.location.protocol}//${window.location.hostname}:8000`
   : window.location.origin;
@@ -30,8 +33,11 @@ function apiUrl(path, params = {}) {
   return url.toString();
 }
 
-export async function request(path, { method = 'GET', body, params, signal, blob = false, revision } = {}) {
+export async function request(path, { method = 'GET', body, params, signal, blob = false, revision, pendingUpload } = {}) {
   const multipart = body instanceof FormData;
+  const clientOperationId = pendingUpload
+    ? beginPendingUpload(pendingUpload.scope, pendingUpload.operation, pendingUpload.file)
+    : null;
   let response;
   try {
     response = await fetch(apiUrl(path, params), {
@@ -39,6 +45,7 @@ export async function request(path, { method = 'GET', body, params, signal, blob
       headers: {
         ...(body && !multipart ? { 'Content-Type': 'application/json' } : {}),
         ...(revision !== undefined ? { 'X-Workspace-Revision': String(revision) } : {}),
+        ...(clientOperationId ? { 'X-Client-Operation-ID': clientOperationId } : {}),
       },
       body: body ? multipart ? body : JSON.stringify(body) : undefined,
     });
@@ -46,6 +53,14 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     if (error.name === 'AbortError') throw error;
     throw new Error('Could not reach the API. Check that the backend is running and try again.');
   }
+  const responseOperationId = response.headers.get('X-Operation-ID');
+  const responseOperationStatus = response.headers.get('X-Operation-Status') || (response.ok ? 'completed' : 'failed');
+  const responseOperationWorkspace = response.headers.get('X-Operation-Workspace') || 'unscoped';
+  const confirmedClientOperationId = response.headers.get('X-Client-Operation-ID');
+  if (clientOperationId && confirmedClientOperationId === clientOperationId) {
+    removePendingOperation(pendingUpload.scope, clientOperationId);
+  }
+  acknowledgeOperation(responseOperationId, responseOperationStatus, responseOperationWorkspace);
   if (!response.ok) {
     let payload = {};
     try { payload = await response.json(); } catch { /* Use the status fallback for non-JSON errors. */ }
@@ -71,6 +86,15 @@ export async function request(path, { method = 'GET', body, params, signal, blob
     const error = new Error('The API returned an invalid response. Please try again.');
     error.status = response.status;
     throw error;
+  }
+  // The endpoint builds its workspace summary before middleware appends the
+  // final event. If that summary still contains this operation's earlier
+  // "started" event, acknowledge it together with the final response header.
+  // This prevents an outdated recovery warning after an ordinary successful call.
+  if (responseOperationId && Array.isArray(payload?.recent_operations)) {
+    payload.recent_operations
+      .filter(event => event?.operation_id === responseOperationId)
+      .forEach(event => acknowledgeOperation(event.operation_id, event.status, responseOperationWorkspace));
   }
   if (payload.success === false) throw new Error(payload.message || 'The operation could not be completed.');
   return payload;

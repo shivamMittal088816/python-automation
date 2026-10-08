@@ -4,6 +4,7 @@ import './bulk-registration.css';
 const columnRules = [
   ['FIRST NAME', ['Required for every record.', 'Only uppercase and lowercase English letters (A–Z and a–z) are allowed.', 'Spaces, numbers, punctuation, symbols, and non-English letters are not allowed.']],
   ['LAST NAME', ['Optional.', 'When supplied, only A–Z, a–z, and spaces are allowed.']],
+  ['house', ['Optional column; blank values are allowed.', 'Supplied house names must exist in the dump users_houses table; matching ignores case and surrounding whitespace.', 'Generate Preview replaces each matched house name with its database house_id in the house column, including the downloaded file.', 'Unknown houses fail input sanity with the message: House not found in dump; insert the house.', 'Unresolved houses block final verification and download. Correct the source file and generate the preview again. House IDs are checked against the database again before download.']],
   ['FULL NAME', ['Required for every record; blank or whitespace-only values fail.', 'Only A–Z, a–z, and spaces are allowed.']],
   ['Section', ['Required for every record.', 'The value must match a section stored in the database and resolve to a valid section index.', 'Blank sections and sections not found in the database appear in Review records.']],
   ['Class Number', ['Required for every record.', 'The class name must match a class stored in the server-side class mapping.', 'Blank or unknown classes appear in Review records.']],

@@ -7,11 +7,12 @@ import { RegistrationActions } from './components/RegistrationActions';
 import { RegistrationSanityCheck } from './components/RegistrationSanityCheck';
 import { RegistrationPreviews } from './components/RegistrationPreviews';
 import { ConfirmResetBulkRegistration } from './components/ConfirmResetBulkRegistration';
+import { OperationNotice } from '../../components/common/OperationNotice';
 import './bulk-registration.css';
 
 export function BulkRegistrationPage() {
   const workflow = useBulkRegistration();
-  const { error, storageError, working, ready, busy, edit } = workflow;
+  const { error, storageError, recoveryNotice, working, ready, busy, edit } = workflow;
 
   return (
     <main className="bulk-page">
@@ -32,6 +33,7 @@ export function BulkRegistrationPage() {
         {(error || storageError) && (
           <p role="alert" className="bulk-error bulk-top-error">{error || storageError}</p>
         )}
+        <OperationNotice notice={recoveryNotice} />
         <div className="bulk-grid">
           <div className="bulk-setup">
             <SchoolVerification

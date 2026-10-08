@@ -23,10 +23,19 @@ export const bulkRegistrationApi = {
     });
   },
 
-  uploadFile(file, revision) {
+  uploadFile(file, revision, scope) {
     const body = new FormData();
     body.append('file', file);
-    return request('/bulk-reg/files', { method: 'POST', body, revision });
+    return request('/bulk-reg/files', {
+      method: 'POST', body, revision,
+      pendingUpload: { scope, operation: 'bulk_file_upload', file },
+    });
+  },
+
+  operationStatuses(clientOperationIds) {
+    return request('/bulk-reg/operations/status', {
+      method: 'POST', body: { client_operation_ids: clientOperationIds },
+    });
   },
 
   loadPath(path, revision) {

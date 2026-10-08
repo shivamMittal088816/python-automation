@@ -12,9 +12,9 @@ sys.path.insert(0,str(BACKEND_ROOT))
 import pandas as pd
 import uvicorn
 from app.api import file_workflow_state
-from app.services import bulk_registration_storage
-from app.routes.file_workflow_routes import email_mapping, file_inputs
-from app.routes.bulk_registration import conversion_routes, school_routes
+from app.services import bulk_registration_storage, operation_log
+from app.routes.file_workflow_routes import email_mapping, file_inputs, sanity_check
+from app.routes.bulk_registration import conversion_routes, school_routes, file_routes
 from app.services.bulk_registration import SchoolNotFoundError
 from app.main import create_app
 from app import main as backend_main
@@ -27,6 +27,7 @@ temporary=tempfile.TemporaryDirectory(prefix='student-mapping-browser-')
 atexit.register(temporary.cleanup)
 file_workflow_state.ROOT=Path(temporary.name)/'sessions'
 bulk_registration_storage.ROOT=Path(temporary.name)/'bulk-registration'
+operation_log.LOG_PATH=Path(temporary.name)/'operations.jsonl'
 dump=pd.read_csv(REPOSITORY_ROOT/'frontend/e2e/fixtures/dump.csv',dtype=str,keep_default_na=False)
 
 def fetch_school_dump(index):
@@ -49,6 +50,9 @@ def fetch_bulk_school(index):
 
 school_routes.fetch_school = fetch_bulk_school
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
+conversion_routes.fetch_house_ids = lambda: [(12, 'Blue'), (37, 'Green')]
+file_routes.fetch_houses = lambda: ['Blue', 'Green']
+sanity_check.fetch_houses = lambda: ['Blue', 'Green']
 conversion_routes.fetch_existing_emails = lambda emails: {'existing@testschool.com'} & set(emails)
 conversion_routes.fetch_existing_usernames = lambda usernames: {'ada001'} & set(usernames)
 conversion_routes.fetch_available_usernames = lambda names: [

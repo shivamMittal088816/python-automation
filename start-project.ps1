@@ -10,7 +10,7 @@ $backendDirectory = Join-Path $projectRoot 'backend'
 $frontendDirectory = Join-Path $projectRoot 'frontend'
 $logDirectory = Join-Path $projectRoot 'logs'
 $children = @()
-$environmentNames = @('SESSION_COOKIE_SECURE', 'SESSION_COOKIE_SAMESITE', 'CORS_ORIGINS', 'API_V1_PREFIX', 'VITE_API_BASE_URL', 'VITE_API_PREFIX')
+$environmentNames = @('SESSION_COOKIE_SECURE', 'SESSION_COOKIE_SAMESITE', 'CORS_ORIGINS', 'API_V1_PREFIX', 'VITE_API_BASE_URL', 'VITE_API_PREFIX', 'NO_COLOR')
 $previousEnvironment = @{}
 
 try {
@@ -40,6 +40,7 @@ try {
     $env:VITE_API_BASE_URL = "http://127.0.0.1:$BackendPort"
     $env:VITE_API_PREFIX = '/api/v1'
     $env:API_V1_PREFIX = '/api/v1'
+    $env:NO_COLOR = '1'
     $children += Start-Process -FilePath $uvExecutable -ArgumentList @('run', 'python', '-m', 'uvicorn', 'app.main:app', '--reload', '--host', '127.0.0.1', '--port', $BackendPort) -WorkingDirectory $backendDirectory -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDirectory 'backend.stdout.log') -RedirectStandardError (Join-Path $logDirectory 'backend.stderr.log')
     $children += Start-Process -FilePath $nodeExecutable -ArgumentList @('node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', $FrontendPort, '--strictPort') -WorkingDirectory $frontendDirectory -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $logDirectory 'frontend.stdout.log') -RedirectStandardError (Join-Path $logDirectory 'frontend.stderr.log')
     foreach ($url in @("http://127.0.0.1:$BackendPort/", "http://127.0.0.1:$FrontendPort/")) {

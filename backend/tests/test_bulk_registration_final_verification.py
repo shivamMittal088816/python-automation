@@ -8,6 +8,23 @@ from app.services.bulk_reg_final_verification import (
 
 
 class BulkRegistrationFinalVerificationTests(unittest.TestCase):
+    def test_supplied_houses_must_be_resolved_and_still_exist(self):
+        frame = self.final_frame({
+            'FIRST NAME': ['Ada', 'Bob', 'Cara', 'Dan'],
+            'user_name': ['ada001', 'bob001', 'cara001', 'dan001'],
+            'EMAIL': ['ada@example.com', 'bob@example.com', 'cara@example.com', 'dan@example.com'],
+            'house': ['12', 'Unknown', '', '99'],
+        })
+        result = verify_final_output(frame, house_ids=[12])
+        stage = next(stage for stage in result['stages'] if stage['id'] == 'house_index')
+        self.assertFalse(result['passed'])
+        self.assertEqual(stage['issues'], [2, 4])
+        frame.loc[1, 'house'] = '12'
+        frame.loc[3, 'house'] = ''
+        self.assertTrue(verify_final_output(frame, house_ids=[12])['passed'])
+        frame.attrs['unresolved_house_positions'] = [1]
+        self.assertFalse(verify_final_output(frame, house_ids=[12])['passed'])
+
     def final_frame(self, values):
         frame = pd.DataFrame(values)
         defaults = {

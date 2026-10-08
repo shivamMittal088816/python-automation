@@ -2,10 +2,16 @@ import { request } from './api';
 import { workspacePath } from './admissionMappingApi';
 export const fileApi = {
   clear: (kind, revision) => request(`${workspacePath}/files/${kind}/clear`, { method: 'POST', revision }),
-  upload: (kind, file, revision) => {
+  upload: (kind, file, revision, scope) => {
     const body = new FormData(); body.append('file', file);
-    return request(`${workspacePath}/files/${kind}`, { method: 'POST', body, revision });
+    return request(`${workspacePath}/files/${kind}`, {
+      method: 'POST', body, revision,
+      pendingUpload: { scope, operation: `${kind}_file_upload`, file },
+    });
   },
+  operationStatuses: clientOperationIds => request(`${workspacePath}/operations/status`, {
+    method: 'POST', body: { client_operation_ids: clientOperationIds },
+  }),
   path: (kind, path, revision) => request(`${workspacePath}/files/${kind}/path`, { method: 'POST', body: { path }, revision }),
   table: (kind, params, signal) => request(`${workspacePath}/table-previews/${kind}`, { params, signal }),
   download: async (kind, params = {}) => {

@@ -1,5 +1,5 @@
 """Run all input checks and assemble summaries and original-row results."""
-from . import class_number, email, first_name, full_name, gender, last_name, section, username
+from . import class_number, email, first_name, full_name, gender, house, last_name, section, username
 from .normalization import normalize_input
 
 
@@ -9,11 +9,15 @@ CHECKS = (first_name.check, section.check, class_number.check,
           email.check_format, email.check)
 
 
-def check_input(frame):
+def check_input(frame, houses=(), *, validation_frame=None, checks=CHECKS):
     source = normalize_input(frame)
-    records = source.to_dict('records')
+    validation = source if validation_frame is None else normalize_input(validation_frame)
+    records = validation.to_dict('records')
     values = source.astype(str).values.tolist()
-    results = [check(records) for check in CHECKS]
+    results = [check(records) for check in checks]
+    columns = house.house_columns(validation)
+    if columns:
+        results.append(house.check(records, columns, houses))
     rows = []
     for position, record in enumerate(records):
         problems = [result.problem for result in results if position in result.failed_positions]

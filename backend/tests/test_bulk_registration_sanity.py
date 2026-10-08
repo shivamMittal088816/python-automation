@@ -7,6 +7,28 @@ from app.mappings.bulk_registration.class_name import CLASS_NUMBERS
 
 
 class InputSanityTests(unittest.TestCase):
+    def test_optional_house_matches_dump_without_changing_input(self):
+        for column in ['house', 'House', ' HOUSE ']:
+            with self.subTest(column=column):
+                frame = pd.DataFrame({column: [' Blue ', 'GREEN', '', None, 'Red', 'Red']})
+                original = frame.copy(deep=True)
+                result = check_input(frame, houses=['blue', ' Green ', None])
+                check = next(item for item in result['checks'] if item['id'] == 'house')
+                self.assertEqual(check['failed_count'], 2)
+                self.assertFalse(check['passed'])
+                for position, row in enumerate(result['rows']):
+                    self.assertEqual('House not found in dump; insert the house' in row['problems'],
+                                     position in (4, 5))
+                pd.testing.assert_frame_equal(frame, original)
+
+    def test_house_check_only_appears_when_column_is_present(self):
+        result = check_input(pd.DataFrame({'FIRST NAME': ['Ada']}))
+        self.assertNotIn('house', [check['id'] for check in result['checks']])
+        result = check_input(pd.DataFrame({'house': ['Blue', '', None]}), houses=[])
+        self.assertEqual(result['checks'][-1]['failed_count'], 1)
+        result = check_input(pd.DataFrame({'house': ['Blue', '']}), houses=['Blue'])
+        self.assertTrue(result['checks'][-1]['passed'])
+
     def test_class_must_match_a_stored_class(self):
         valid = list(CLASS_NUMBERS) + [' CLASS I ', 'Class XII', 'Nursery']
         invalid = ['', ' ', None, '1', '0', 'Class XIII', 'Unknown', 'Class I!']

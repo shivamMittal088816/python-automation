@@ -20,6 +20,9 @@ from app.routes.student_mapping import router as student_mapping_router
 from app.routes.student_mapping import health
 from app.routes.file_workflows import router as file_workflows_router
 from app.routes.bulk_registration import router as bulk_registration_router
+from app.api.session_cookie import cookie_name
+from app.routes.bulk_registration.workspace_access import BULK_COOKIE
+from app.services.operation_log import finish_operation, operation_for_request
 
 
 logger = logging.getLogger("uvicorn.error")
@@ -76,6 +79,13 @@ def create_app():
         request_id = supplied_id if re.fullmatch(r'[A-Za-z0-9_.-]{1,64}', supplied_id) else str(uuid4())
         request.state.request_id = request_id
         started = perf_counter()
+        operation = operation_for_request(
+            request.method, request.url.path,
+            mapping_session=request.cookies.get(cookie_name()),
+            bulk_workspace=request.cookies.get(BULK_COOKIE),
+            request_id=request_id,
+            client_operation_id=request.headers.get('X-Client-Operation-ID'),
+        )
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -84,6 +94,15 @@ def create_app():
             response = await unexpected_error(request, exc)
         duration_ms = (perf_counter() - started) * 1000
         response.headers['X-Request-ID'] = request_id
+        completed_operation = finish_operation(operation, response.status_code)
+        if completed_operation:
+            response.headers['X-Operation-ID'] = completed_operation['operation_id']
+            response.headers['X-Operation-Status'] = completed_operation['status']
+            response.headers['X-Operation-Workspace'] = (
+                f"{completed_operation['scope']}:{completed_operation['workspace_id']}"
+            )
+            if completed_operation.get('client_operation_id'):
+                response.headers['X-Client-Operation-ID'] = completed_operation['client_operation_id']
         response.headers['Server-Timing'] = f'app;dur={duration_ms:.1f}'
         if request.url.path.startswith((settings.API_V1_PREFIX + '/mapping', settings.API_V1_PREFIX + '/bulk-reg')):
             response.headers['Cache-Control'] = 'no-store'
@@ -97,8 +116,8 @@ def create_app():
         allow_origins=[origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_credentials=True,
-        allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID"],
-        expose_headers=["Content-Disposition", "X-Request-ID", "X-Workspace-Revision", "Server-Timing"],
+        allow_headers=["Content-Type", "X-Workspace-Revision", "X-Request-ID", "X-Client-Operation-ID"],
+        expose_headers=["Content-Disposition", "X-Request-ID", "X-Workspace-Revision", "X-Operation-ID", "X-Operation-Status", "X-Operation-Workspace", "X-Client-Operation-ID", "Server-Timing"],
     )
 
     return app

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export function RegistrationSanityCheck({ source, busy, result, onCheck }) {
+export function RegistrationSanityCheck({ source, busy, result, onCheck, footnote }) {
   const [expanded, setExpanded] = useState(true);
   return <section className="bulk-card bulk-sanity" aria-labelledby="sanity-title">
     <div className="bulk-sanity-header">
@@ -12,12 +12,12 @@ export function RegistrationSanityCheck({ source, busy, result, onCheck }) {
       </div>
     </div>
     <div id="bulk-sanity-content" hidden={!expanded}>
-      {result ? <SanityResults result={result} /> : <p className="bulk-sanity-footnote">Check missing details and duplicate emails.</p>}
+      {result ? <SanityResults result={result} footnote={footnote} /> : <p className="bulk-sanity-footnote">{footnote || 'Check missing details, duplicate emails, and supplied houses against the dump.'}</p>}
     </div>
   </section>;
 }
 
-function SanityResults({ result }) {
+function SanityResults({ result, footnote }) {
   const [page, setPage] = useState(1);
   const records = result.rows.filter(row => row.problems.length);
   const pages = Math.max(1, Math.ceil(records.length / 20));
@@ -46,6 +46,6 @@ function SanityResults({ result }) {
       <span>Page {currentPage} of {pages}</span>
       <button className="bulk-button bulk-secondary" disabled={currentPage === pages} onClick={() => setPage(currentPage + 1)}>Next</button>
     </nav>}
-    <p className="bulk-sanity-footnote">All values are trimmed before checking. First name: A–Z and a–z only; last and full names also allow spaces. Class validation checks the Class Number column.</p>
+    <p className="bulk-sanity-footnote">{footnote || 'All values are trimmed before checking. First name: A–Z and a–z only; last and full names also allow spaces. Class validation checks the Class Number column.'}</p>
   </>;
 }

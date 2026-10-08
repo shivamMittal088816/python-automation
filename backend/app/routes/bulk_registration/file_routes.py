@@ -2,10 +2,13 @@
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Header, HTTPException, Request, Response, UploadFile
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.config.settings import settings
+from app.repositories.house_repository import fetch_houses
 from app.routes.bulk_registration.file_reading import preview_file, read_path, read_frame
 from app.services.bulk_registration_sanity import check_input
+from app.services.bulk_registration_sanity.house import house_columns
 from app.services.bulk_registration_sanity.trimmed_file import trim_input_file
 from app.routes.bulk_registration.models import FilePathInput, StoredFileInput
 from app.routes.bulk_registration.workspace_access import require_revision, workspace_for, workspace_summary
@@ -24,7 +27,12 @@ def sanity_check(request: Request, response: Response, expected_revision: Revisi
     if not state.get('input'):
         raise HTTPException(409, 'Load an input file first.')
     metadata, data = read_snapshot(workspace_id, state['input'])
-    return check_input(read_frame(metadata.get('name', ''), data, metadata.get('sheet')))
+    frame = read_frame(metadata.get('name', ''), data, metadata.get('sheet'))
+    try:
+        houses = fetch_houses() if house_columns(frame) else ()
+    except SQLAlchemyError as exc:
+        raise HTTPException(503, 'Could not check houses against the dump. Try again.') from exc
+    return check_input(frame, houses=houses)
 
 
 @router.get('/files/input')

@@ -6,6 +6,7 @@ from app.api.file_workflow_configuration import admission_configuration
 from app.api.file_workflow_snapshots import sheets
 from app.utils.table_queries import preview_page_bounds, search_dump
 from app.services.email_mapping.email_input import email_input_signature
+from app.services.operation_log import operation_scope, recent_operations
 
 
 def records(rows):
@@ -43,7 +44,9 @@ def summary(state, session_id):
         'exports':{stage:{name:item['count'] for name,item in state.get(field,{}).items()} for stage,field in STAGES.items()},
         'export_versions':{stage:{name:hashlib.sha256(item['data']).hexdigest() for name,item in state.get(field,{}).items()} for stage,field in STAGES.items()},
         'email_ready':ready,
-        'run_columns':mapping_run_columns(state)}
+        'run_columns':mapping_run_columns(state),
+        'operation_scope':operation_scope('mapping', session_id),
+        'recent_operations':recent_operations('mapping', session_id)}
 
 
 def page_response(rows,page,limit,query='',columns=None):

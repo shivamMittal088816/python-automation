@@ -58,6 +58,26 @@ aside > div:first-child > span {
   background: linear-gradient(140deg, #2563eb, #4338ca);
 }
 aside nav summary { color: #475569; }
+.mapping-app #mapping-sidebar {
+  border-right: 1px solid #b8c7da;
+  box-shadow: 5px 0 18px -6px #33415538;
+}
+.mapping-app #mapping-sidebar nav > details {
+  border: 1px solid #d5deea;
+  border-radius: 8px;
+  background: #f8fafc;
+  box-shadow: 0 2px 4px #3341550a;
+}
+.mapping-app #mapping-sidebar nav > details[open] {
+  border-color: #bdcee5;
+  background: #fff;
+}
+.mapping-app #mapping-sidebar nav > details > div { margin: 0 6px 6px 10px; }
+.mapping-app #mapping-sidebar nav > a {
+  margin-block: 4px;
+  border: 1px solid #d5deea;
+  box-shadow: 0 2px 4px #3341550a;
+}
 .mapping-app main [role='tablist'] { border: 1px solid #e2e8f0; }
 .mapping-app main label:has(> input[type='file']) { padding-block: 16px; }
 .mapping-app main label:has(> input[type='file']) > span:last-of-type {
@@ -186,4 +206,48 @@ section:has(> h3 + .mapping-fields) {
 @layer components {
   .mapping-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 10px 12px; align-items: end; }
   .mapping-fields label { @apply text-xs leading-4; }
+}
+
+/* Compact admission homepage surfaces, including uploaded-file states. */
+.mapping-app main .mapping-home > header {
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-left: 3px solid #2563eb;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 3px 10px -6px #33415540;
+}
+.mapping-home > header h2 { font-size: 1.125rem; }
+.mapping-home > header > p:last-child { margin-top: 2px; }
+.mapping-home > ol {
+  padding: 6px;
+  gap: 4px;
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 10px -6px #33415540;
+}
+.mapping-home > ol > li { padding: 4px 8px; }
+.mapping-app main .mapping-home section {
+  padding: 12px;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px -7px #33415550;
+}
+.mapping-home .mapping-home-files {
+  padding: 0;
+  background: transparent;
+}
+.mapping-home-files > section > :first-child { margin-bottom: 10px; }
+.mapping-home .mapping-file-input { gap: 8px; display: flex; flex-direction: column; }
+.mapping-home .mapping-file-input > * { margin-block: 0; }
+.mapping-home .mapping-file-input [role='tablist'] { align-self: flex-start; padding: 3px; }
+.mapping-home .mapping-file-input [role='tab'] { min-height: 32px; padding: 4px 14px; }
+.mapping-home .mapping-file-input > label,
+.mapping-home .mapping-file-input > div:not([role='tablist']) { padding: 12px; }
+.mapping-home .mapping-file-input > label > span:first-child { margin-bottom: 6px; padding: 6px; }
+.mapping-home .mapping-file-input > label > span:last-of-type { margin-top: 8px; }
+.mapping-home .dump-school { padding: 10px; }
+
+@media (max-width: 639px) {
+  .mapping-home > ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mapping-home > ol > li { flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px; }
+  .mapping-home > ol > li > div > p { line-height: 16px; }
 }

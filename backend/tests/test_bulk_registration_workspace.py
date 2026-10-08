@@ -11,11 +11,13 @@ from unittest.mock import patch
 
 from fastapi import HTTPException, Request, Response, UploadFile
 from openpyxl import Workbook, load_workbook
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.routes.bulk_registration import conversion_routes, file_routes, workspace_routes
 from app.routes.bulk_registration.models import FilePathInput, StoredFileInput
 from app.routes.bulk_registration.workspace_access import BULK_COOKIE
 from app.services import bulk_registration_storage as storage
+from app.services import operation_log
 from app.main import create_app
 from tests.test_file_workflow_api import asgi_request
 
@@ -27,6 +29,11 @@ class BulkWorkspaceTests(unittest.TestCase):
         root = patch.object(storage, 'ROOT', Path(temporary.name))
         root.start()
         self.addCleanup(root.stop)
+        log_temporary = TemporaryDirectory()
+        self.addCleanup(log_temporary.cleanup)
+        log_path = patch.object(operation_log, 'LOG_PATH', Path(log_temporary.name) / 'operations.jsonl')
+        log_path.start()
+        self.addCleanup(log_path.stop)
         self.workspace_id = storage.create_workspace()
 
     def request(self):
@@ -69,6 +76,122 @@ class BulkWorkspaceTests(unittest.TestCase):
             _, data = storage.read_snapshot(self.workspace_id, state['input'])
             self.assertIn(b'Ada,001234', data)
             self.assertEqual(source.read_bytes(), original)
+
+    def test_sanity_checks_house_against_dump_and_preserves_workspace(self):
+        uploaded = file_routes.upload_workspace_file(
+            self.request(), Response(), 0,
+            UploadFile(filename='students.csv', file=BytesIO(
+                b'FIRST NAME,house\nAda, Blue \nBob,Red\nCara,\n')),
+        )
+        before = storage.load_workspace(self.workspace_id)
+        with patch.object(file_routes, 'fetch_houses', return_value=['Blue']) as fetch:
+            result = file_routes.sanity_check(self.request(), Response(), uploaded['revision'])
+        fetch.assert_called_once_with()
+        self.assertEqual(result['checks'][-1], {
+            'id': 'house', 'label': 'House exists in dump', 'failed_count': 1, 'passed': False,
+        })
+        self.assertIn('House not found in dump; insert the house', result['rows'][1]['problems'])
+        self.assertEqual(storage.load_workspace(self.workspace_id), before)
+        with patch.object(file_routes, 'fetch_houses', side_effect=SQLAlchemyError('unavailable')):
+            with self.assertRaises(HTTPException) as error:
+                file_routes.sanity_check(self.request(), Response(), uploaded['revision'])
+        self.assertEqual(error.exception.status_code, 503)
+
+    def test_sanity_without_house_does_not_query_dump(self):
+        uploaded = file_routes.upload_workspace_file(
+            self.request(), Response(), 0,
+            UploadFile(filename='students.csv', file=BytesIO(b'FIRST NAME\nAda\n')),
+        )
+        with patch.object(file_routes, 'fetch_houses') as fetch:
+            file_routes.sanity_check(self.request(), Response(), uploaded['revision'])
+        fetch.assert_not_called()
+
+    def test_preview_replaces_houses_with_ids_and_persists_them_for_exports(self):
+        from app.services.bulk_registration import export_frame
+
+        uploaded = file_routes.upload_workspace_file(
+            self.request(), Response(), 0,
+            UploadFile(filename='students.csv', file=BytesIO(
+                b'FIRST NAME,House\nBob, BLUE \nAda,green\nCara,\nDora,Unknown\n')),
+        )
+        with patch.object(conversion_routes, 'get_school', return_value={
+            'school_index': '914', 'school_name': 'Test School',
+        }), patch.object(conversion_routes, 'fetch_sections', return_value=[]), patch.object(
+            conversion_routes, 'fetch_house_ids', return_value=[(12, 'Blue'), (37, 'Green')],
+        ) as fetch, patch.object(
+            conversion_routes, 'fetch_available_usernames',
+            return_value=['ada001', 'bob001', 'cara001', 'dora001'],
+        ):
+            result = conversion_routes.convert_workspace_file(
+                self.request(), Response(), uploaded['revision'], '914', 'preview',
+                file=None, path=None, sheet=None, page=1)
+        fetch.assert_called_once_with()
+        column = result['output']['columns'].index('house')
+        expected = ['37', '12', '', 'Unknown']
+        self.assertEqual([row[column] for row in result['output']['rows']], expected)
+        state = storage.load_workspace(self.workspace_id)
+        _, output = conversion_routes.read_authoritative_output(self.workspace_id, state)
+        self.assertEqual(output['house'].tolist(), expected)
+        self.assertEqual(output.attrs['unresolved_house_positions'], [3])
+        page = conversion_routes.get_output_page(self.request(), Response())
+        self.assertEqual([row[column] for row in page['output']['rows']], expected)
+        workbook = load_workbook(BytesIO(export_frame(output, 'xlsx')), read_only=True)
+        self.assertEqual(
+            [row[column] or '' for row in workbook.active.iter_rows(min_row=2, values_only=True)],
+            expected,
+        )
+        workbook.close()
+        _, source = storage.read_snapshot(self.workspace_id, state['input'])
+        self.assertIn(b'Bob,BLUE', source)
+        self.assertIn(b'Ada,green', source)
+
+    def test_house_validation_blocks_exports_and_rechecks_database(self):
+        for house in ('Unknown', '12', 'Blue', ''):
+            with self.subTest(house=house):
+                self.workspace_id = storage.create_workspace()
+                uploaded = file_routes.upload_workspace_file(
+                    self.request(), Response(), 0,
+                    UploadFile(filename='students.csv', file=BytesIO(
+                        ('FIRST NAME,FULL NAME,Section,Class Number,GENDER,house\n'
+                         f'Bob,Bob Smith,A,Class I,Male,{house}\n').encode())),
+                )
+                with patch.object(conversion_routes, 'get_school', return_value={
+                    'school_index': '914', 'school_name': 'Test School',
+                }), patch.object(conversion_routes, 'fetch_sections', return_value=[(1, 'A')]), patch.object(
+                    conversion_routes, 'fetch_house_ids', return_value=[(12, 'Blue')],
+                ) as houses, patch.object(
+                    conversion_routes, 'fetch_available_usernames', return_value=['bob001'],
+                ), patch.object(conversion_routes, 'fetch_existing_usernames', return_value=set()), patch.object(
+                    conversion_routes, 'fetch_existing_emails', return_value=set(),
+                ):
+                    preview = conversion_routes.convert_workspace_file(
+                        self.request(), Response(), uploaded['revision'], '914', 'preview',
+                        file=None, path=None, sheet=None, page=1)
+                    verified = conversion_routes.verify_bulk_registration_output(
+                        self.request(), Response(), preview['revision'])
+                    expected = house in ('Blue', '')
+                    self.assertEqual(verified['verification']['passed'], expected)
+                    revision = verified['workspace']['revision']
+                    if expected:
+                        exported = conversion_routes.convert_workspace_file(
+                            self.request(), Response(), revision, '914', 'csv',
+                            file=None, path=None, sheet=None, page=1)
+                        self.assertIn(b'bob001', exported.body)
+                        if not house:
+                            houses.assert_not_called()
+                            continue
+                        houses.return_value = []
+                    else:
+                        # Even a previously verified/legacy snapshot must be rechecked.
+                        state = storage.load_workspace(self.workspace_id)
+                        state['output_verified'] = True
+                        storage.save_workspace(self.workspace_id, state)
+                    with self.assertRaises(HTTPException) as error:
+                        conversion_routes.convert_workspace_file(
+                            self.request(), Response(), revision, '914', 'csv',
+                            file=None, path=None, sheet=None, page=1)
+                    self.assertEqual(error.exception.status_code, 409)
+                    self.assertFalse(storage.load_workspace(self.workspace_id)['output_verified'])
 
     def test_trimmed_workbook_preserves_other_sheets_and_drives_generated_output(self):
         workbook = Workbook()

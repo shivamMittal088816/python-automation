@@ -7,6 +7,13 @@ export const admissionMappingApi = {
       body: { school_index: school || null },
     }),
   getSession: () => request("/mapping/session"),
+  sanityCheck: (body, revision, signal) =>
+    request(`${workspacePath}/sanity-check`, {
+      method: "POST",
+      body,
+      revision,
+      signal,
+    }),
   fetchDump: (school_index, revision) =>
     request(`${workspacePath}/student-dump/fetch`, {
       method: "POST",

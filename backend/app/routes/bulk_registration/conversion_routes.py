@@ -9,6 +9,8 @@ from openpyxl.utils.exceptions import IllegalCharacterError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.repositories.section_repository import fetch_sections
+from app.repositories.house_repository import fetch_house_ids
+from app.mappings.bulk_registration.house import apply_house_ids
 from app.repositories.email_repository import fetch_existing_emails
 from app.repositories.username_repository import fetch_available_usernames, fetch_existing_usernames
 from app.routes.bulk_registration.file_reading import read_frame
@@ -83,7 +85,14 @@ def read_authoritative_output(workspace_id, state):
         raise HTTPException(409, 'Saved bulk registration output is unreadable. Generate the preview again.') from exc
     if 'source_row_numbers' in metadata:
         output.attrs['source_row_numbers'] = metadata['source_row_numbers']
+    output.attrs['unresolved_house_positions'] = metadata.get('unresolved_house_positions', [])
     return metadata, output
+
+
+def current_house_ids(output):
+    if 'house' not in output or not output['house'].fillna('').astype(str).str.strip().ne('').any():
+        return ()
+    return [house_id for house_id, _ in fetch_house_ids()]
 
 
 @router.get('/output')
@@ -135,15 +144,16 @@ def verify_bulk_registration_output(
         emails = output['EMAIL'].fillna('').astype(str).str.strip().tolist()
         existing_usernames = fetch_existing_usernames(usernames)
         existing_emails = fetch_existing_emails(emails)
+        house_ids = current_house_ids(output)
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, 'Could not verify usernames and emails against the database. '
+            503, 'Could not verify usernames, emails, or houses against the database. '
                  'Check the database connection and try again.'
         ) from exc
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
-    verification = verify_final_output(output, existing_usernames, existing_emails)
+    verification = verify_final_output(output, existing_usernames, existing_emails, house_ids)
     state['output_verified'] = bool(verification['passed'])
     state['revision'] = int(state.get('revision', 0)) + 1
     if username_changes:
@@ -189,6 +199,8 @@ def convert_workspace_file(
             raise HTTPException(400, str(exc)) from exc
         try:
             missing_sections = apply_section_ids(output, fetch_sections())
+            if output['house'].astype(str).str.strip().ne('').any():
+                apply_house_ids(output, fetch_house_ids())
             input_duplicate_emails = duplicate_email_records(output)
             first_names = output.loc[
                 output['FIRST NAME'].astype(str).str.strip().ne(''), 'FIRST NAME'
@@ -200,7 +212,7 @@ def convert_workspace_file(
             ]
             fill_blank_emails(output, school['school_name'])
         except SQLAlchemyError as exc:
-            raise HTTPException(503, 'Could not verify sections or allocate usernames. Check the database connection and try again.') from exc
+            raise HTTPException(503, 'Could not verify sections, map houses, or allocate usernames. Check the database connection and try again.') from exc
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
         summary = paginated_summary(
@@ -219,6 +231,7 @@ def convert_workspace_file(
             'missing_genders': summary['missing_genders'],
             'duplicate_email_records': input_duplicate_emails,
             'source_row_numbers': output.attrs['source_row_numbers'],
+            'unresolved_house_positions': output.attrs.get('unresolved_house_positions', []),
             'generated_email_positions': generated_email_positions,
         }
         save_workspace(workspace_id, state, {
@@ -238,10 +251,11 @@ def convert_workspace_file(
         emails = output['EMAIL'].fillna('').astype(str).str.strip().tolist()
         final_check = verify_final_output(
             output, fetch_existing_usernames(usernames), fetch_existing_emails(emails),
+            current_house_ids(output),
         )
     except SQLAlchemyError as exc:
         raise HTTPException(
-            503, 'Could not recheck usernames and emails before download. '
+            503, 'Could not recheck usernames, emails, or houses before download. '
                  'Check the database connection and try again.'
         ) from exc
     if not final_check['passed']:
@@ -249,8 +263,8 @@ def convert_workspace_file(
         state['revision'] = int(state.get('revision', 0)) + 1
         save_workspace(workspace_id, state)
         raise HTTPException(
-            409, 'The database changed after verification. Run Bulk-reg verify again '
-                 'to regenerate conflicting usernames before downloading.'
+            409, 'The saved output no longer passes final verification. Run Bulk-reg verify '
+                 'again and correct any reported issues before downloading.'
         )
     filename = f'bulk-registration-{school["school_index"]}.{file_format}'
     try:

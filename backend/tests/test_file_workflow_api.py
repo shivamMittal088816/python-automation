@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlencode
+from uuid import uuid4
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -14,6 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.main import create_app
 from app.api import file_workflow_state as state_store
+from app.services import operation_log
 from app.routes.file_workflow_routes import email_mapping, file_inputs, full_name_class_mapping
 
 
@@ -40,6 +42,65 @@ async def asgi_request(app, method, path, body=b'', headers=None):
 
 
 class FileWorkflowAPITests(unittest.TestCase):
+    def test_mapping_sanity_checks_supplied_fields_and_preserves_workspace(self):
+        frame = pd.DataFrame({
+            'FIRST NAME': ['Ada', 'Bob1'], 'FULL NAME': ['Ada A', 'Bob B'],
+            'Section': ['A', ''], 'Class Number': ['Class I', 'Unknown'],
+            'GENDER': ['Female', 'M'], 'EMAIL': ['same@example.com', 'SAME@example.com'],
+            'house': [' blue ', 'Red'], 'user_name': ['', 'existing'],
+        })
+        self.upload('school', 'school.csv', frame.to_csv(index=False).encode())
+        before = self.json('GET', self.endpoint())
+        with patch('app.routes.file_workflow_routes.sanity_check.fetch_houses', return_value=['Blue']):
+            result = self.json('POST', self.endpoint('/sanity-check'), {})
+        self.assertEqual(result['failed_count'], 2)
+        checks = {check['id']: check for check in result['checks']}
+        self.assertEqual(checks['duplicate_email']['failed_count'], 2)
+        self.assertEqual(checks['house']['failed_count'], 1)
+        self.assertNotIn('username', checks)
+        self.assertEqual(result['columns'], list(frame.columns))
+        self.assertEqual(self.json('GET', self.endpoint()), before)
+        with patch('app.routes.file_workflow_routes.sanity_check.fetch_houses', side_effect=SQLAlchemyError()):
+            self.json('POST', self.endpoint('/sanity-check'), {}, expected=503)
+
+    def test_mapping_sanity_requires_file_and_current_revision(self):
+        self.json('POST', self.endpoint('/sanity-check'), {}, expected=409)
+        self.upload('school', 'school.csv', b'FIRST NAME\nAda\n')
+        self.json('POST', self.endpoint('/sanity-check'), {}, expected=409,
+                  headers=[(b'x-workspace-revision', b'0')])
+
+    def test_mapping_sanity_supports_mapping_headers_and_numeric_classes(self):
+        data = (Path(__file__).parents[2] / 'frontend/e2e/fixtures/school.csv').read_bytes()
+        self.upload('school', 'school.csv', data)
+        result = self.json('POST', self.endpoint('/sanity-check'), {})
+        checks = {check['id']: check for check in result['checks']}
+        for key in ('first_name', 'full_name', 'section', 'class'):
+            self.assertTrue(checks[key]['passed'], key)
+        self.assertEqual(checks['duplicate_email']['failed_count'], 2)
+        self.assertEqual(result['failed_count'], 2)
+        self.assertNotIn('gender', checks)
+        self.assertEqual(result['rows'][0]['first_name'], 'Alice')
+        self.assertEqual(result['columns'][1], 'first_name')
+
+    def test_mapping_sanity_honors_selected_name_column(self):
+        self.upload('school', 'school.csv', b'admission_number,first_name,Chosen\n001,Bad1,Ada\n')
+        result = self.json('POST', self.endpoint('/sanity-check'), {'school_name_col': 'Chosen'})
+        self.assertEqual(result['failed_count'], 0)
+        self.assertEqual(result['rows'][0]['first_name'], 'Ada')
+        self.assertEqual(result['rows'][0]['values'], ['001', 'Bad1', 'Ada'])
+
+    def test_mapping_sanity_checks_selected_sheet_without_dump(self):
+        buffer = BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            pd.DataFrame({'FIRST NAME': ['Ada']}).to_excel(writer, sheet_name='First', index=False)
+            pd.DataFrame({'FIRST NAME': ['Bob', 'Cara']}).to_excel(writer, sheet_name='Second', index=False)
+        self.upload('school', 'school.xlsx', buffer.getvalue())
+        with patch('app.routes.file_workflow_routes.sanity_check.fetch_houses') as fetch:
+            result = self.json('POST', self.endpoint('/sanity-check'), {'admission_school_sheet': 'Second'})
+        fetch.assert_not_called()
+        self.assertEqual(result['row_count'], 2)
+        self.assertEqual(result['rows'][0]['first_name'], 'Bob')
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         root = Path(self.temp.name)
@@ -48,6 +109,9 @@ class FileWorkflowAPITests(unittest.TestCase):
             replacement = patch.object(module,'ROOT',folder)
             replacement.start()
             self.addCleanup(replacement.stop)
+        log_path = patch.object(operation_log, 'LOG_PATH', root / 'operations.jsonl')
+        log_path.start()
+        self.addCleanup(log_path.stop)
         self.app = create_app()
         self.school = pd.DataFrame({'admission_number':['001','002','003'],
             'first_name':['Alice','Bob','Carol'],'full_name':['Alice Smith','Bob Jones','Carol Lee'],
@@ -114,6 +178,25 @@ class FileWorkflowAPITests(unittest.TestCase):
         after = self.json('GET', self.endpoint())
         self.assertEqual(after['revision'], current['revision'])
         self.assertNotIn('dump', after['files'])
+
+    def test_operation_status_lookup_is_scoped_to_mapping_session(self):
+        client_id = str(uuid4())
+        started = operation_log.operation_for_request(
+            'POST', '/api/v1/mapping/files/school', mapping_session=self.id,
+            client_operation_id=client_id,
+        )
+        operation_log.finish_operation(started, 200)
+        result = self.json('POST', self.endpoint('/operations/status'), {
+            'client_operation_ids': [client_id],
+        })
+        self.assertEqual(result['operations'][0]['client_operation_id'], client_id)
+        self.assertEqual(result['operations'][0]['status'], 'completed')
+
+    def test_operation_status_rejects_invalid_client_ids(self):
+        result = self.json('POST', self.endpoint('/operations/status'), {
+            'client_operation_ids': ['not-a-uuid'],
+        }, expected=422)
+        self.assertIn('detail', result)
 
     def test_get_requests_do_not_change_revision_or_result_versions(self):
         before = self.mapped()

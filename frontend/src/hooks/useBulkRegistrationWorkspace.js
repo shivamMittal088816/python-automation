@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { bulkRegistrationApi } from '../services/bulkRegistrationApi';
+import { consumeOperations } from '../utils/operationNotifications';
+import { pendingOperations, reconcilePendingOperations } from '../utils/pendingOperations';
 
 const CHANNEL = 'bulk-registration-updates';
 const EMPTY = { workspace_id: null, revision: 0, path: '', file: null, source: null, schoolIndex: '', school: null, output: null, outputVerified: false };
@@ -8,6 +10,7 @@ export function useBulkRegistrationWorkspace() {
   const [state, setState] = useState(EMPTY);
   const [ready, setReady] = useState(false);
   const [storageError, setStorageError] = useState('');
+  const [recoveryNotice, setRecoveryNotice] = useState(null);
   const channel = useRef(null);
   const saved = useRef(EMPTY);
   const drafts = useRef({});
@@ -19,6 +22,11 @@ export function useBulkRegistrationWorkspace() {
     }
     saved.current = { ...EMPTY, ...result };
     setState({ ...saved.current, ...drafts.current });
+    const recovered = consumeOperations(result.recent_operations, result.operation_scope);
+    const pendingRecovered = reconcilePendingOperations(
+      result.operation_scope, result.recent_operations, { markMissing: false },
+    );
+    if (pendingRecovered || recovered) setRecoveryNotice(pendingRecovered || recovered);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -56,6 +64,20 @@ export function useBulkRegistrationWorkspace() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    const scope = state.operation_scope;
+    const pending = pendingOperations(scope);
+    if (!ready || !scope || !pending.length) return undefined;
+    let active = true;
+    bulkRegistrationApi.operationStatuses(pending.map(item => item.client_operation_id))
+      .then(result => {
+        const recovered = reconcilePendingOperations(scope, result.operations);
+        if (active && recovered) setRecoveryNotice(recovered);
+      })
+      .catch(() => { /* Keep pending entries for the next successful refresh. */ });
+    return () => { active = false; };
+  }, [ready, state.operation_scope]);
+
   const beginOperation = useCallback(() => {
     ++readSequence.current;
     return saved.current.workspace_id;
@@ -83,7 +105,7 @@ export function useBulkRegistrationWorkspace() {
     setState({ ...saved.current, ...drafts.current });
   }, []);
 
-  return { state, ready, storageError, replace, edit, refresh, beginOperation };
+  return { state, ready, storageError, recoveryNotice, replace, edit, refresh, beginOperation };
 }
 
 // This hook manages the saved files, school details, and output for bulk registration.
