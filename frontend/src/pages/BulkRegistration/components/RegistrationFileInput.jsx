@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ConfirmClearFile } from '../../../components/common/ConfirmClearFile';
 
-export function RegistrationFileInput({ path, file, busy, load, upload, selectSheet, edit, clearFile }) {
+export function RegistrationFileInput({ file, busy, upload, selectSheet, clearFile }) {
   const [dragging, setDragging] = useState(false);
   const chooseFile = event => { upload(event.target.files); event.target.value = ''; };
 
@@ -32,14 +32,5 @@ export function RegistrationFileInput({ path, file, busy, load, upload, selectSh
         {file.row_count === 0 && <p className="bulk-sheet-warning">This sheet is empty. Select another worksheet.</p>}
       </div>}
     </div>}
-
-    <details className="bulk-path-disclosure">
-      <summary>Use a file path instead <span>For files on the backend computer</span></summary>
-      <form className="bulk-inline-form bulk-path" onSubmit={event => { event.preventDefault(); load('/bulk-reg/files/path', { path }); }}>
-        <div className="bulk-field"><label htmlFor="bulk-file-path">File path</label><input id="bulk-file-path" aria-label="File path" required disabled={busy} value={path} onChange={event => edit({ path: event.target.value })} placeholder="C:\Users\USER\Downloads\registrations.xlsx" /></div>
-        <button disabled={busy || !path.trim()} className="bulk-button bulk-secondary">Load file</button>
-      </form>
-      <p className="bulk-hint">Path loading must be enabled on the backend.</p>
-    </details>
   </section>;
 }

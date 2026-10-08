@@ -14,7 +14,7 @@ from openpyxl import Workbook, load_workbook
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.routes.bulk_registration import conversion_routes, file_routes, workspace_routes
-from app.routes.bulk_registration.models import FilePathInput, StoredFileInput
+from app.routes.bulk_registration.models import StoredFileInput
 from app.routes.bulk_registration.workspace_access import BULK_COOKIE
 from app.services import bulk_registration_storage as storage
 from app.services import operation_log
@@ -63,20 +63,6 @@ class BulkWorkspaceTests(unittest.TestCase):
             file_routes.sanity_check(self.request(), Response(), 0)
         self.assertEqual(error.exception.status_code, 409)
 
-    def test_path_loading_stores_trimmed_records(self):
-        with TemporaryDirectory() as directory:
-            source = Path(directory) / 'students.csv'
-            original = b'FIRST NAME,CONTACT\n Ada , 001234 \n'
-            source.write_bytes(original)
-            with patch.object(file_routes.settings, 'ALLOW_LOCAL_FILE_PATHS', True):
-                result = file_routes.load_workspace_path(
-                    FilePathInput(path=str(source)), self.request(), Response(), 0)
-            self.assertEqual(result['file']['rows'], [['Ada', '001234']])
-            state = storage.load_workspace(self.workspace_id)
-            _, data = storage.read_snapshot(self.workspace_id, state['input'])
-            self.assertIn(b'Ada,001234', data)
-            self.assertEqual(source.read_bytes(), original)
-
     def test_sanity_checks_house_against_dump_and_preserves_workspace(self):
         uploaded = file_routes.upload_workspace_file(
             self.request(), Response(), 0,
@@ -124,7 +110,7 @@ class BulkWorkspaceTests(unittest.TestCase):
         ):
             result = conversion_routes.convert_workspace_file(
                 self.request(), Response(), uploaded['revision'], '914', 'preview',
-                file=None, path=None, sheet=None, page=1)
+                sheet=None, page=1)
         fetch.assert_called_once_with()
         column = result['output']['columns'].index('house')
         expected = ['37', '12', '', 'Unknown']
@@ -166,7 +152,7 @@ class BulkWorkspaceTests(unittest.TestCase):
                 ):
                     preview = conversion_routes.convert_workspace_file(
                         self.request(), Response(), uploaded['revision'], '914', 'preview',
-                        file=None, path=None, sheet=None, page=1)
+                        sheet=None, page=1)
                     verified = conversion_routes.verify_bulk_registration_output(
                         self.request(), Response(), preview['revision'])
                     expected = house in ('Blue', '')
@@ -175,7 +161,7 @@ class BulkWorkspaceTests(unittest.TestCase):
                     if expected:
                         exported = conversion_routes.convert_workspace_file(
                             self.request(), Response(), revision, '914', 'csv',
-                            file=None, path=None, sheet=None, page=1)
+                            sheet=None, page=1)
                         self.assertIn(b'bob001', exported.body)
                         if not house:
                             houses.assert_not_called()
@@ -189,7 +175,7 @@ class BulkWorkspaceTests(unittest.TestCase):
                     with self.assertRaises(HTTPException) as error:
                         conversion_routes.convert_workspace_file(
                             self.request(), Response(), revision, '914', 'csv',
-                            file=None, path=None, sheet=None, page=1)
+                            sheet=None, page=1)
                     self.assertEqual(error.exception.status_code, 409)
                     self.assertFalse(storage.load_workspace(self.workspace_id)['output_verified'])
 
@@ -220,13 +206,13 @@ class BulkWorkspaceTests(unittest.TestCase):
         ):
             preview = conversion_routes.convert_workspace_file(
                 self.request(), Response(), 1, '914', 'preview',
-                file=None, path=None, sheet=None, page=1)
+                sheet=None, page=1)
             output = preview['output']
             self.assertEqual(output['rows'][0][output['columns'].index('FIRST NAME')], 'Ada')
             with self.assertRaises(HTTPException) as unverified:
                 conversion_routes.convert_workspace_file(
                     self.request(), Response(), 2, '914', 'csv',
-                    file=None, path=None, sheet=None, page=1)
+                    sheet=None, page=1)
             self.assertEqual(unverified.exception.status_code, 409)
             self.assertIn('verify successfully', unverified.exception.detail)
             state = storage.load_workspace(self.workspace_id)
@@ -237,7 +223,7 @@ class BulkWorkspaceTests(unittest.TestCase):
             ), patch.object(conversion_routes, 'verify_final_output', return_value={'passed': True}):
                 download = conversion_routes.convert_workspace_file(
                     self.request(), Response(), 2, '914', 'csv',
-                    file=None, path=None, sheet=None, page=1)
+                    sheet=None, page=1)
             self.assertIn(b'Ada Lovelace', download.body)
             self.assertNotIn(b' Ada ', download.body)
 
@@ -369,7 +355,7 @@ class BulkWorkspaceTests(unittest.TestCase):
         def convert(revision, format='preview'):
             return conversion_routes.convert_workspace_file(
                 self.request(), Response(), revision, '914', format,
-                file=None, path=None, sheet=None, page=1,
+                sheet=None, page=1,
             )
 
         with patch.object(conversion_routes, 'get_school', return_value={

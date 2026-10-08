@@ -127,7 +127,6 @@ API endpoints (under the configured API prefix, normally `/api/v1`):
   and return its complete browser-safe summary. The browser serializes this
   operation with reset and rechecks the current cookie before initializing.
 - `POST /bulk-reg/files`: input preview from multipart `file` and optional `sheet`.
-- `POST /bulk-reg/files/path`: input preview from JSON `path` and optional `sheet`.
 - `POST /bulk-reg/files/stored`: change the selected worksheet of the saved input.
 - `POST /bulk-reg/school`: verify and save a school index.
 - `GET /bulk-reg/schools/{school_index}`: verify index and fetch school name.
@@ -141,8 +140,6 @@ A stale revision returns HTTP 409. Delayed reads and mutations cannot create a
 replacement workspace; only explicit initialization or reset can set its cookie.
 Complete workspace operations, including snapshot reads, are serialized within
 the single-worker server so concurrent requests cannot commit the same revision.
-
-Local paths require `ALLOW_LOCAL_FILE_PATHS=true`.
 
 ## Cross-tab workspace
 
@@ -330,18 +327,12 @@ Changing the school-index input in React immediately clears the local verified s
 output. The backend rechecks the school during conversion and download; a saved preview
 cannot be downloaded under a different school index.
 
-### 4. File upload, local path, worksheet selection, and input pages
+### 4. File upload, worksheet selection, and input pages
 
 ```mermaid
 flowchart TD
-    Start[Choose CSV or XLSX] --> Source{Input method}
-    Source -->|Browser upload| Upload[POST /bulk-reg/files]
-    Source -->|Backend path| Path[POST /bulk-reg/files/path]
+    Start[Choose CSV or XLSX] --> Upload[POST /bulk-reg/files]
     Upload --> Validate[read_frame validates extension bytes size workbook]
-    Path --> Enabled{ALLOW_LOCAL_FILE_PATHS}
-    Enabled -->|No| Forbidden[HTTP 403]
-    Enabled -->|Yes| ReadPath[read_path reads bounded bytes]
-    ReadPath --> Validate
     Validate --> Preview[preview_file page 1 size 20]
     Preview --> Save[save_input writes content-addressed bin and state.json]
     Save --> Clear[Previous authoritative output is delinked]

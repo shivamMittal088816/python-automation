@@ -9,6 +9,8 @@ test('bulk registration loads files independently of mapping', async ({ page }) 
   await page.goto('/bulk-reg');
   await expect(page.getByRole('heading', { name: 'Bulk registration', exact: true })).toBeVisible();
   await expect(page.getByLabel('Upload registration file')).toBeEnabled();
+  await expect(page.getByText('Use a file path instead')).toHaveCount(0);
+  await expect(page.getByLabel('File path', { exact: true })).toHaveCount(0);
   const rows = Array.from({ length: 25 }, (_, index) => `${String(index + 1).padStart(3, '0')},Student ${index + 1}`).join('\n');
   await page.getByLabel('Upload registration file').setInputFiles({ name: 'students.csv', mimeType: 'text/csv', buffer: Buffer.from(`id,name\n${rows}`) });
   await expect(page.getByText('File ready', { exact: true })).toBeVisible();
@@ -36,9 +38,7 @@ test('bulk registration loads files independently of mapping', async ({ page }) 
   await expect(page.getByRole('cell', { name: '021' })).toBeVisible();
   await page.getByRole('button', { name: 'Clear file' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
-  await page.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
-  await page.getByLabel('File path', { exact: true }).fill(resolve('e2e/fixtures/school.csv'));
-  await page.getByRole('button', { name: 'Load file', exact: true }).click();
+  await page.getByLabel('Upload registration file').setInputFiles(resolve('e2e/fixtures/school.csv'));
   await page.locator('summary').filter({ hasText: 'Input preview' }).click();
   await expect(page.getByRole('cell', { name: '001' }).first()).toBeVisible();
   expect(mappingRequests).toEqual([]);
@@ -238,10 +238,6 @@ test('bulk registration syncs files, verification and output across tabs and rel
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(second.getByRole('region', { name: 'Output preview', exact: true })).toHaveCount(0);
   await expect(second.getByRole('button', { name: 'Generate preview' })).toBeDisabled();
-  await second.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
-  await second.getByLabel('File path', { exact: true }).fill('C:\\data\\shared.csv');
-  // Unsubmitted drafts belong to the editing tab; persisted files are shared.
-  await expect(page.getByLabel('File path', { exact: true })).toHaveValue('');
   await second.getByRole('button', { name: 'Reset bulk registration' }).click();
   await expect(second.getByRole('dialog')).toContainText('Reset bulk registration?');
   await second.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -250,7 +246,6 @@ test('bulk registration syncs files, verification and output across tabs and rel
   await second.getByRole('button', { name: 'Reset bulk registration' }).click();
   await second.getByRole('dialog').getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('');
-  await expect(page.getByLabel('File path', { exact: true })).toHaveValue('');
   await expect(page.getByLabel('School name fetched')).toHaveCount(0);
 });
 
@@ -288,14 +283,10 @@ test('focus preserves drafts and restores committed changes without BroadcastCha
   await page.goto('/bulk-reg');
   await page.getByLabel('School index', { exact: true }).pressSequentially('1234567890');
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('1234567890');
-  await page.locator('summary').filter({ hasText: 'Use a file path instead' }).click();
-  await page.getByLabel('File path', { exact: true }).pressSequentially('C:\\data\\students.csv');
-  await expect(page.getByLabel('File path', { exact: true })).toHaveValue('C:\\data\\students.csv');
   const refreshed = page.waitForResponse('**/bulk-reg/workspace');
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await refreshed;
   await expect(page.getByLabel('School index', { exact: true })).toHaveValue('1234567890');
-  await expect(page.getByLabel('File path', { exact: true })).toHaveValue('C:\\data\\students.csv');
   const second = await context.newPage();
   await second.goto('/bulk-reg');
   await expect(second.getByLabel('School index', { exact: true })).toHaveValue('');

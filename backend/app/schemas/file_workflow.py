@@ -14,10 +14,6 @@ class AdmissionRunInput(BaseModel):
     school_name_col: str | None = None
 
 
-class FilePathInput(BaseModel):
-    path: str
-
-
 class SchoolInput(BaseModel):
     school_index: str
 
@@ -38,7 +34,7 @@ class FullNameInput(BaseModel):
     source: Literal['school_file', 'admission_not_matched', 'email_not_matched'] = 'school_file'
 
 # Purpose: HTTP transport inputs for the file-mapping workflows.
-# Its public interface includes CreateSession, AdmissionRunInput, FilePathInput, SchoolInput, SchoolDetails, EmailInput and 1 additional helpers.
+# Its public interface includes CreateSession, AdmissionRunInput, SchoolInput, SchoolDetails, EmailInput and FullNameInput.
 # It documents and validates data crossing the HTTP boundary.
 # Callers receive focused behavior without duplicating this module's implementation details.
 # Keeping this responsibility isolated makes changes easier to test and review.

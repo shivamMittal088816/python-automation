@@ -2,11 +2,6 @@
 from pydantic import BaseModel
 
 
-class FilePathInput(BaseModel):
-    path: str
-    sheet: str | None = None
-
-
 class StoredFileInput(BaseModel):
     sheet: str | None = None
 
@@ -15,7 +10,7 @@ class SchoolInput(BaseModel):
     school_index: str
 
 # Purpose: Request models shared by bulk-registration routes.
-# Its public interface includes FilePathInput, StoredFileInput, SchoolInput.
+# Its public interface includes StoredFileInput and SchoolInput.
 # It translates HTTP input into service calls and returns API responses.
 # Callers receive focused behavior without duplicating this module's implementation details.
 # Keeping this responsibility isolated makes changes easier to test and review.

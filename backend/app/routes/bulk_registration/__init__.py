@@ -2,9 +2,8 @@
 from fastapi import APIRouter
 
 from app.routes.bulk_registration import conversion_routes, file_routes, operation_routes, school_routes, workspace_routes
-from app.routes.bulk_registration.compatibility import clear_workspace, convert_file, load_path, upload_file
+from app.routes.bulk_registration.compatibility import clear_workspace, convert_file, upload_file
 from app.routes.bulk_registration.file_reading import preview_file
-from app.routes.bulk_registration.models import FilePathInput
 from app.routes.bulk_registration.school_routes import get_school
 
 
@@ -13,8 +12,7 @@ for child in (workspace_routes.router, file_routes.router, operation_routes.rout
     router.include_router(child)
 
 __all__ = [
-    'FilePathInput', 'clear_workspace', 'convert_file', 'get_school',
-    'load_path', 'preview_file', 'router', 'upload_file',
+    'clear_workspace', 'convert_file', 'get_school', 'preview_file', 'router', 'upload_file',
 ]
 
 # Purpose: Assemble focused bulk-registration route modules.

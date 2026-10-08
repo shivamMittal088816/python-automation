@@ -21,7 +21,7 @@ Use `VITE_API_BASE_URL=http://127.0.0.1:8000` and `VITE_API_PREFIX=/api/v1` in
 `frontend/.env`. Start the backend using the [startup guide](../backend/docs/RUNNING.md).
 
 Open `http://127.0.0.1:5173` for mapping, or `http://127.0.0.1:5173/bulk-reg`
-for independent CSV/XLSX upload and path loading with a preview. The bulk
+for independent CSV/XLSX upload with a preview. The bulk
 registration page does not submit registrations or share mapping state.
 
 ## Production configuration

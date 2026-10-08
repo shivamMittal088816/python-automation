@@ -84,8 +84,7 @@ Local defaults use `http://127.0.0.1:5173` for the website and
 `SESSION_COOKIE_SECURE=false` in `backend/.env`.
 
 Open `http://127.0.0.1:5173/bulk-reg` for independent CSV/XLSX file intake with
-drag-and-drop, file browsing, backend-local paths, and a preview. Path loading
-requires `ALLOW_LOCAL_FILE_PATHS=true` in `backend/.env`. This page does not use
+drag-and-drop, file browsing, and a preview. This page does not use
 mapping state or submit registrations, and needs no additional server.
 
 ## Deploy on separate domains

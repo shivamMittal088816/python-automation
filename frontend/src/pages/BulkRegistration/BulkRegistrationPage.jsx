@@ -42,9 +42,8 @@ export function BulkRegistrationPage() {
               verifySchool={workflow.verifySchool} edit={edit}
             />
             <RegistrationFileInput
-              path={workflow.path} file={workflow.file} busy={busy}
-              load={workflow.load} upload={workflow.upload}
-              selectSheet={workflow.selectSheet} edit={edit} clearFile={workflow.clearWorkspace}
+              file={workflow.file} busy={busy} upload={workflow.upload}
+              selectSheet={workflow.selectSheet} clearFile={workflow.clearWorkspace}
             />
           </div>
           <RegistrationDefaults />

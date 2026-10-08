@@ -44,7 +44,7 @@ def workspace_summary(state):
     return {
         # A stable identity for reset detection, without exposing the cookie token.
         'workspace_id': sha256(state['workspace_id'].encode()).hexdigest(),
-        'revision': int(state.get('revision', 0)), 'path': state.get('path', ''),
+        'revision': int(state.get('revision', 0)),
         'file': state.get('file'), 'source': {'stored': True} if state.get('input') else None,
         'schoolIndex': state.get('school_index', ''), 'school': state.get('school'),
         'output': state.get('output'),

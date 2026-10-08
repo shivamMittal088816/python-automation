@@ -53,7 +53,7 @@ def add_snapshot(state,kind,name,data,**metadata):
     if kind not in ('school','dump'):
         fail('Unknown input file.')
     if Path(name).suffix.lower() not in ('.csv','.xlsx'):
-        fail('Enter a CSV or XLSX file path.')
+        fail('Choose a CSV or XLSX file.')
     state[FILES[kind]]={'name':Path(name).name,'data':data,'source':name,**metadata}
 
 

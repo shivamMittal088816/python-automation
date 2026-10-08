@@ -21,7 +21,6 @@ OPERATION_ROUTES = {
     ('POST', '/mapping/full-name-class-mapping/run'): ('full_name_class_mapping', 'Full-name and class mapping'),
     ('POST', '/mapping/student-dump/fetch'): ('dump_fetch', 'Student dump fetch'),
     ('POST', '/bulk-reg/files'): ('bulk_file_upload', 'Bulk file upload'),
-    ('POST', '/bulk-reg/files/path'): ('bulk_file_load', 'Bulk file load'),
     ('POST', '/bulk-reg/convert'): ('bulk_conversion', 'Bulk registration conversion'),
     ('POST', '/bulk-reg/output/verify'): ('bulk_verification', 'Bulk registration verification'),
 }

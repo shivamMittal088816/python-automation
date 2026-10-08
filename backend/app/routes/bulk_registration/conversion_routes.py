@@ -4,7 +4,7 @@ from math import ceil
 from typing import Annotated, Literal
 
 import pandas as pd
-from fastapi import APIRouter, File, Form, Header, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Form, Header, HTTPException, Request, Response
 from openpyxl.utils.exceptions import IllegalCharacterError
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -181,11 +181,8 @@ def verify_bulk_registration_output(
 def convert_workspace_file(
     request: Request, response: Response, expected_revision: Revision,
     school_index: str = Form(...), file_format: Literal['preview', 'csv', 'xlsx'] = Form('preview'),
-    file: UploadFile | None = File(None), path: str | None = Form(None),
     sheet: Annotated[str | None, Form()] = None, page: Annotated[int, Form()] = 1,
 ):
-    if file is not None or path is not None:
-        raise HTTPException(400, 'Use the file already saved in the bulk workspace.')
     workspace_id, state = workspace_for(request, response)
     require_revision(state, expected_revision)
     metadata, data = read_snapshot(workspace_id, state.get('input'))

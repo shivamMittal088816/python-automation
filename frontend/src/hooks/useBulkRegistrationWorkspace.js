@@ -4,7 +4,7 @@ import { consumeOperations } from '../utils/operationNotifications';
 import { pendingOperations, reconcilePendingOperations } from '../utils/pendingOperations';
 
 const CHANNEL = 'bulk-registration-updates';
-const EMPTY = { workspace_id: null, revision: 0, path: '', file: null, source: null, schoolIndex: '', school: null, output: null, outputVerified: false };
+const EMPTY = { workspace_id: null, revision: 0, file: null, source: null, schoolIndex: '', school: null, output: null, outputVerified: false };
 
 export function useBulkRegistrationWorkspace() {
   const [state, setState] = useState(EMPTY);

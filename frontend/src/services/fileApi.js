@@ -12,7 +12,6 @@ export const fileApi = {
   operationStatuses: clientOperationIds => request(`${workspacePath}/operations/status`, {
     method: 'POST', body: { client_operation_ids: clientOperationIds },
   }),
-  path: (kind, path, revision) => request(`${workspacePath}/files/${kind}/path`, { method: 'POST', body: { path }, revision }),
   table: (kind, params, signal) => request(`${workspacePath}/table-previews/${kind}`, { params, signal }),
   download: async (kind, params = {}) => {
     const response = await request(`${workspacePath}/downloads/${kind}`, { params, blob: true });

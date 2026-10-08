@@ -29,7 +29,6 @@ These commands preserve existing environment files. Configure database values in
 CORS_ORIGINS=http://127.0.0.1:5173
 SESSION_COOKIE_SECURE=false
 SESSION_COOKIE_SAMESITE=lax
-ALLOW_LOCAL_FILE_PATHS=true
 ```
 
 In `frontend/.env`, use:
@@ -92,9 +91,8 @@ to be deleted for this workaround.
 | Bulk registration file intake | http://127.0.0.1:5173/bulk-reg |
 | API documentation | http://127.0.0.1:8000/docs |
 
-`/bulk-reg` is a frontend route with separate backend endpoints:
-`POST /api/v1/bulk-reg/files` and `POST /api/v1/bulk-reg/files/path`.
-It accepts CSV/XLSX uploads or a path on the backend computer. Verify the school
+`/bulk-reg` is a frontend route backed by `POST /api/v1/bulk-reg/files`.
+It accepts CSV/XLSX uploads. Verify the school
 index to fetch its name, generate the fixed 24-column preview, then download CSV or XLSX. School verification requires the database; preview and download use
 `POST /api/v1/bulk-reg/convert`. It does not use mapping workspace state or submit
 registrations. See [conversion rules](BULK_REGISTRATION.md).

@@ -1,4 +1,4 @@
-"""CSV/XLSX validation, parsing, path loading, and input previews."""
+"""CSV/XLSX validation, parsing, and input previews."""
 from io import BytesIO
 from math import ceil
 from pathlib import Path
@@ -58,24 +58,8 @@ def preview_file(name: str, data: bytes, sheet: str | None = None, page: int = 1
             'sheets': frame.attrs['sheets'], 'sheet': frame.attrs['sheet']}
 
 
-def read_path(value: str):
-    if not settings.ALLOW_LOCAL_FILE_PATHS:
-        raise HTTPException(403, 'File path loading is disabled on this app.')
-    value = value.strip().strip('"')
-    if not value or Path(value).suffix.lower() not in ('.csv', '.xlsx'):
-        raise HTTPException(400, 'Enter a CSV or XLSX file path.')
-    path = Path(value).expanduser()
-    try:
-        if not path.is_file():
-            raise HTTPException(400, 'The path must point to a readable file.')
-        with path.open('rb') as source:
-            data = source.read(settings.MAX_UPLOAD_BYTES + 1)
-    except OSError as exc:
-        raise HTTPException(400, 'Could not load the selected file. Check that it exists and is readable.') from exc
-    return path.name, data
-
-# Purpose: CSV/XLSX validation, parsing, path loading, and input previews.
-# Its public interface includes read_frame, preview_file, read_path.
+# Purpose: CSV/XLSX validation, parsing, and input previews.
+# Its public interface includes read_frame and preview_file.
 # It translates HTTP input into service calls and returns API responses.
 # Callers receive focused behavior without duplicating this module's implementation details.
 # Keeping this responsibility isolated makes changes easier to test and review.

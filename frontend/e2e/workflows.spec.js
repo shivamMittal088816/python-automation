@@ -256,12 +256,13 @@ test('removed Jobs and Review links, routes and APIs are unavailable', async ({ 
   }
 });
 
-test('file path inputs, SQL dump loading, loading/error states and responsive navigation', async ({ page }) => {
+test('file uploads, SQL dump loading, loading/error states and responsive navigation', async ({ page }) => {
   await page.goto('/admission_file_page');
-  await page.getByTestId('school-input').getByRole('tab', { name: 'File path', exact: true }).click();
-  await page.getByTestId('school-input').getByLabel('File path', { exact: true }).fill(school);
-  await page.getByRole('button', { name: 'Use file path', exact: true }).click();
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'File path', exact: true })).toHaveCount(0);
+  await expect(page.getByLabel('File path', { exact: true })).toHaveCount(0);
+  await page.getByLabel('Add school file').setInputFiles(school);
+  await expect(page.getByTestId('school-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
   await page.getByLabel('Fetch from SQL', { exact: true }).check();
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();

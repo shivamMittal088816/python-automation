@@ -632,14 +632,6 @@ class FileWorkflowAPITests(unittest.TestCase):
         self.assertEqual({p.relative_to(school_root): p.read_bytes()
                           for p in school_root.rglob('*') if p.is_file()}, school_files)
 
-    def test_local_path_loading_and_disable_switch(self):
-        path=Path(self.temp.name)/'school.csv'
-        path.write_bytes(self.school.to_csv(index=False).encode())
-        result=self.json('POST',self.endpoint('/files/school/path'),{'path':str(path)})
-        self.assertEqual(result['files']['school']['name'],'school.csv')
-        with patch.object(file_inputs.settings,'ALLOW_LOCAL_FILE_PATHS',False):
-            self.json('POST',self.endpoint('/files/school/path'),{'path':str(path)},expected=403)
-
     def test_failed_sql_fetch_preserves_previous_dump_and_results(self):
         before=self.mapped()
         failures=((ConnectionError('internal connection details'),503),

@@ -127,7 +127,7 @@ test('real API status codes and diagnostic headers are readable in the browser',
       ['/mapping/health', 'GET', undefined],
       ['/mapping/session', 'GET', undefined],
       ['/bulk-reg/schools/999', 'GET', undefined],
-      ['/bulk-reg/files/path', 'POST', '{}'],
+      ['/bulk-reg/operations/status', 'POST', '{}'],
     ];
     const results = [];
     for (const [path, method, body] of paths) {

@@ -45,7 +45,7 @@ def create_workspace():
     cleanup_expired_workspaces()
     workspace_id = str(uuid4())
     save_workspace(workspace_id, {
-        'workspace_id': workspace_id, 'revision': 0, 'path': '', 'file': None,
+        'workspace_id': workspace_id, 'revision': 0, 'file': None,
         'school_index': '', 'school': None, 'output': None, 'outputs': {},
         'output_verified': False,
     })

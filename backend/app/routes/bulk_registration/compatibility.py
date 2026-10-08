@@ -6,8 +6,7 @@ from fastapi.responses import Response
 
 from app.config.settings import settings
 from app.routes.bulk_registration.conversion_routes import OUTPUT_PREVIEW_PAGE_SIZE
-from app.routes.bulk_registration.file_reading import preview_file, read_frame, read_path
-from app.routes.bulk_registration.models import FilePathInput
+from app.routes.bulk_registration.file_reading import preview_file, read_frame
 from app.routes.bulk_registration.school_routes import get_school
 from app.repositories.username_repository import fetch_available_usernames
 from app.repositories.house_repository import fetch_house_ids
@@ -28,19 +27,11 @@ def upload_file(file: UploadFile, sheet=None):
     return preview_file(file.filename or '', data, sheet)
 
 
-def load_path(payload: FilePathInput):
-    name, data = read_path(payload.path)
-    return preview_file(name, data, payload.sheet)
-
-
-def convert_file(school_index, file_format='preview', file=None, path=None, sheet=None, page=1):
-    if (file is None) == (path is None):
-        raise HTTPException(400, 'Provide either an uploaded file or a file path.')
-    if file is not None:
-        name = file.filename or ''
-        data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
-    else:
-        name, data = read_path(path)
+def convert_file(school_index, file_format='preview', file=None, sheet=None, page=1):
+    if file is None:
+        raise HTTPException(400, 'Provide an uploaded file.')
+    name = file.filename or ''
+    data = file.file.read(settings.MAX_UPLOAD_BYTES + 1)
     school = get_school(school_index)
     output = convert_frame(read_frame(name, data, sheet), school)
     if output['house'].astype(str).str.strip().ne('').any():
@@ -92,7 +83,7 @@ def clear_workspace(workspace_id):
     delete_workspace(workspace_id)
 
 # Purpose: Pure helpers retained for tests and supported non-HTTP callers.
-# Its public interface includes upload_file, load_path, convert_file, clear_workspace.
+# Its public interface includes upload_file, convert_file and clear_workspace.
 # It translates HTTP input into service calls and returns API responses.
 # Callers receive focused behavior without duplicating this module's implementation details.
 # Keeping this responsibility isolated makes changes easier to test and review.

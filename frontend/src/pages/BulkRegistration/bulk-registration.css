@@ -80,15 +80,6 @@
 .bulk-sheet-row select { width: 100%; min-height: 36px; border: 1px solid #ccd8df; background: #fff; border-radius: 7px; padding: 7px 9px; font-size: 11px; }
 .bulk-sheet-row select:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
 .bulk-sheet-row .bulk-sheet-warning { grid-column: 1 / -1; margin-top: 0; color: #9a5a18; }
-.bulk-path-disclosure { margin-top: 13px; padding-top: 12px; border-top: 1px solid #e8edef; }
-.bulk-path-disclosure summary { display: flex; align-items: center; justify-content: space-between; gap: 15px; color: #405c68; font-size: 11px; font-weight: 700; cursor: pointer; list-style: none; }
-.bulk-path-disclosure summary::-webkit-details-marker { display: none; }
-.bulk-path-disclosure summary::marker { content: ''; }
-.bulk-path-disclosure summary::before { content: '+'; display: grid; place-items: center; width: 19px; height: 19px; flex: 0 0 auto; margin-right: -7px; border-radius: 6px; background: #eef4f3; color: #357267; font-size: 14px; font-weight: 500; }
-.bulk-path-disclosure[open] summary::before { content: '\2212'; }
-.bulk-path-disclosure summary span { margin-left: auto; color: #819099; font-size: 10px; font-weight: 400; }
-.bulk-path-disclosure[open] summary { margin-bottom: 13px; }
-.bulk-path-disclosure .bulk-inline-form { margin-top: 0; }
 .bulk-text-button { font-size: 11px; color: #386c65; white-space: nowrap; cursor: pointer; }
 .bulk-defaults { border-color: #a9c6be; border-top: 3px solid #277d70; background: linear-gradient(180deg, #fff, #f7fbf9); box-shadow: 0 3px 6px rgb(26 54 66 / 7%), 0 8px 20px -8px rgb(26 54 66 / 20%); }
 .bulk-defaults-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -214,7 +205,6 @@
   .bulk-loaded-file-main { grid-template-columns: auto minmax(0, 1fr); }
   .bulk-file-actions { grid-column: 1 / -1; justify-content: flex-end; }
   .bulk-sheet-row { grid-template-columns: minmax(0, 1fr); }
-  .bulk-path-disclosure summary span { display: none; }
 }
 .bulk-sanity { margin: 12px 0; padding: 12px; }
 .bulk-sanity-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }

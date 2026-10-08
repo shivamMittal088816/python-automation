@@ -38,10 +38,6 @@ export const bulkRegistrationApi = {
     });
   },
 
-  loadPath(path, revision) {
-    return request('/bulk-reg/files/path', { method: 'POST', body: { path }, revision });
-  },
-
   selectSheet(sheet, revision) {
     return request('/bulk-reg/files/stored', { method: 'POST', body: { sheet }, revision });
   },

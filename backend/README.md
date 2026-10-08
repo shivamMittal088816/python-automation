@@ -23,9 +23,7 @@ uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 API documentation is available at `http://127.0.0.1:8000/docs`.
 
 Start the frontend in a second terminal using the [startup guide](docs/RUNNING.md).
-The independent bulk registration intake endpoints are `POST /api/v1/bulk-reg/files`
-and `POST /api/v1/bulk-reg/files/path`. Local paths require
-`ALLOW_LOCAL_FILE_PATHS=true` and refer to files on the backend computer.
+The independent bulk registration intake endpoint is `POST /api/v1/bulk-reg/files`.
 
 ## Production command
 

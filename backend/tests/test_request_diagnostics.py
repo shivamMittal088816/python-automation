@@ -80,9 +80,19 @@ class RequestDiagnosticsTests(unittest.TestCase):
     def test_framework_validation_and_missing_session_are_traced(self):
         for method, path, body, expected in (
             ('GET', '/api/v1/mapping/session', b'', 401),
-            ('POST', '/api/v1/bulk-reg/files/path', b'{}', 422),
+            ('POST', '/api/v1/bulk-reg/operations/status', b'{}', 422),
             ('GET', '/api/v1/bulk-reg/nonexistent-route', b'', 404),
         ):
             with self.subTest(path=path):
                 status, headers, _ = self.request(path, method=method, body=body)
                 self.assert_diagnostics(status, headers, expected)
+
+    def test_file_path_loading_routes_are_removed(self):
+        for path in (
+            '/api/v1/mapping/files/school/path',
+            '/api/v1/mapping/files/dump/path',
+            '/api/v1/bulk-reg/files/path',
+        ):
+            with self.subTest(path=path):
+                status, headers, _ = self.request(path, method='POST', body=b'{"path":"C:/data.csv"}')
+                self.assert_diagnostics(status, headers, 404)

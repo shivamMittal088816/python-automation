@@ -4,7 +4,7 @@ import { useBulkRegistrationWorkspace } from '../../hooks/useBulkRegistrationWor
 
 export function useBulkRegistration() {
   const { state, ready, storageError, recoveryNotice, replace, edit: editState, refresh, beginOperation } = useBulkRegistrationWorkspace();
-  const { path, file, source, schoolIndex, school, output, outputVerified } = state;
+  const { file, source, schoolIndex, school, output, outputVerified } = state;
   const [working, setWorking] = useState(false);
   const busy = working || !ready;
   const [error, setError] = useState('');
@@ -133,7 +133,7 @@ export function useBulkRegistration() {
     if (files.length !== 1 || !/\.(csv|xlsx)$/i.test(files[0].name)) {
       setError('Choose one CSV or XLSX file.'); return;
     }
-    runMutation(revision => bulkRegistrationApi.uploadFile(files[0], revision, state.operation_scope), ['path']);
+    runMutation(revision => bulkRegistrationApi.uploadFile(files[0], revision, state.operation_scope));
   }
 
   async function clearWorkspace(resetAll = false) {
@@ -144,16 +144,15 @@ export function useBulkRegistration() {
       const result = await (resetAll
         ? bulkRegistrationApi.resetWorkspace(state.revision)
         : bulkRegistrationApi.clearFile(state.revision));
-      replace(result, { origin, reset: resetAll, committed: ['path'] });
+      replace(result, { origin, reset: resetAll });
     } catch (err) { await handleError(err); }
     finally { pending.current = false; setWorking(false); }
   }
 
   return {
-    path, file, source, schoolIndex, school, output, outputVerified, outputVerification, usernameChanges,
+    file, source, schoolIndex, school, output, outputVerified, outputVerification, usernameChanges,
     ready, storageError, recoveryNotice, working, busy, error, schoolValid, sanity, runSanityCheck,
     edit,
-    load: (_endpoint, body) => runMutation(revision => bulkRegistrationApi.loadPath(body.path, revision), ['path']),
     verifySchool, selectSheet, convert, showOutputPage, showInputPage, verifyOutput, upload, clearWorkspace,
   };
 }

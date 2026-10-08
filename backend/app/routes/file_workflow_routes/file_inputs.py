@@ -1,11 +1,10 @@
 """Input files endpoints for the mapping API."""
 from app.api.session_cookie import SessionId, WorkspaceRevision
-from pathlib import Path
 import logging
 from fastapi import APIRouter, File, UploadFile
 from app.config.settings import settings
 from app.api.file_workflow_state import workspace
-from app.schemas.file_workflow import FilePathInput, SchoolDetails, SchoolInput
+from app.schemas.file_workflow import SchoolDetails, SchoolInput
 from app.repositories.admission_dump_service import fetch_school_dump
 from app.api.file_workflow_snapshots import add_snapshot
 from app.api.file_workflow_validation import fail
@@ -51,33 +50,6 @@ def upload_file(session_id: SessionId, revision: WorkspaceRevision, kind: str, f
         changed = (not previous or previous.get('data') != data
                    or kind == 'dump' and bool(previous.get('school_index')))
         add_snapshot(state,kind,file.filename or '',data)
-        if changed:
-            clear_all_mappings(state)
-        return summary(state,session_id)
-
-
-@router.post('/files/{kind}/path')
-def load_path(session_id: SessionId,revision: WorkspaceRevision,kind: str,payload: FilePathInput):
-    if not settings.ALLOW_LOCAL_FILE_PATHS:
-        fail('File path loading is disabled on this app.',403)
-    value = payload.path.strip().strip('"')
-    if not value or Path(value).suffix.lower() not in ('.csv','.xlsx'):
-        fail('Could not load file: Enter a CSV or XLSX file path.')
-    path=Path(value).expanduser()
-    try:
-        if path.stat().st_size > settings.MAX_UPLOAD_BYTES:
-            fail(f'The selected file exceeds the {settings.MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.', 413)
-        data=path.read_bytes()
-    except OSError:
-        logger.exception('Failed to read a local %s file path.', kind)
-        fail('Could not load the selected file. Check that it exists and is readable.')
-    if not data:
-        fail('The selected file is empty.')
-    with workspace(session_id, expected_revision=revision) as state:
-        previous = state.get('saved_admission_school' if kind == 'school' else 'saved_admission_dump')
-        changed = (not previous or previous.get('data') != data
-                   or kind == 'dump' and bool(previous.get('school_index')))
-        add_snapshot(state,kind,path.name,data,source=str(path),path=str(path))
         if changed:
             clear_all_mappings(state)
         return summary(state,session_id)
@@ -134,7 +106,7 @@ def school_details(session_id: SessionId,revision: WorkspaceRevision,payload: Sc
         return summary(state,session_id) | {'message':'School details saved with this dump.'}
 
 # Purpose: Input files endpoints for the mapping API.
-# Its public interface includes clear_file, upload_file, load_path, fetch_dump, school_details.
+# Its public interface includes clear_file, upload_file, fetch_dump, school_details.
 # It translates HTTP input into service calls and returns API responses.
 # Callers receive focused behavior without duplicating this module's implementation details.
 # Keeping this responsibility isolated makes changes easier to test and review.

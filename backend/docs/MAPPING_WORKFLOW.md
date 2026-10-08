@@ -99,8 +99,7 @@ Email and Class results; rerunning Email clears Class results.
 | Session `.bin` files | Content-addressed bytes for CSV/XLSX inputs and generated workbooks. |
 | React context cache | Avoids repeated metadata calls until a dependency changes or the page refreshes. |
 
-School and Dump accept CSV/XLSX upload; local-path loading supports the same
-formats only when `ALLOW_LOCAL_FILE_PATHS` is enabled. Both input methods enforce
+School and Dump accept CSV/XLSX uploads. Uploads enforce
 `MAX_UPLOAD_BYTES`, which defaults to **100 MB** (`104857600` bytes), against the
 complete file. There is no separate row-count limit. XLSX files expose worksheet
 selection. Dump can alternatively be fetched from SQL by numeric school index;
@@ -371,7 +370,6 @@ the health check.
 |---|---|
 | `GET /` or `GET /api/v1/mapping/health` | Service health response. |
 | `POST /api/v1/mapping/files/{school|dump}` | Upload CSV/XLSX input. |
-| `POST /api/v1/mapping/files/{kind}/path` | Load an allowed server-local CSV/XLSX path. |
 | `POST /api/v1/mapping/student-dump/fetch` | Fetch school dump from SQL. |
 | `POST .../admission-mapping/run` | Run Admission mapping. |
 | `POST .../email-mapping/run` | Run Email mapping from the selected school-file or Admission Not-matched source. |
