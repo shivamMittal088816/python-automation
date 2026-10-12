@@ -27,7 +27,7 @@ export function RegistrationFileInput({ file, busy, upload, selectSheet, clearFi
         </div>
       </div>
       {!!file.sheets?.length && <div className="bulk-sheet-row">
-        <div><label htmlFor="bulk-working-sheet">Working sheet</label><p>Choose the worksheet used for the next preview.</p></div>
+        <div><label htmlFor="bulk-working-sheet">School file tab</label><p>Select the tab in your uploaded school file to use for registration.</p></div>
         <select id="bulk-working-sheet" disabled={busy} value={file.sheet} onChange={event => selectSheet(event.target.value)}>{file.sheets.map(sheet => <option key={sheet} value={sheet}>{sheet}</option>)}</select>
         {file.row_count === 0 && <p className="bulk-sheet-warning">This sheet is empty. Select another worksheet.</p>}
       </div>}

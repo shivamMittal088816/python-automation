@@ -28,7 +28,7 @@ test('school viewer resets sheet-dependent columns and keeps statistics usable',
     ['Original', [['name', 'class', 'section'], ['Ada', '1', 'A']]],
     ['Other', [['student', 'grade', 'group'], ['Grace', '2', 'B']]],
   ]));
-  await expect(page.getByText('Loaded: classes.xlsx', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').locator('span').filter({ hasText: /^classes\.xlsx$/ })).toBeVisible();
   await page.goto('/school_file_page');
   await page.getByLabel('Class column', { exact: true }).selectOption('class');
   await page.getByLabel('Section column', { exact: true }).selectOption('section');
@@ -55,9 +55,12 @@ test('mapping can recover from an empty first worksheet and subsequent invalid s
   await page.getByLabel('Add school file').setInputFiles(workbook('students.xlsx', [
     ['Empty', []], ['Students', [['admission_number', 'first_name'], ['001', 'Alice']]],
   ]));
-  await expect(page.getByText('Loaded: students.xlsx', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').locator('span').filter({ hasText: /^students\.xlsx$/ })).toBeVisible();
+  await page.getByLabel('School sheet', { exact: true }).selectOption('Students');
+  await expect(page.getByLabel('School sheet', { exact: true })).toHaveValue('Students');
   await page.getByLabel('Add dump file').setInputFiles(dump);
-  await expect(page.getByText('Both files must contain column headers.', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('School sheet', { exact: true })).toHaveValue('Students');
+  await expect(page.getByLabel('School admission number column', { exact: true })).toHaveValue('admission_number');
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
   await expect(page.getByText('Saved school index: 914', { exact: true })).toBeVisible();
@@ -78,11 +81,11 @@ test('CSV download uses the replacement workbook sheet without reloading', async
   await page.getByLabel('Add dump file').setInputFiles(workbook('old.xlsx', [
     ['Old', [['user_name'], ['Ada']]],
   ]));
-  await expect(page.getByText('Loaded: old.xlsx', { exact: true })).toBeVisible();
-  await page.getByLabel('Add dump file').setInputFiles(workbook('new.xlsx', [
+  await expect(page.getByTestId('dump-input').locator('span').filter({ hasText: /^old\.xlsx$/ })).toBeVisible();
+  await page.getByLabel('Replace dump file').setInputFiles(workbook('new.xlsx', [
     ['New', [['user_name'], ['Grace']]],
   ]));
-  await expect(page.getByText('Loaded: new.xlsx', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('dump-input').locator('span').filter({ hasText: /^new\.xlsx$/ })).toBeVisible();
   await page.locator('summary').filter({ hasText: /^Download dump$/ }).click();
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download dump file', exact: true }).click();
@@ -91,4 +94,19 @@ test('CSV download uses the replacement workbook sheet without reloading', async
   const csv = await readFile(await download.path(), 'utf8');
   expect(csv).toContain('Grace');
   expect(csv).not.toContain('Ada');
+});
+
+
+test('bulk school file tab switches input rows before school verification', async ({ page }) => {
+  await page.goto('/bulk-reg');
+  await page.getByLabel('Upload registration file').setInputFiles(workbook('school-tabs.xlsx', [
+    ['First', [['FIRST NAME'], ['Ada']]],
+    ['Second', [['FIRST NAME'], ['Grace'], ['Alice']]],
+  ]));
+  await expect(page.getByLabel('School file tab')).toHaveValue('First');
+  await page.getByLabel('School file tab').selectOption('Second');
+  await expect(page.getByLabel('School file tab')).toHaveValue('Second');
+  await expect(page.getByRole('region', { name: 'Load registration file' }).getByRole('status')).toContainText('2 rows');
+  await page.reload();
+  await expect(page.getByLabel('School file tab')).toHaveValue('Second');
 });
