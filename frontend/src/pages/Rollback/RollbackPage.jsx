@@ -14,6 +14,8 @@ export function RollbackPage() {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [sanityNotice, setSanityNotice] = useState('');
+  const [rollbackNotice, setRollbackNotice] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -37,6 +39,8 @@ export function RollbackPage() {
     if (!/^[0-9]+$/.test(index) || busy) return;
     setBusy('school');
     setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
     setSchool(null);
     try {
       const result = await rollbackApi.verifySchool(index);
@@ -60,6 +64,8 @@ export function RollbackPage() {
     }
     setBusy('file');
     setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
     try {
       setFile(await rollbackApi.uploadFile(selected, sheet));
     } catch (requestError) {
@@ -78,6 +84,8 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('file');
     setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
     try {
       setFile(await rollbackApi.selectSheet(event.target.value));
     } catch (requestError) {
@@ -130,6 +138,8 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('file');
     setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
     try {
       await rollbackApi.clearFile();
       setFile(null);
@@ -144,11 +154,50 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('school');
     setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
     try {
       await rollbackApi.clearSchool();
       setSchoolIndex('');
       setSchool(null);
       setDump(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function checkHeaders() {
+    const result = await rollbackApi.sanityCheck();
+    if (!result.valid) throw new Error(result.message);
+    return result;
+  }
+
+  async function runSanityCheck() {
+    if (busy || !school || !file) return;
+    setBusy('sanity');
+    setError('');
+    setSanityNotice('');
+    try {
+      const result = await checkHeaders();
+      setSanityNotice(result.message);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function performRollback() {
+    if (busy || !school || !file) return;
+    setBusy('rollback');
+    setError('');
+    setSanityNotice('');
+    setRollbackNotice('');
+    try {
+      await checkHeaders();
+      setRollbackNotice('Rollback is not implemented yet. No database changes were made.');
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -181,7 +230,7 @@ export function RollbackPage() {
           <form className="bulk-inline-form" onSubmit={verifySchool}>
             <div className="bulk-field">
               <label htmlFor="rollback-school-index">School number</label>
-              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setDump(null); setError(''); }} />
+              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setDump(null); setError(''); setSanityNotice(''); setRollbackNotice(''); }} />
             </div>
             <div className="rollback-school-actions">
               <button className="bulk-button bulk-primary" disabled={!!busy || !/^[0-9]+$/.test(schoolIndex.trim())} type="submit">{busy === 'school' ? 'Verifying…' : 'Verify school'}</button>
@@ -228,6 +277,38 @@ export function RollbackPage() {
         </section>
       </div>
       <RollbackInputPreview file={file} busy={busy} onPage={showInputPage} />
+      <section className="bulk-card rollback-action" aria-labelledby="rollback-sanity-title">
+        <div className="bulk-section-title">
+          <span className="bulk-step">03</span>
+          <div>
+            <h2 id="rollback-sanity-title">Sanity check</h2>
+            <p>Confirm that every header is allowed and the required user_id header is present.</p>
+          </div>
+        </div>
+        <button
+          className="bulk-button bulk-secondary"
+          type="button"
+          disabled={!!busy || !school || !file}
+          onClick={runSanityCheck}
+        >{busy === 'sanity' ? 'Checking…' : 'Run sanity check'}</button>
+        {sanityNotice && <p className="rollback-action-notice" role="status">{sanityNotice}</p>}
+      </section>
+      <section className="bulk-card rollback-action" aria-labelledby="rollback-action-title">
+        <div className="bulk-section-title">
+          <span className="bulk-step">04</span>
+          <div>
+            <h2 id="rollback-action-title">Perform rollback</h2>
+            <p>Review the verified school, database dump, and uploaded input before continuing.</p>
+          </div>
+        </div>
+        <button
+          className="bulk-button bulk-primary"
+          type="button"
+          disabled={!!busy || !school || !file}
+          onClick={performRollback}
+        >Perform rollback</button>
+        {rollbackNotice && <p className="rollback-action-notice" role="status">{rollbackNotice}</p>}
+      </section>
     </div>
   </main>;
 }

@@ -13,6 +13,9 @@
 .rollback-sheet select:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
 .rollback-preview { margin-top: 16px; }
 .rollback-dump-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.rollback-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; margin-top: 16px; padding: 20px; border-color: #cbdad8; }
+.rollback-action .bulk-section-title { margin: 0; }
+.rollback-action-notice { grid-column: 1 / -1; margin: 0; border: 1px solid #b9dfd6; border-radius: 8px; background: #f1faf7; padding: 10px 12px; color: #176458; font-size: 12px; }
 @media (max-width: 600px) {
   .rollback-page { padding: 16px 12px 36px; }
   .rollback-header, .rollback-grid > .bulk-card { padding: 18px 15px; }
@@ -24,4 +27,7 @@
   .rollback-page .bulk-loaded-file-main { grid-template-columns: auto minmax(0, 1fr); }
   .rollback-page .bulk-replace-file { grid-column: 1 / -1; }
   .rollback-sheet { grid-template-columns: 1fr; }
+  .rollback-action { grid-template-columns: 1fr; padding: 18px 15px; }
+  .rollback-action .bulk-button { width: 100%; }
+  .rollback-action-notice { grid-column: 1; }
 }

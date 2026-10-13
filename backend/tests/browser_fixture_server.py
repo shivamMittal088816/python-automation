@@ -16,7 +16,8 @@ from app.api import file_workflow_state
 from app.services import bulk_registration_storage, operation_log
 from app.services import rollback as rollback_storage
 from app.routes.file_workflow_routes import email_mapping, file_inputs, sanity_check
-from app.routes.bulk_registration import conversion_routes, school_routes, file_routes, rollback_routes
+from app.routes.bulk_registration import conversion_routes, school_routes, file_routes
+from app.routes.rollback import school_routes as rollback_school_routes
 from app.services.bulk_registration import SchoolNotFoundError
 from app.main import create_app
 from app import main as backend_main
@@ -52,11 +53,12 @@ def fetch_bulk_school(index):
     return {'school_index': '914', 'school_name': 'Test School'}
 
 school_routes.fetch_school = fetch_bulk_school
+rollback_school_routes.fetch_school = fetch_bulk_school
 @contextmanager
 def stream_rollback_dump(index):
     yield list(dump.columns), iter(dump.fillna('').values.tolist())
 
-rollback_routes.stream_rollback_dump = stream_rollback_dump
+rollback_school_routes.stream_rollback_dump = stream_rollback_dump
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
 conversion_routes.fetch_house_ids = lambda: [(12, 'Blue'), (37, 'Green')]
 file_routes.fetch_houses = lambda: ['Blue', 'Green']

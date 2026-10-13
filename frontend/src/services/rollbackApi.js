@@ -52,6 +52,10 @@ export const rollbackApi = {
     return request('/bulk-reg/rollback/files/preview', { params: { page } });
   },
 
+  sanityCheck() {
+    return request('/bulk-reg/rollback/files/sanity-check', { method: 'POST' });
+  },
+
   clearFile() {
     return request('/bulk-reg/rollback/files', { method: 'DELETE' });
   },

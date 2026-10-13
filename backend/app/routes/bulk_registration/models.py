@@ -1,13 +1,11 @@
 """Request models shared by bulk-registration routes."""
 from pydantic import BaseModel
 
+from app.schemas.file_workflow import SchoolInput
+
 
 class StoredFileInput(BaseModel):
     sheet: str | None = None
-
-
-class SchoolInput(BaseModel):
-    school_index: str
 
 # Purpose: Request models shared by bulk-registration routes.
 # Its public interface includes StoredFileInput and SchoolInput.

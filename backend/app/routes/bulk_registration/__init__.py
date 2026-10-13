@@ -2,7 +2,8 @@
 from fastapi import APIRouter, Depends
 
 from app.api.session_cookie import verify_origin
-from app.routes.bulk_registration import conversion_routes, file_routes, operation_routes, rollback_routes, school_routes, workspace_routes
+from app.routes import rollback
+from app.routes.bulk_registration import conversion_routes, file_routes, operation_routes, school_routes, workspace_routes
 from app.routes.bulk_registration.compatibility import clear_workspace, convert_file, upload_file
 from app.routes.bulk_registration.file_reading import preview_file
 from app.routes.bulk_registration.school_routes import get_school
@@ -13,7 +14,7 @@ router = APIRouter(
     tags=['Bulk registration'],
     dependencies=[Depends(verify_origin)],
 )
-for child in (workspace_routes.router, file_routes.router, operation_routes.router, school_routes.router, rollback_routes.router, conversion_routes.router):
+for child in (workspace_routes.router, file_routes.router, operation_routes.router, school_routes.router, rollback.router, conversion_routes.router):
     router.include_router(child)
 
 __all__ = [

@@ -36,7 +36,7 @@ class RollbackAPITests(unittest.TestCase):
 
         self.streamed_school_indexes = []
         dump = patch(
-            'app.routes.bulk_registration.rollback_routes.stream_rollback_dump',
+            'app.routes.rollback.school_routes.stream_rollback_dump',
             side_effect=stream_dump,
         )
         self.stream_rollback_dump = dump.start()
@@ -88,6 +88,46 @@ class RollbackAPITests(unittest.TestCase):
         self.assertEqual(list(rollback_storage.root_path().glob('*/*.bin')), [])
         state = json.loads(next(rollback_storage.root_path().glob('*/state.json')).read_text())
         self.assertIsNone(state['input'])
+
+    def test_sanity_check_enforces_server_owned_exact_header_policy(self):
+        self.upload(
+            'rollback.csv',
+            b'USER_ID,FIRST NAME,unexpected\n1,Ada,value\n',
+            'text/csv',
+        )
+
+        with patch(
+            'app.routes.rollback.input_routes.preview_file',
+            side_effect=AssertionError('sanity check reparsed the saved file'),
+        ):
+            status, _, response = asyncio.run(asgi_request(
+                self.app, 'POST', '/api/v1/bulk-reg/rollback/files/sanity-check',
+            ))
+
+        self.assertEqual(status, 200)
+        invalid = json.loads(response)
+        self.assertFalse(invalid['valid'])
+        self.assertEqual(invalid['missing_headers'], ['user_id'])
+        self.assertEqual(invalid['unsupported_headers'], ['USER_ID', 'unexpected'])
+
+        self.upload(
+            'rollback.csv',
+            b' user_id ,FIRST NAME,School Number\n1,Ada,914\n',
+            'text/csv',
+        )
+        status, _, response = asyncio.run(asgi_request(
+            self.app, 'POST', '/api/v1/bulk-reg/rollback/files/sanity-check',
+        ))
+
+        self.assertEqual(status, 200)
+        valid = json.loads(response)
+        self.assertTrue(valid['valid'])
+        self.assertEqual(valid['missing_headers'], [])
+        self.assertEqual(valid['unsupported_headers'], [])
+        self.assertEqual(
+            valid['message'],
+            'Sanity check passed. All headers are allowed and user_id is present.',
+        )
 
     def test_excel_upload_can_select_a_worksheet(self):
         workbook = Workbook()
@@ -176,7 +216,7 @@ class RollbackAPITests(unittest.TestCase):
         })
         fetch_school.assert_called_once_with('914')
 
-    @patch('app.routes.bulk_registration.school_routes.fetch_school')
+    @patch('app.routes.rollback.school_routes.fetch_school')
     def test_rollback_school_is_restored_and_can_be_cleared(self, fetch_school):
         fetch_school.return_value = {'school_index': '914', 'school_name': 'North School'}
         payload = json.dumps({'school_index': '914'}).encode()
@@ -221,7 +261,7 @@ class RollbackAPITests(unittest.TestCase):
         self.assertEqual(restored['file']['name'], 'rollback.csv')
         self.assertEqual(list(folder.glob('dump-*.bin')), [])
 
-    @patch('app.routes.bulk_registration.school_routes.fetch_school')
+    @patch('app.routes.rollback.school_routes.fetch_school')
     def test_dump_preview_is_paginated_for_verified_school(self, fetch_school):
         fetch_school.return_value = {'school_index': '399', 'school_name': 'Example School'}
         self.dump_result = {
