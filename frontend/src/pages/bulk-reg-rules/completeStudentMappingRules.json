@@ -1,0 +1,726 @@
+[
+  {
+    "style": "Title",
+    "text": "Admission Mapping Rules"
+  },
+  {
+    "style": "",
+    "text": "The admission-mapping process compares each student in the school file with the reference dump. The following rules are applied in order."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check that all required columns are available in both the school file and the dump."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Remove completely identical rows from the school file. One copy is kept."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Clean the values before comparison:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Remove extra spaces."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Convert admission numbers and first names to lowercase."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Keep leading zeros. For example, 00123 and 123 are treated as different admission numbers."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Prepare the dump for searching and count how many times each admission number appears."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check each school record:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the admission number is blank → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the same admission number appears in multiple school records → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the school first name is blank → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the admission number appears multiple times in the dump → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the admission number is not found in the dump → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the dump first name is blank → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the school first name and dump first name do not match → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the matching first name contains only one character → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the username is missing from the dump → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the admission number and first name match and the username is available → Matched"
+  },
+  {
+    "style": "ListBullet",
+    "text": "For matched records, copy the username and user ID from the dump."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Perform a final duplicate-account check:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple matched records have the same username, move them to Review."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple matched records have the same user ID, move them to Review."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Separate the final records into three groups:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Not Matched"
+  },
+  {
+    "style": "",
+    "text": "Meaning of the results"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Matched: The record passed all admission-number, first-name, username, and account checks."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Review: The record may have a possible match, but it needs a person to check it."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Not Matched: The admission number is missing or was not found in the dump."
+  },
+  {
+    "style": "Title",
+    "text": "Email Mapping Rules"
+  },
+  {
+    "style": "",
+    "text": "The email-mapping process compares each student's email address and first name with the database records. The following rules are applied in order."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Select the source records:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Use the original school file, or"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Use the Not Matched records from admission mapping."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check that the selected email and first-name columns are available."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Clean the values before comparison:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Remove extra spaces."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Convert email addresses and first names to lowercase."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Capitalization differences are therefore ignored."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Retrieve database records matching the email addresses in the source file."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check each school record:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email address is blank → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email address is not found in the database → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the same email appears multiple times in the school records → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email belongs to multiple database records → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email is found but the school first name is blank → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email is found but the database first name is blank → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the school and database first names are different → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the first names match but contain only one character → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email and first name match → Continue to the school check"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Confirm that the student belongs to the selected school:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the selected school index is unavailable → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the student's school is missing in the database → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the student's database school differs from the selected school → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the email, first name, and school all match → Matched"
+  },
+  {
+    "style": "ListBullet",
+    "text": "For matched records, copy the username and user ID from the database."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Perform a final duplicate-account check:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple matched students have the same username or user ID, move them to Review."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Separate the final records into three groups:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Not Matched"
+  },
+  {
+    "style": "",
+    "text": "Important difference from admission mapping: Email mapping does not first remove completely identical school rows. Repeated nonblank emails are sent to Review."
+  },
+  {
+    "style": "",
+    "text": "Meaning of the results"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Matched: The email, first name, and selected school match, and the account passes the duplicate check."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Review: A possible record was found, but one or more details require a person to check them."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Not Matched: The email address is missing or was not found in the database."
+  },
+  {
+    "style": "Title",
+    "text": "Full Name + Class Concatenation Rules"
+  },
+  {
+    "style": "",
+    "text": "The class-concatenation process combines each student's full name and class number and compares the result with the admission dump."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Select the source records:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Original school file"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Admission Not Matched records"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Email Not Matched records"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check that:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "The school records are available."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "The admission dump is available."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "The selected full-name and class-number columns exist."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "The dump contains the required generated comparison column."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Clean the values before comparison:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Remove spaces before and after the full name and class number."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Convert the full name and class number to lowercase."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Remove all spaces inside the full name."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Create the comparison value by joining the cleaned full name and class number."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Example: John Smith + 5 becomes johnsmith5."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Look for the generated value in the admission dump."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Check each student record:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the full name is blank → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If the class number is blank → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If no dump record has the same generated value → Not Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple dump records have the same generated value → Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If exactly one dump record has the same generated value → Matched"
+  },
+  {
+    "style": "ListBullet",
+    "text": "For matched records, copy the username and user ID from the dump."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Perform a final duplicate-account check:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple matched students have the same username, move them to Review."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "If multiple matched students have the same user ID, move them to Review."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Separate the final records into three groups:"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Matched"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Review"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Not Matched"
+  },
+  {
+    "style": "",
+    "text": "Important: This method only checks the combined full-name and class value. It does not compare the admission number, email address, or individual parts of the name."
+  },
+  {
+    "style": "",
+    "text": "Meaning of the results"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Matched: Exactly one dump record has the same combined full-name and class value, and the account passes the duplicate check."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Review: Multiple dump records match, or the same username or user ID is assigned to multiple matched students."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Not Matched: The full name or class number is missing, or no dump record has the same combined value."
+  },
+  {
+    "style": "Title",
+    "text": "Sanity Check Rules"
+  },
+  {
+    "style": "",
+    "text": "Before checking individual columns, extra spaces at the beginning and end of every value are removed. The sanity check reports each row that needs correction."
+  },
+  {
+    "style": "Heading1",
+    "text": "First Name"
+  },
+  {
+    "style": "ListBullet",
+    "text": "First name is required."
+  },
+  {
+    "style": "ListBullet",
+    "text": "It cannot be blank."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Only English letters A–Z are allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Numbers, symbols, punctuation, and spaces are not allowed."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John Paul → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John2 → Invalid"
+  },
+  {
+    "style": "Heading1",
+    "text": "Last Name"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Last name is optional, and a blank value is allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If provided, it can contain only English letters and spaces."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Numbers, punctuation, and other symbols are not allowed."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Smith → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Van Dyke → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Smith2 → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "O'Brien → Invalid"
+  },
+  {
+    "style": "Heading1",
+    "text": "Full Name"
+  },
+  {
+    "style": "ListBullet",
+    "text": "The full-name column itself is optional."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If the file contains a full-name column, every row must have a full name."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Only English letters and spaces are allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Numbers, punctuation, and other symbols are not allowed."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John Smith → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John Smith 2 → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "John O'Brien → Invalid"
+  },
+  {
+    "style": "Heading1",
+    "text": "Admission Number"
+  },
+  {
+    "style": "ListBullet",
+    "text": "The admission number is displayed in the sanity-check results."
+  },
+  {
+    "style": "ListBullet",
+    "text": "No admission-number format validation is performed at this stage."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Blank or duplicate admission numbers are handled later during admission mapping."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Leading zeros are preserved."
+  },
+  {
+    "style": "Heading1",
+    "text": "Email"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Email is optional during the sanity check, and a blank email is allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If provided, it must follow a normal format such as name@domain.com."
+  },
+  {
+    "style": "ListBullet",
+    "text": "It must contain a value before @, a valid domain after @, and a final extension containing at least two letters."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Duplicate email addresses are not allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Duplicate checking ignores uppercase and lowercase differences."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Every occurrence of a duplicated email is reported."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "student@example.com → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "student@example → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "student@.com → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Student@example.com and student@example.com → Duplicate"
+  },
+  {
+    "style": "Heading1",
+    "text": "Gender"
+  },
+  {
+    "style": "ListBullet",
+    "text": "If the gender column is present, every row must contain a recognized value."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Accepted values are Male, Female, or Others."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Capitalization does not matter."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Any other value or blank value is reported as invalid."
+  },
+  {
+    "style": "Heading1",
+    "text": "Class Number"
+  },
+  {
+    "style": "ListBullet",
+    "text": "If the class column is present, every row must contain a valid class."
+  },
+  {
+    "style": "ListBullet",
+    "text": "A class can be a recognized class name or a positive whole number greater than zero."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Recognized names are Class I through Class XII, Other, Nursery, LKG, UKG, KG, Pre Nursery, Pre Primary, Pre School, Play Group, and Passed Out."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Capitalization does not matter."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Zero, negative numbers, decimals, and unknown class names are invalid."
+  },
+  {
+    "style": "ListBullet2",
+    "text": "Class V → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "5 → Valid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "0 → Invalid"
+  },
+  {
+    "style": "ListBullet2",
+    "text": "5.5 → Invalid"
+  },
+  {
+    "style": "Heading1",
+    "text": "Section"
+  },
+  {
+    "style": "ListBullet",
+    "text": "The section column is optional."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If the file contains a section column, every row must have a section."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Blank sections are reported."
+  },
+  {
+    "style": "ListBullet",
+    "text": "The sanity check does not validate the section's format or compare it with the database."
+  },
+  {
+    "style": "Heading1",
+    "text": "House"
+  },
+  {
+    "style": "ListBullet",
+    "text": "House is optional, and a blank house is allowed."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If provided, the house must already exist in the database."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Comparison ignores uppercase and lowercase differences."
+  },
+  {
+    "style": "ListBullet",
+    "text": "If the house is not found, the row is reported for correction or house creation."
+  },
+  {
+    "style": "Heading1",
+    "text": "Username"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Username is not validated by this mapping-file sanity check."
+  },
+  {
+    "style": "ListBullet",
+    "text": "Username checks are performed separately during the bulk-registration process."
+  },
+  {
+    "style": "Heading1",
+    "text": "Other Columns"
+  },
+  {
+    "style": "ListBullet",
+    "text": "Columns not listed above are preserved but are not checked."
+  },
+  {
+    "style": "ListBullet",
+    "text": "The sanity check does not remove duplicate rows."
+  },
+  {
+    "style": "ListBullet",
+    "text": "A single row can show more than one problem."
+  }
+]

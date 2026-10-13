@@ -14,10 +14,13 @@ export function Icon({ name = 'file', className = 'size-5' }) {
   return <svg aria-hidden="true" className={`shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={paths[name] || paths.file} /></svg>;
 }
 
-export function PageHeader({ title, description, showHelp = true }) {
+export function PageHeader({ title, description, showHelp = true, helpPath = '/mapping_rules_page' }) {
   const { search } = useLocation();
+  const helpParams = new URLSearchParams(search);
+  if (helpPath === '/bulk-reg/rules') helpParams.set('from', 'mapping');
+  const helpSearch = helpParams.toString();
   return <header className="border-b border-slate-200 pb-3"><p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Student operations</p><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-semibold tracking-tight text-slate-950">{title}</h2>{showHelp && <div className="group relative shrink-0">
-    <Link to={`/mapping_rules_page${search}`} aria-label="Mapping rules / Help" title="Mapping rules / Help" className="flex size-8 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">?</Link>
+    <Link to={`${helpPath}${helpSearch ? `?${helpSearch}` : ''}`} aria-label="Mapping rules / Help" title="Mapping rules / Help" className="flex size-8 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">?</Link>
     <span aria-hidden="true" className="pointer-events-none absolute right-0 top-full z-10 mt-2 whitespace-nowrap rounded-md bg-slate-900 px-3 py-2 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">Mapping rules / Help</span>
   </div>}</div><p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600">{description}</p></header>;
 }

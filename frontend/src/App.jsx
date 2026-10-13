@@ -12,7 +12,7 @@ import { EmailPreviewPage } from "./pages/EmailPreview/EmailPreviewPage";
 import { FullNameClassMappingPage } from "./pages/FullNameClassMapping/FullNameClassMappingPage";
 import { FullNameClassPreviewPage } from "./pages/FullNameClassPreview/FullNameClassPreviewPage";
 import { BulkRegistrationPage } from "./pages/BulkRegistration/BulkRegistrationPage";
-import { BulkRegistrationRulesPage } from "./pages/BulkRegistration/BulkRegistrationRulesPage";
+import { BulkRegistrationRulesPage } from "./pages/bulk-reg-rules/BulkRegistrationRulesPage";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 export function App() {
@@ -25,6 +25,7 @@ export function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
+          <Route path="/rollback" element={null} />
           <Route path="/bulk-reg" element={<BulkRegistrationPage />} />
           <Route path="/bulk-reg/rules" element={<BulkRegistrationRulesPage />} />
           <Route
