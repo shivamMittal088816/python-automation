@@ -21,7 +21,7 @@ from app.routes.bulk_registration.file_reading import preview_file
 from app.routes.bulk_registration.models import SchoolInput
 from app.routes.bulk_registration.school_routes import get_school
 from app.repositories.rollback_dump_repository import stream_rollback_dump
-from app.services import rollback_storage
+from app.services import rollback as rollback_storage
 
 
 router = APIRouter(prefix='/rollback')

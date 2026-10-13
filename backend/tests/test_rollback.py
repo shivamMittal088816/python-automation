@@ -12,7 +12,7 @@ from unittest.mock import patch
 from openpyxl import Workbook, load_workbook
 
 from app.main import create_app
-from app.services import rollback_storage
+from app.services import rollback as rollback_storage
 from tests.test_file_workflow_api import asgi_request
 
 
@@ -20,7 +20,7 @@ class RollbackAPITests(unittest.TestCase):
     def setUp(self):
         temporary = TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        root = patch.object(rollback_storage, 'ROOT', Path(temporary.name))
+        root = patch.object(rollback_storage.config, 'ROOT', Path(temporary.name))
         root.start()
         self.addCleanup(root.stop)
         self.app = create_app()
@@ -64,7 +64,7 @@ class RollbackAPITests(unittest.TestCase):
         self.assertEqual(result['name'], 'rollback.csv')
         self.assertEqual(result['row_count'], 25)
         self.assertEqual(result['columns'], ['id', 'name'])
-        snapshots = list(rollback_storage.ROOT.glob('*/*.bin'))
+        snapshots = list(rollback_storage.root_path().glob('*/*.bin'))
         self.assertEqual(len(snapshots), 1)
         self.assertEqual(snapshots[0].read_bytes(), data)
 
@@ -85,8 +85,8 @@ class RollbackAPITests(unittest.TestCase):
         ))
         self.assertEqual(status, 200)
         self.assertIsNone(json.loads(response)['file'])
-        self.assertEqual(list(rollback_storage.ROOT.glob('*/*.bin')), [])
-        state = json.loads(next(rollback_storage.ROOT.glob('*/state.json')).read_text())
+        self.assertEqual(list(rollback_storage.root_path().glob('*/*.bin')), [])
+        state = json.loads(next(rollback_storage.root_path().glob('*/state.json')).read_text())
         self.assertIsNone(state['input'])
 
     def test_excel_upload_can_select_a_worksheet(self):
@@ -119,7 +119,7 @@ class RollbackAPITests(unittest.TestCase):
 
     def test_legacy_json_dump_is_migrated_to_bin_on_read(self):
         workspace_id = rollback_storage.create_workspace()
-        folder = rollback_storage.ROOT / workspace_id
+        folder = rollback_storage.root_path() / workspace_id
         legacy = {
             'columns': ['user_id', 'admission_number'],
             'rows': [['1', '0007'], ['2', '0008']],
@@ -148,9 +148,9 @@ class RollbackAPITests(unittest.TestCase):
             workspace_id, school, ['user_id'], iter([['1']]),
         )
         before = rollback_storage.load_state(workspace_id)
-        previous = rollback_storage.ROOT / workspace_id / before['dump']['file']
+        previous = rollback_storage.root_path() / workspace_id / before['dump']['file']
 
-        with patch.object(rollback_storage, 'save_state', side_effect=OSError('disk full')):
+        with patch('app.services.rollback.dump_snapshots.save_state', side_effect=OSError('disk full')):
             with self.assertRaises(OSError):
                 rollback_storage.save_school_rows(
                     workspace_id, school, ['user_id'], iter([['2']]),
@@ -158,7 +158,7 @@ class RollbackAPITests(unittest.TestCase):
 
         self.assertTrue(previous.is_file())
         persisted = json.loads(
-            (rollback_storage.ROOT / workspace_id / 'state.json').read_text(encoding='utf-8')
+            (rollback_storage.root_path() / workspace_id / 'state.json').read_text(encoding='utf-8')
         )
         self.assertEqual(persisted['dump']['file'], before['dump']['file'])
 
@@ -201,7 +201,7 @@ class RollbackAPITests(unittest.TestCase):
         self.assertEqual(restored['file']['name'], 'rollback.csv')
         self.assertEqual(restored['dump']['row_count'], 2)
         self.assertEqual(restored['dump']['rows'][0], ['1', '0007', '914'])
-        folder = next(rollback_storage.ROOT.iterdir())
+        folder = next(rollback_storage.root_path().iterdir())
         dump_snapshots = list(folder.glob('dump-*.bin'))
         self.assertEqual(len(dump_snapshots), 1)
         self.assertIn(b'user_id,admission_number,user_edu_school', dump_snapshots[0].read_bytes())

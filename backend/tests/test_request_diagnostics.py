@@ -96,3 +96,23 @@ class RequestDiagnosticsTests(unittest.TestCase):
             with self.subTest(path=path):
                 status, headers, _ = self.request(path, method='POST', body=b'{"path":"C:/data.csv"}')
                 self.assert_diagnostics(status, headers, 404)
+
+    def test_bulk_and_rollback_mutations_reject_foreign_origins(self):
+        for path, body in (
+            ('/api/v1/bulk-reg/workspace', b'{}'),
+            ('/api/v1/bulk-reg/rollback/school', b'{"school_index":"399"}'),
+        ):
+            with self.subTest(path=path):
+                status, _, response = asyncio.run(asgi_request(
+                    self.app, 'POST', path, body,
+                    [(b'origin', b'https://untrusted.example'),
+                     (b'content-type', b'application/json')],
+                ))
+                self.assertEqual(status, 403)
+                self.assertEqual(json.loads(response)['detail'], 'Request origin is not allowed.')
+
+    def test_bulk_mutations_allow_the_configured_frontend_origin(self):
+        status, _, _ = self.request(
+            '/api/v1/bulk-reg/workspace', method='POST', body=b'{}',
+        )
+        self.assertEqual(status, 200)

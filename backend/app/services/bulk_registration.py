@@ -6,7 +6,7 @@ import unicodedata
 
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
-from sqlalchemy import text
+from app.queries import load_query
 
 from app.mappings.bulk_registration import FIXED_VALUES, OUTPUT_HEADERS, class_id, gender_number
 from app.mappings.bulk_registration.password import generate_password
@@ -22,6 +22,9 @@ class SchoolNotFoundError(ValueError):
     """The requested school identity does not exist."""
 
 
+SCHOOL_NAME_QUERY = load_query('school_name.sql')
+
+
 def fetch_school(school_index):
     school_index = school_index.strip()
     if not school_index or not school_index.isascii() or not school_index.isdecimal():
@@ -29,7 +32,7 @@ def fetch_school(school_index):
     from app.config.database import engine
     with engine.connect() as connection:
         row = connection.execute(
-            text('SELECT school FROM users_schools WHERE school_id = :school_index'),
+            SCHOOL_NAME_QUERY,
             {'school_index': school_index},
         ).first()
     if row is None:

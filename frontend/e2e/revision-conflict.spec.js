@@ -18,8 +18,8 @@ test('same-session tabs refresh and stale writes receive 409', async ({ page, co
   expect(Number.isInteger(staleRevision)).toBe(true);
 
   await page.getByLabel('Add school file').setInputFiles(school);
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
-  await expect(second.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
+  await expect(second.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
 
   const conflict = await second.evaluate(async revision => {
     const response = await fetch('http://127.0.0.1:8123/api/v1/mapping/school', {

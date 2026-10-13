@@ -11,7 +11,7 @@ async function readyBulk(page) {
   await page.getByRole('button', { name: 'Verify school index' }).click();
   await expect(page.getByLabel('School name fetched')).toBeVisible();
   await page.getByLabel('Upload registration file').setInputFiles(file());
-  await expect(page.getByText('File loaded', { exact: false })).toBeVisible();
+  await expect(page.getByText('File ready', { exact: true })).toBeVisible();
 }
 
 test('simultaneous fresh mapping tabs create one shared session', async ({ page, context }) => {
@@ -30,9 +30,9 @@ test('simultaneous fresh mapping tabs create one shared session', async ({ page,
   await expect(second.getByLabel('Add school file')).toBeVisible();
   expect(creates).toBe(1);
   await page.getByLabel('Add school file').setInputFiles(file('shared.csv', 'admission_number,first_name\n001,Ada'));
-  await expect(second.getByText('Loaded: shared.csv', { exact: true })).toBeVisible();
+  await expect(second.getByTestId('school-input').getByText('shared.csv', { exact: true })).toBeVisible();
   await second.reload();
-  await expect(second.getByText('Loaded: shared.csv', { exact: true })).toBeVisible();
+  await expect(second.getByTestId('school-input').getByText('shared.csv', { exact: true })).toBeVisible();
 });
 
 test('failed replacement and offline conversion preserve output and recover', async ({ page, context }) => {

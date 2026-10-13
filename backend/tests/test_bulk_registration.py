@@ -262,7 +262,8 @@ class BulkRegistrationTests(unittest.TestCase):
         statement, parameters = connection.execute.call_args.args
         self.assertIn('BETWEEN 1 AND 1999', str(statement))
         self.assertIn('LEFT JOIN users', str(statement))
-        self.assertEqual(parameters, {'prefix_0': 'aarav', 'prefix_1': 'aditya'})
+        self.assertIn('JSON_EXTRACT', str(statement))
+        self.assertEqual(parameters, {'prefixes_json': '["aarav", "aditya"]'})
 
     def test_existing_username_query_uses_parameterized_in_values(self):
         connection = MagicMock()

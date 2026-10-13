@@ -10,6 +10,7 @@ test('sanity check scans all input rows and clears when the file changes', async
     name: 'sanity.csv', mimeType: 'text/csv',
     buffer: Buffer.from(`FIRST NAME,FULL NAME,Section,Class Number,GENDER,EMAIL\n${rows.join('\n')}`),
   });
+  await expect(check).toBeEnabled();
   await check.click();
   const panel = page.getByRole('region', { name: 'Input sanity check', exact: true });
   await expect(panel.getByRole('status')).toHaveAccessibleName('25 records checked · 2 with issues · 23 passed');
@@ -27,8 +28,9 @@ test('sanity check scans all input rows and clears when the file changes', async
     buffer: Buffer.from('FIRST NAME,FULL NAME,Section,Class Number,GENDER,EMAIL\nAda,Ada Lovelace,A,Class I,Female,ada@example.com'),
   });
   await expect(panel.getByRole('table')).toHaveCount(0);
+  await expect(check).toBeEnabled();
   await check.click();
-  await expect(panel.locator('.bulk-sanity-icon.is-passed')).toHaveCount(9);
+  await expect(panel.locator('.bulk-sanity-icon.is-passed')).toHaveCount(11);
   await expect(panel.getByRole('status')).toHaveAccessibleName('1 records checked · 0 with issues · 1 passed');
   await expect(panel.locator('tbody tr')).toHaveCount(0);
   await expect(panel.getByText('No records with issues.', { exact: true })).toBeVisible();

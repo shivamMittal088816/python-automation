@@ -1,13 +1,10 @@
 """Fetch the rollback dump for a verified school."""
 
 from contextlib import contextmanager
-from pathlib import Path
-
-from sqlalchemy import text
+from app.queries import load_query
 
 
-QUERY_PATH = Path(__file__).resolve().parents[1] / 'queries' / 'rollback_school_dump.sql'
-ROLLBACK_DUMP_QUERY = text(QUERY_PATH.read_text(encoding='utf-8'))
+ROLLBACK_DUMP_QUERY = load_query('rollback_school_dump.sql')
 
 
 @contextmanager

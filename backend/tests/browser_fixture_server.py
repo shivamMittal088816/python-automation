@@ -13,7 +13,8 @@ sys.path.insert(0,str(BACKEND_ROOT))
 import pandas as pd
 import uvicorn
 from app.api import file_workflow_state
-from app.services import bulk_registration_storage, operation_log, rollback_storage
+from app.services import bulk_registration_storage, operation_log
+from app.services import rollback as rollback_storage
 from app.routes.file_workflow_routes import email_mapping, file_inputs, sanity_check
 from app.routes.bulk_registration import conversion_routes, school_routes, file_routes, rollback_routes
 from app.services.bulk_registration import SchoolNotFoundError
@@ -28,7 +29,7 @@ temporary=tempfile.TemporaryDirectory(prefix='student-mapping-browser-')
 atexit.register(temporary.cleanup)
 file_workflow_state.ROOT=Path(temporary.name)/'sessions'
 bulk_registration_storage.ROOT=Path(temporary.name)/'bulk-registration'
-rollback_storage.ROOT=Path(temporary.name)/'rollback'
+rollback_storage.config.ROOT=Path(temporary.name)/'rollback'
 operation_log.LOG_PATH=Path(temporary.name)/'operations.jsonl'
 dump=pd.read_csv(REPOSITORY_ROOT/'frontend/e2e/fixtures/dump.csv',dtype=str,keep_default_na=False)
 

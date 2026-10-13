@@ -1,13 +1,14 @@
 """Read the canonical section identifiers used by bulk registration."""
-from sqlalchemy import text
+from app.queries import load_query
+
+
+SECTIONS_QUERY = load_query('sections.sql')
 
 
 def fetch_sections():
     from app.config.database import engine
     with engine.connect() as connection:
-        rows = connection.execute(text(
-            'SELECT section_id, section FROM users_sections WHERE section IS NOT NULL'
-        )).all()
+        rows = connection.execute(SECTIONS_QUERY).all()
     return [(row[0], row[1]) for row in rows]
 
 # Purpose: Read the canonical section identifiers used by bulk registration.

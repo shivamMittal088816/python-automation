@@ -17,6 +17,7 @@
   .rollback-page { padding: 16px 12px 36px; }
   .rollback-header, .rollback-grid > .bulk-card { padding: 18px 15px; }
   .rollback-page .bulk-inline-form { align-items: stretch; flex-direction: column; }
+  .rollback-page .bulk-field { flex: none; }
   .rollback-school-actions { width: 100%; }
   .rollback-school-actions .bulk-button { flex: 1; }
   .rollback-page .bulk-file-actions { width: 100%; }

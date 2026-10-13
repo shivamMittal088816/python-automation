@@ -6,7 +6,7 @@ test('unresolved houses block final export; corrected houses export as IDs', asy
   await page.getByRole('button', { name: 'Verify school index', exact: true }).click();
   await expect(page.getByLabel('School name fetched')).toBeVisible();
   const input = house => ({ name: 'houses.csv', mimeType: 'text/csv',
-    buffer: Buffer.from(`FIRST NAME,FULL NAME,Section,Class Number,GENDER,house\nBob,Bob Smith,A,Class I,Male,${house}`) });
+    buffer: Buffer.from(`FIRST NAME,FULL NAME,Section,Class Number,GENDER,house,admission_number\nBob,Bob Smith,A,Class I,Male,${house},001`) });
   await page.getByLabel('Upload registration file').setInputFiles(input('Unknown'));
   // Intentionally skip optional input sanity: final verification must still protect downloads.
   await page.getByRole('button', { name: 'Generate preview', exact: true }).click();

@@ -12,7 +12,7 @@ test('mapping runs only after an explicit start action, never on navigation or r
   await page.goto('/admission_file_page');
   await page.getByLabel('Add school file').setInputFiles(school);
   await expect(page.getByTestId('school-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
   await page.getByLabel('Add dump file').setInputFiles(dump);
   await expect(page.getByTestId('dump-input').getByText('File uploaded successfully', { exact: true })).toBeVisible();
   await page.getByLabel('School index', { exact: true }).fill('914');
@@ -45,7 +45,7 @@ test('mapping runs only after an explicit start action, never on navigation or r
 async function mapAdmission(page) {
   await page.goto('/admission_file_page');
   await page.getByLabel('Add school file').setInputFiles(school);
-  await expect(page.getByText('Loaded: school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('school.csv', { exact: true })).toBeVisible();
   await page.getByLabel('Add dump file').setInputFiles(dump);
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();
@@ -83,11 +83,11 @@ test('email metadata is cached across navigation and refreshed after admission r
   await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(2);
   await openSidebar('Admission No. Mapping', 'Admission mapping');
-  await page.getByLabel('Add school file').setInputFiles({
+  await page.getByLabel('Replace school file').setInputFiles({
     name: 'changed-school.csv', mimeType: 'text/csv',
     buffer: Buffer.from(readFileSync(school, 'utf8') + '\n'),
   });
-  await expect(page.getByText('Loaded: changed-school.csv', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText('changed-school.csv', { exact: true })).toBeVisible();
   await openSidebar('Email mapping', 'Email mapping');
   await expect(page.getByLabel('School email column')).toBeVisible();
   expect(requests).toBe(3);
@@ -160,11 +160,11 @@ test('admission upload, locked preview, workbook downloads and refresh', async (
 for (const kind of ['school', 'dump']) {
   test(`${kind} changes clear stale results while direct mapping remains available`, async ({ page }) => {
     await mapAdmission(page);
-    await page.getByLabel(kind === 'school' ? 'Add school file' : 'Add dump file').setInputFiles({
+    await page.getByLabel(kind === 'school' ? 'Replace school file' : 'Replace dump file').setInputFiles({
       name: `changed-${kind}.csv`, mimeType: 'text/csv',
       buffer: Buffer.from(readFileSync(kind === 'school' ? school : dump, 'utf8') + '\n'),
     });
-    await expect(page.getByText(`Loaded: changed-${kind}.csv`, { exact: true })).toBeVisible();
+    await expect(page.getByTestId(`${kind}-input`).getByText(`changed-${kind}.csv`, { exact: true })).toBeVisible();
     await page.goto('/admission_preview_page');
     await expect(page.getByText('No results available in this session. Map your files first to preview the results.', { exact: true })).toBeVisible();
     await page.goto('/admission_file_page');
@@ -289,7 +289,7 @@ test('SQL dump replacement preserves results on failure and invalidates them on 
   await page.getByLabel('School index', { exact: true }).fill('999999');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('No school found for index 999999.');
-  await expect(page.getByText('Loaded: dump.csv', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status').getByText('Loaded: dump.csv', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toBeVisible();
 
   await page.goto('/admission_preview_page');
@@ -301,7 +301,7 @@ test('SQL dump replacement preserves results on failure and invalidates them on 
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Fetch dump data', exact: true }).click();
   await expect(page.getByText('Fetched 4 student records for 914-Test School.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Loaded: school_914_dump.csv', { exact: true })).toBeVisible();
+  await expect(page.getByRole('status').getByText('Loaded: school_914_dump.csv', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Preview matched', exact: true })).toHaveCount(0);
 
   await page.goto('/admission_preview_page');

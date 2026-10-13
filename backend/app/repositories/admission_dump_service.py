@@ -1,48 +1,11 @@
 """Read the admission dump for one school from the configured MySQL database."""
 
 import pandas as pd
-from sqlalchemy import text
+from app.queries import load_query
 
 
-SCHOOL_NAME_QUERY = text("""
-SELECT school FROM users_schools AS us WHERE us.school_id = :school_index
-""")
-
-
-SCHOOL_DUMP_QUERY = text("""
-SELECT DISTINCT
-    u.user_id,
-    CONCAT_WS(' ', u.user_firstname, u.user_lastname) AS fullname,
-    pu.admission_number,
-    u.user_name,
-    u.user_edu_class,
-    u.user_edu_major,
-    u.user_firstname,
-    u.user_lastname,
-    u.user_package,
-    u.user_email,
-    LOWER(
-        REPLACE(
-            CONCAT_WS(
-                ' ',
-                u.user_firstname,
-                NULLIF(u.user_lastname, ''),
-                CASE
-                    WHEN u.user_package = 14 THEN u.user_edu_class
-                    WHEN u.user_package = 12 THEN u.user_edu_class + 1
-                    WHEN u.user_package = 11 THEN u.user_edu_class + 2
-                    ELSE u.user_edu_class
-                END
-            ),
-            ' ',
-            ''
-        )
-    ) AS generated_col
-FROM users u
-JOIN paid_users pu ON u.user_id = pu.user_id
-WHERE u.user_edu_school = :school_index
-AND u.user_type = '0'
-""")
+SCHOOL_NAME_QUERY = load_query('school_name.sql')
+SCHOOL_DUMP_QUERY = load_query('admission_school_dump.sql')
 
 
 def _normalize_dump_rows(frame):

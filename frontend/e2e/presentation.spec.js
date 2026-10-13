@@ -9,7 +9,7 @@ test('all active pages remain readable at desktop, tablet and mobile widths', as
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   async function capture(name) {
-    await expect(page.locator('main h2')).toBeVisible();
+    await expect(page.locator('main h2').first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: test.info().outputPath(`${name}.png`), fullPage: true });
   }
@@ -20,7 +20,7 @@ test('all active pages remain readable at desktop, tablet and mobile widths', as
   await page.goto('/admission_file_page');
   await capture('admission-empty');
   await page.getByLabel('Add school file').setInputFiles({ name: 'School_records_with_a_very_long_filename_for_operations_review_September_2026.csv', mimeType: 'text/csv', buffer: await (await import('node:fs/promises')).readFile(school) });
-  await expect(page.getByText(/^Loaded: School_records/)).toBeVisible();
+  await expect(page.getByTestId('school-input').getByText(/^School_records/)).toBeVisible();
   await page.getByLabel('Add dump file').setInputFiles(dump);
   await page.getByLabel('School index', { exact: true }).fill('914');
   await page.getByRole('button', { name: 'Save school index', exact: true }).click();

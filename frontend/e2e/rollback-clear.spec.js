@@ -12,6 +12,15 @@ test('rollback file clears from its workspace after confirmation', async ({ page
   await expect(page.getByRole('button', { name: 'Download Excel' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  const schoolInput = page.getByRole('textbox', { name: 'School number' });
+  const verifyButton = page.getByRole('button', { name: 'Verify school' });
+  await expect.poll(async () => {
+    const inputBox = await schoolInput.boundingBox();
+    const buttonBox = await verifyButton.boundingBox();
+    return inputBox && buttonBox ? buttonBox.y - (inputBox.y + inputBox.height) : Infinity;
+  }).toBeLessThanOrEqual(16);
+
   await page.getByRole('button', { name: 'Upload rollback file' }).setInputFiles({
     name: 'rollback-clear-qa.csv',
     mimeType: 'text/csv',

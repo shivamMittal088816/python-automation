@@ -34,7 +34,7 @@ test('a delayed bulk refresh cannot replace the reset cookie or hide a new uploa
     await second.getByLabel('Upload registration file').setInputFiles({
       name: 'after-reset.csv', mimeType: 'text/csv', buffer: Buffer.from('FIRST NAME\nSavedAfterReset'),
     });
-    await expect(second.getByText('File loaded', { exact: false })).toBeVisible();
+    await expect(second.getByText('File ready', { exact: true })).toBeVisible();
     release(); await done;
     expect(staleStatus).toBe(409);
     expect(staleCookie).toBeUndefined();
@@ -42,7 +42,7 @@ test('a delayed bulk refresh cannot replace the reset cookie or hide a new uploa
     await second.reload();
     for (const tab of [page, second]) {
       await expect(tab.getByText('after-reset.csv', { exact: true }).first()).toBeVisible();
-      await expect(tab.getByText('File loaded', { exact: false })).toBeVisible();
+      await expect(tab.getByText('File ready', { exact: true })).toBeVisible();
     }
   } finally { release(); }
 });
@@ -76,10 +76,10 @@ test('mapping startup rechecks changes broadcast while its snapshot is delayed',
     await second.getByLabel('Add school file').setInputFiles({
       name: 'new-from-tab-b.csv', mimeType: 'text/csv', buffer: Buffer.from('admission_number,first_name\n001,Ada'),
     });
-    await expect(second.getByText('Loaded: new-from-tab-b.csv', { exact: true })).toBeVisible();
+    await expect(second.getByTestId('school-input').getByText('new-from-tab-b.csv', { exact: true })).toBeVisible();
     await page.evaluate(() => window.qaUpdateReceived);
     release();
     // No focus/reload should be needed to repair the initial snapshot.
-    await expect(page.getByText('Loaded: new-from-tab-b.csv', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('school-input').getByText('new-from-tab-b.csv', { exact: true })).toBeVisible();
   } finally { release(); }
 });
