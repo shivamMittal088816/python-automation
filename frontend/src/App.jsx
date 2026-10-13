@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router";
 import { MappingRulesPage } from "./pages/MappingRules/MappingRulesPage";
 import { WorkspaceProvider } from "./context/WorkspaceContext";
 import { AppLayout } from "./components/layout/AppLayout";
+import { ServiceLayout } from "./components/layout/ServiceLayout";
 import { AdmissionMappingPage } from "./pages/AdmissionMapping/AdmissionMappingPage";
 import { AdmissionPreviewPage } from "./pages/AdmissionPreview/AdmissionPreviewPage";
 import { SchoolFilePage } from "./pages/SchoolFile/SchoolFilePage";
@@ -13,6 +14,7 @@ import { FullNameClassMappingPage } from "./pages/FullNameClassMapping/FullNameC
 import { FullNameClassPreviewPage } from "./pages/FullNameClassPreview/FullNameClassPreviewPage";
 import { BulkRegistrationPage } from "./pages/BulkRegistration/BulkRegistrationPage";
 import { BulkRegistrationRulesPage } from "./pages/bulk-reg-rules/BulkRegistrationRulesPage";
+import { RollbackPage } from "./pages/Rollback/RollbackPage";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 
 export function App() {
@@ -25,9 +27,11 @@ export function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <Routes>
-          <Route path="/rollback" element={null} />
-          <Route path="/bulk-reg" element={<BulkRegistrationPage />} />
-          <Route path="/bulk-reg/rules" element={<BulkRegistrationRulesPage />} />
+          <Route element={<ServiceLayout />}>
+            <Route path="/rollback" element={<RollbackPage />} />
+            <Route path="/bulk-reg" element={<BulkRegistrationPage />} />
+            <Route path="/bulk-reg/rules" element={<BulkRegistrationRulesPage />} />
+          </Route>
           <Route
             element={
               <WorkspaceProvider>

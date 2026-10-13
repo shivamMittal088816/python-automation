@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './confirm-clear-file.css';
 
-export function ConfirmClearFile({ file, disabled, onConfirm, label = 'Clear file', className = '' }) {
+export function ConfirmClearFile({ file, disabled, onConfirm, label = 'Clear file', className = '', description = 'This removes the loaded file and its dependent results from the workspace in all synced tabs. The original file and database records stay unchanged.' }) {
   const [open, setOpen] = useState(false);
   const dialog = useRef(null);
   const titleId = useId();
@@ -22,7 +22,7 @@ export function ConfirmClearFile({ file, disabled, onConfirm, label = 'Clear fil
         aria-describedby={descriptionId} onCancel={() => setOpen(false)} onClose={() => setOpen(false)}>
         <h2 id={titleId}>Clear this file?</h2>
         <p className="clear-file-name">{file?.name}</p>
-        <p id={descriptionId}>This removes the loaded file and its dependent results from the workspace in all synced tabs. The original file and database records stay unchanged.</p>
+        <p id={descriptionId}>{description}</p>
         <div className="clear-file-actions">
           <button type="button" autoFocus onClick={() => setOpen(false)}>Cancel</button>
           <button type="button" className="clear-file-confirm" disabled={disabled || !open}

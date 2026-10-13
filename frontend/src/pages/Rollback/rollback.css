@@ -1,0 +1,25 @@
+.rollback-page { padding: 28px 20px 56px; }
+.rollback-shell { width: 100%; max-width: 1280px; }
+.rollback-header { padding: 22px 24px; border-top: 4px solid #277d70; }
+.rollback-header h1 { font-size: clamp(24px, 3vw, 30px); }
+.rollback-grid { display: grid; gap: 16px; }
+.rollback-grid > .bulk-card { padding: 20px; border-color: #cbdad8; box-shadow: 0 4px 8px rgb(26 54 66 / 5%), 0 14px 28px -18px rgb(26 54 66 / 28%); }
+.rollback-school-actions { display: flex; align-items: center; gap: 8px; }
+.rollback-error { margin: 0 0 16px; }
+.rollback-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); align-items: center; gap: 12px; padding: 10px 12px; border-top: 1px solid #e1e9e7; background: #fff; color: #61727b; font-size: 11px; }
+.rollback-sheet label { display: block; color: #29434c; font-weight: 700; }
+.rollback-sheet p { margin-top: 3px; color: #74838b; font-size: 10px; }
+.rollback-sheet select { width: 100%; min-height: 36px; border: 1px solid #ccd8df; border-radius: 7px; background: #fff; padding: 7px 9px; color: #29434c; font-size: 12px; }
+.rollback-sheet select:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
+.rollback-preview { margin-top: 16px; }
+@media (max-width: 600px) {
+  .rollback-page { padding: 16px 12px 36px; }
+  .rollback-header, .rollback-grid > .bulk-card { padding: 18px 15px; }
+  .rollback-page .bulk-inline-form { align-items: stretch; flex-direction: column; }
+  .rollback-school-actions { width: 100%; }
+  .rollback-school-actions .bulk-button { flex: 1; }
+  .rollback-page .bulk-file-actions { width: 100%; }
+  .rollback-page .bulk-loaded-file-main { grid-template-columns: auto minmax(0, 1fr); }
+  .rollback-page .bulk-replace-file { grid-column: 1 / -1; }
+  .rollback-sheet { grid-template-columns: 1fr; }
+}
