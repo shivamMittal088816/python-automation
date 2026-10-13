@@ -22,6 +22,47 @@ uv run python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 API documentation is available at `http://127.0.0.1:8000/docs`.
 
+### Demo: concurrent requests
+
+`GET http://127.0.0.1:8000/debug/concurrency` holds a worker thread for five
+seconds and logs START/END counts. It uses the existing app and is intended for
+local demos; remove this route before deploying if it is no longer needed.
+
+To send 100 requests concurrently, keep the backend running and execute this
+in a second PowerShell terminal from `backend`:
+
+```powershell
+@'
+import json
+from concurrent.futures import ThreadPoolExecutor
+from time import perf_counter
+from urllib.request import urlopen
+
+def request(_):
+    with urlopen("http://127.0.0.1:8000/debug/concurrency", timeout=120) as response:
+        return json.load(response)
+
+started = perf_counter()
+with ThreadPoolExecutor(max_workers=100) as pool:
+    results = list(pool.map(request, range(100)))
+for process_id in sorted({row["process_id"] for row in results}):
+    rows = [row for row in results if row["process_id"] == process_id]
+    print("Process:", process_id)
+    print("Peak active demo requests:", max(row["peak_active_requests"] for row in rows))
+    print("Distinct demo threads used:", len({row["thread_id"] for row in rows}))
+    print("Maximum sampled live Python threads:", max(row["python_threads_alive"] for row in rows))
+print("Elapsed seconds:", round(perf_counter() - started, 2))
+'@ | uv run python -
+```
+
+`active_when_started` counts only overlapping calls to this endpoint.
+`peak_active_requests` records the highest overlap since this app instance
+started; restart the backend for a fresh measurement. `python_threads_alive`
+is a snapshot of live Python threads in that process, including other work.
+Neither value is a project-wide thread maximum. Counters are separate for
+each worker process. Send requests concurrently to observe overlap; sequential
+requests show one active request. This demo does not change thread-pool limits.
+
 Start the frontend in a second terminal using the [startup guide](docs/RUNNING.md).
 The independent bulk registration intake endpoint is `POST /api/v1/bulk-reg/files`.
 

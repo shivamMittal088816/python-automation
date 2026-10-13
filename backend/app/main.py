@@ -2,7 +2,10 @@
 
 from contextlib import asynccontextmanager
 import logging
+import os
 import re
+import threading
+import time
 from time import perf_counter
 from uuid import uuid4
 
@@ -65,6 +68,46 @@ def create_app():
         return JSONResponse(status_code=500, content={'detail': 'An unexpected server error occurred. Please try again.'})
 
     app.add_api_route("/", health, methods=["GET"], tags=["Health"])
+
+    # Demo counters belong to this app instance and are local to each worker process.
+    active_requests = 0
+    peak_active_requests = 0
+    counter_lock = threading.Lock()
+
+    @app.get("/debug/concurrency", tags=["Debug"])
+    def test_concurrency():
+        """Hold a worker thread for five seconds to demonstrate request concurrency."""
+        nonlocal active_requests, peak_active_requests
+        thread_id = threading.get_ident()
+        with counter_lock:
+            active_requests += 1
+            current_active = active_requests
+            peak_active_requests = max(peak_active_requests, active_requests)
+
+        try:
+            print(
+                f"START | Thread: {thread_id} | Active requests: {current_active}",
+                flush=True,
+            )
+            time.sleep(5)
+            with counter_lock:
+                peak = peak_active_requests
+            return {
+                "process_id": os.getpid(),
+                "thread_id": thread_id,
+                "active_when_started": current_active,
+                "peak_active_requests": peak,
+                "python_threads_alive": threading.active_count(),
+                "status": "completed",
+            }
+        finally:
+            with counter_lock:
+                active_requests -= 1
+                remaining = active_requests
+            print(
+                f"END | Thread: {thread_id} | Remaining requests: {remaining}",
+                flush=True,
+            )
 
     app.include_router(
         student_mapping_router,

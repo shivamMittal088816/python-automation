@@ -53,6 +53,7 @@ backups/
 *.xls
 *.csv
 *.sql
+!backend/app/queries/rollback_school_dump.sql
 *.sqlite
 *.sqlite3
 *.db

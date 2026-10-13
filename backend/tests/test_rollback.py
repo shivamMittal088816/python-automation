@@ -1,6 +1,7 @@
 """Rollback file upload and school verification API tests."""
 
 import asyncio
+from contextlib import contextmanager
 from io import BytesIO
 import json
 from pathlib import Path
@@ -8,7 +9,7 @@ from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
-from openpyxl import Workbook
+from openpyxl import Workbook, load_workbook
 
 from app.main import create_app
 from app.services import rollback_storage
@@ -23,6 +24,23 @@ class RollbackAPITests(unittest.TestCase):
         root.start()
         self.addCleanup(root.stop)
         self.app = create_app()
+        self.dump_result = {
+            'columns': ['user_id', 'admission_number', 'user_edu_school'],
+            'rows': [['1', '0007', '914'], ['2', '0008', '914']],
+        }
+
+        @contextmanager
+        def stream_dump(school_index):
+            self.streamed_school_indexes.append(school_index)
+            yield self.dump_result['columns'], iter(self.dump_result['rows'])
+
+        self.streamed_school_indexes = []
+        dump = patch(
+            'app.routes.bulk_registration.rollback_routes.stream_rollback_dump',
+            side_effect=stream_dump,
+        )
+        self.stream_rollback_dump = dump.start()
+        self.addCleanup(dump.stop)
 
     def upload(self, filename, data, content_type='application/octet-stream'):
         boundary = b'rollback-boundary'
@@ -99,6 +117,51 @@ class RollbackAPITests(unittest.TestCase):
         self.assertEqual(result['sheet'], 'Second')
         self.assertEqual(result['rows'], [['Grace']])
 
+    def test_legacy_json_dump_is_migrated_to_bin_on_read(self):
+        workspace_id = rollback_storage.create_workspace()
+        folder = rollback_storage.ROOT / workspace_id
+        legacy = {
+            'columns': ['user_id', 'admission_number'],
+            'rows': [['1', '0007'], ['2', '0008']],
+        }
+        (folder / 'dump.json').write_text(json.dumps(legacy), encoding='utf-8')
+        state = rollback_storage.load_state(workspace_id)
+        state['school'] = {'school_index': '914', 'school_name': 'North School'}
+        state['dump'] = {
+            'file': 'dump.json', 'row_count': 2, 'columns': legacy['columns'],
+        }
+        rollback_storage.save_state(workspace_id, state)
+
+        preview = rollback_storage.read_dump_page(workspace_id, 1, 20)
+
+        self.assertEqual(preview['rows'], legacy['rows'])
+        migrated = rollback_storage.load_state(workspace_id)
+        self.assertTrue(migrated['dump']['file'].startswith('dump-'))
+        self.assertTrue(migrated['dump']['file'].endswith('.bin'))
+        self.assertFalse((folder / 'dump.json').exists())
+        self.assertTrue((folder / migrated['dump']['file']).is_file())
+
+    def test_dump_replacement_commits_manifest_before_deleting_previous_snapshot(self):
+        workspace_id = rollback_storage.create_workspace()
+        school = {'school_index': '914', 'school_name': 'North School'}
+        rollback_storage.save_school_rows(
+            workspace_id, school, ['user_id'], iter([['1']]),
+        )
+        before = rollback_storage.load_state(workspace_id)
+        previous = rollback_storage.ROOT / workspace_id / before['dump']['file']
+
+        with patch.object(rollback_storage, 'save_state', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                rollback_storage.save_school_rows(
+                    workspace_id, school, ['user_id'], iter([['2']]),
+                )
+
+        self.assertTrue(previous.is_file())
+        persisted = json.loads(
+            (rollback_storage.ROOT / workspace_id / 'state.json').read_text(encoding='utf-8')
+        )
+        self.assertEqual(persisted['dump']['file'], before['dump']['file'])
+
     @patch('app.routes.bulk_registration.school_routes.fetch_school')
     def test_school_number_returns_database_name(self, fetch_school):
         fetch_school.return_value = {'school_index': '914', 'school_name': 'North School'}
@@ -124,6 +187,7 @@ class RollbackAPITests(unittest.TestCase):
         ))
         self.assertEqual(status, 200)
         self.assertEqual(json.loads(response)['school']['school_name'], 'North School')
+        self.assertEqual(self.streamed_school_indexes, ['914'])
 
         self.upload('rollback.csv', b'id,name\n1,Ada\n', 'text/csv')
         status, _, response = asyncio.run(asgi_request(
@@ -135,6 +199,12 @@ class RollbackAPITests(unittest.TestCase):
             'school_index': '914', 'school_name': 'North School',
         })
         self.assertEqual(restored['file']['name'], 'rollback.csv')
+        self.assertEqual(restored['dump']['row_count'], 2)
+        self.assertEqual(restored['dump']['rows'][0], ['1', '0007', '914'])
+        folder = next(rollback_storage.ROOT.iterdir())
+        dump_snapshots = list(folder.glob('dump-*.bin'))
+        self.assertEqual(len(dump_snapshots), 1)
+        self.assertIn(b'user_id,admission_number,user_edu_school', dump_snapshots[0].read_bytes())
 
         status, _, response = asyncio.run(asgi_request(
             self.app, 'DELETE', '/api/v1/bulk-reg/rollback/school',
@@ -147,7 +217,58 @@ class RollbackAPITests(unittest.TestCase):
         ))
         restored = json.loads(response)
         self.assertIsNone(restored['school'])
+        self.assertIsNone(restored['dump'])
         self.assertEqual(restored['file']['name'], 'rollback.csv')
+        self.assertEqual(list(folder.glob('dump-*.bin')), [])
+
+    @patch('app.routes.bulk_registration.school_routes.fetch_school')
+    def test_dump_preview_is_paginated_for_verified_school(self, fetch_school):
+        fetch_school.return_value = {'school_index': '399', 'school_name': 'Example School'}
+        self.dump_result = {
+            'columns': ['user_id', 'user_edu_school'],
+            'rows': [['=2+2' if index == 0 else str(index), '399'] for index in range(25)],
+        }
+        payload = json.dumps({'school_index': '399'}).encode()
+
+        status, _, response = asyncio.run(asgi_request(
+            self.app, 'POST', '/api/v1/bulk-reg/rollback/school', payload,
+            [(b'content-type', b'application/json')],
+        ))
+        result = json.loads(response)
+        self.assertEqual(status, 200)
+        self.assertEqual(result['dump']['row_count'], 25)
+        self.assertEqual(len(result['dump']['rows']), 20)
+
+        status, _, response = asyncio.run(asgi_request(
+            self.app, 'GET', '/api/v1/bulk-reg/rollback/dump/preview?page=2',
+        ))
+        second = json.loads(response)
+        self.assertEqual(status, 200)
+        self.assertEqual(second['page'], 2)
+        self.assertEqual(len(second['rows']), 5)
+        self.assertEqual(second['rows'][0], ['20', '399'])
+        self.assertEqual(self.streamed_school_indexes, ['399'])
+
+        status, headers, csv_data = asyncio.run(asgi_request(
+            self.app, 'GET', '/api/v1/bulk-reg/rollback/dump/download?file_format=csv',
+        ))
+        self.assertEqual(status, 200)
+        self.assertIn(b'rollback-dump-399.csv', headers[b'content-disposition'])
+        self.assertTrue(csv_data.startswith(b'\xef\xbb\xbfuser_id,user_edu_school\n'))
+        self.assertIn(b"'=2+2,399\n", csv_data)
+        self.assertIn(b'24,399\n', csv_data)
+
+        status, headers, xlsx_data = asyncio.run(asgi_request(
+            self.app, 'GET', '/api/v1/bulk-reg/rollback/dump/download?file_format=xlsx',
+        ))
+        self.assertEqual(status, 200)
+        self.assertIn(b'rollback-dump-399.xlsx', headers[b'content-disposition'])
+        workbook = load_workbook(BytesIO(xlsx_data), read_only=True, data_only=True)
+        sheet = workbook['Rollback dump']
+        self.assertEqual([cell.value for cell in next(sheet.iter_rows())],
+                         ['user_id', 'user_edu_school'])
+        self.assertEqual(sheet['A2'].value, '=2+2')
+        self.assertEqual(sheet['A26'].value, '24')
 
 
 if __name__ == '__main__':

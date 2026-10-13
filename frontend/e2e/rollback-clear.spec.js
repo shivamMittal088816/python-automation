@@ -8,6 +8,9 @@ test('rollback file clears from its workspace after confirmation', async ({ page
   await page.getByRole('textbox', { name: 'School number' }).fill('914');
   await page.getByRole('button', { name: 'Verify school' }).click();
   await expect(page.getByRole('textbox', { name: 'School name' })).toHaveValue('Test School');
+  await expect(page.getByRole('region', { name: 'Rollback database dump records' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download Excel' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Download CSV' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Upload rollback file' }).setInputFiles({
     name: 'rollback-clear-qa.csv',

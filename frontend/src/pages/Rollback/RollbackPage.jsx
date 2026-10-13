@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ConfirmClearFile } from '../../components/common/ConfirmClearFile';
 import { rollbackApi } from '../../services/rollbackApi';
 import { RollbackInputPreview } from './RollbackInputPreview';
+import { RollbackDumpPreview } from './RollbackDumpPreview';
 import '../BulkRegistration/bulk-registration.css';
 import './rollback.css';
 
@@ -9,6 +10,7 @@ export function RollbackPage() {
   const [schoolIndex, setSchoolIndex] = useState('');
   const [school, setSchool] = useState(null);
   const [file, setFile] = useState(null);
+  const [dump, setDump] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -21,6 +23,7 @@ export function RollbackPage() {
         if (!active) return;
         setFile(result.file);
         setSchool(result.school);
+        setDump(result.dump);
         setSchoolIndex(result.school?.school_index || '');
       })
       .catch(requestError => { if (active) setError(requestError.message); })
@@ -38,8 +41,10 @@ export function RollbackPage() {
     try {
       const result = await rollbackApi.verifySchool(index);
       setSchool(result.school);
+      setDump(result.dump);
       setSchoolIndex(result.school.school_index);
     } catch (requestError) {
+      setDump(null);
       setError(requestError.message);
     } finally {
       setBusy('');
@@ -95,6 +100,32 @@ export function RollbackPage() {
     }
   }
 
+  async function showDumpPage(page) {
+    if (busy) return;
+    setBusy('dump');
+    setError('');
+    try {
+      setDump(await rollbackApi.dumpPage(page));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function downloadDump(format) {
+    if (busy || !dump) return;
+    setBusy('download');
+    setError('');
+    try {
+      await rollbackApi.downloadDump(format);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function clearFile() {
     if (busy) return;
     setBusy('file');
@@ -117,6 +148,7 @@ export function RollbackPage() {
       await rollbackApi.clearSchool();
       setSchoolIndex('');
       setSchool(null);
+      setDump(null);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -149,7 +181,7 @@ export function RollbackPage() {
           <form className="bulk-inline-form" onSubmit={verifySchool}>
             <div className="bulk-field">
               <label htmlFor="rollback-school-index">School number</label>
-              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setError(''); }} />
+              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setDump(null); setError(''); }} />
             </div>
             <div className="rollback-school-actions">
               <button className="bulk-button bulk-primary" disabled={!!busy || !/^[0-9]+$/.test(schoolIndex.trim())} type="submit">{busy === 'school' ? 'Verifying…' : 'Verify school'}</button>
@@ -162,6 +194,8 @@ export function RollbackPage() {
             <input id="rollback-school-name" readOnly value={school.school_name} />
           </div>}
         </section>
+
+        <RollbackDumpPreview dump={dump} school={school} busy={busy} onPage={showDumpPage} onDownload={downloadDump} />
 
         <section className="bulk-card bulk-file-card" aria-labelledby="rollback-file-title">
           <div className="bulk-section-title">

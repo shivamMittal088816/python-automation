@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "D:\\python-api\\diagrams\\dataflow\\session-sync\\specs\\session-sync-dataflow.json",
+  "output": "D:\\python-api\\diagrams\\dataflow\\session-sync\\output\\session-sync-dataflow.html",
+  "specification": {
+    "sha256": "9ca599308194f16e3bb85b077d538f86421043fa997489fe0638f2f00d271ede",
+    "bytes": 124117
+  },
+  "artifact": {
+    "sha256": "a1c1d566aea3bc18f5b35e3399bc80791e749774a20338fa4bd022050a742f65",
+    "bytes": 1203324
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "standard",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

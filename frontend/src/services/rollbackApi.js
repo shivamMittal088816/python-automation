@@ -15,6 +15,26 @@ export const rollbackApi = {
     return request('/bulk-reg/rollback/school', { method: 'DELETE' });
   },
 
+  dumpPage(page) {
+    return request('/bulk-reg/rollback/dump/preview', { params: { page } });
+  },
+
+  async downloadDump(format) {
+    const response = await request('/bulk-reg/rollback/dump/download', {
+      params: { file_format: format }, blob: true,
+    });
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `rollback-dump.${format}`;
+    const href = URL.createObjectURL(await response.blob());
+    const link = document.createElement('a');
+    link.href = href;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 1000);
+  },
+
   uploadFile(file, sheet) {
     const body = new FormData();
     body.append('file', file);

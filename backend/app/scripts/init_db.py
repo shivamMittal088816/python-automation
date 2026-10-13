@@ -10,6 +10,7 @@ if not __package__:
 from app.config.database import Base
 from app.config.database import engine
 
+from app.models.operation_audit import OperationAudit
 from app.models.student_model import Student
 
 Base.metadata.create_all(bind=engine)

@@ -12,6 +12,7 @@
 .rollback-sheet select { width: 100%; min-height: 36px; border: 1px solid #ccd8df; border-radius: 7px; background: #fff; padding: 7px 9px; color: #29434c; font-size: 12px; }
 .rollback-sheet select:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
 .rollback-preview { margin-top: 16px; }
+.rollback-dump-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 @media (max-width: 600px) {
   .rollback-page { padding: 16px 12px 36px; }
   .rollback-header, .rollback-grid > .bulk-card { padding: 18px 15px; }
