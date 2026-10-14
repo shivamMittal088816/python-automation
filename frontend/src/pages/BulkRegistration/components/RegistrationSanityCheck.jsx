@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export function RegistrationSanityCheck({ source, busy, result, onCheck, footnote }) {
+export function RegistrationSanityCheck({ source, busy, result, onCheck, footnote, notice }) {
   const [expanded, setExpanded] = useState(true);
   return <section className="bulk-card bulk-sanity" aria-labelledby="sanity-title">
     <div className="bulk-sanity-header">
@@ -12,6 +12,7 @@ export function RegistrationSanityCheck({ source, busy, result, onCheck, footnot
       </div>
     </div>
     <div id="bulk-sanity-content" hidden={!expanded}>
+      {notice}
       {result ? <SanityResults result={result} footnote={footnote} /> : <p className="bulk-sanity-footnote">{footnote || 'Check missing details, duplicate emails, and supplied houses against the dump.'}</p>}
     </div>
   </section>;

@@ -23,6 +23,7 @@ OPERATION_ROUTES = {
     ('POST', '/bulk-reg/files'): ('bulk_file_upload', 'Bulk file upload'),
     ('POST', '/bulk-reg/convert'): ('bulk_conversion', 'Bulk registration conversion'),
     ('POST', '/bulk-reg/output/verify'): ('bulk_verification', 'Bulk registration verification'),
+    ('POST', '/bulk-reg/rollback/run'): ('rollback', 'Rollback'),
 }
 
 

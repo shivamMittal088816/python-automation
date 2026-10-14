@@ -18,6 +18,7 @@ from app.services import rollback as rollback_storage
 from app.routes.file_workflow_routes import email_mapping, file_inputs, sanity_check
 from app.routes.bulk_registration import conversion_routes, school_routes, file_routes
 from app.routes.rollback import school_routes as rollback_school_routes
+from app.routes.rollback import execution_routes as rollback_execution_routes
 from app.services.bulk_registration import SchoolNotFoundError
 from app.main import create_app
 from app import main as backend_main
@@ -59,6 +60,38 @@ def stream_rollback_dump(index):
     yield list(dump.columns), iter(dump.fillna('').values.tolist())
 
 rollback_school_routes.stream_rollback_dump = stream_rollback_dump
+
+ROLLBACK_PREVIEW_TOKEN = 'a' * 64
+
+def preview_rollback_updates(frame, school_index):
+    return {
+        'school_index': str(school_index),
+        'preview_token': ROLLBACK_PREVIEW_TOKEN,
+        'supplied_count': 2,
+        'supplied_matched': 2,
+        'fallback_count': 5,
+        'changed_count': 5,
+        'not_found_count': 0,
+        'missing_ids': [],
+        'changes': [],
+        'updated_fields': [],
+        'preview_truncated': False,
+    }
+
+def apply_rollback_updates(frame, school_index, expected_preview_token):
+    if expected_preview_token != ROLLBACK_PREVIEW_TOKEN:
+        raise ValueError('Unexpected browser-fixture preview token.')
+    return {
+        'supplied_count': 2,
+        'supplied_updated': 0,
+        'supplied_excluded': 2,
+        'not_found_count': 0,
+        'fallback_updated': 5,
+        'updated_fields': [],
+    }
+
+rollback_execution_routes.preview_rollback_updates = preview_rollback_updates
+rollback_execution_routes.apply_rollback_updates = apply_rollback_updates
 conversion_routes.fetch_sections = lambda: [(1, 'A'), (2, 'B')]
 conversion_routes.fetch_house_ids = lambda: [(12, 'Blue'), (37, 'Green')]
 file_routes.fetch_houses = lambda: ['Blue', 'Green']

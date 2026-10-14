@@ -8,8 +8,7 @@ from pydantic import BaseModel
 from app.config.settings import settings
 from app.routes.rollback.access import workspace_for
 from app.services import rollback as rollback_storage
-from app.services.rollback.header_validation import validate_rollback_headers
-from app.services.tabular_file import preview_file
+from app.services.tabular_file import preview_file, read_frame
 
 
 router = APIRouter(prefix='/files')
@@ -59,15 +58,8 @@ def sanity_check_rollback_file(request: Request, response: Response):
     if not workspace_id:
         raise HTTPException(409, 'Upload a rollback file first.')
     metadata, data = rollback_storage.read_input(workspace_id)
-    columns = metadata.get('columns')
-    if not isinstance(columns, list) or not all(isinstance(column, str) for column in columns):
-        preview = preview_file(metadata.get('name', ''), data, metadata.get('sheet'))
-        columns = preview['columns']
-        rollback_storage.update_input_metadata(
-            workspace_id,
-            {**metadata, 'columns': columns},
-        )
-    return validate_rollback_headers(columns)
+    frame = read_frame(metadata.get('name', ''), data, metadata.get('sheet'))
+    return rollback_storage.check_rollback_input(frame)
 
 
 @router.delete('')

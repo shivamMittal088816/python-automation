@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { Link, useLocation } from 'react-router';
+import { PagePdfDownload } from '../../components/common/PagePdfDownload';
 import paragraphs from './completeStudentMappingRules.json';
 import '../BulkRegistration/bulk-registration.css';
 import './student-mapping-rules.css';
@@ -25,6 +27,7 @@ for (const paragraph of paragraphs) {
 }
 
 export function BulkRegistrationRulesPage() {
+  const pdfTarget = useRef(null);
   const { search } = useLocation();
   const returnParams = new URLSearchParams(search);
   const fromMapping = returnParams.get('from') === 'mapping';
@@ -32,11 +35,11 @@ export function BulkRegistrationRulesPage() {
   const returnSearch = returnParams.toString();
   const returnPath = fromMapping ? '/admission_file_page' : '/bulk-reg';
   const returnTo = `${returnPath}${returnSearch ? `?${returnSearch}` : ''}`;
-  return <main className="bulk-page student-rules-page">
+  return <main ref={pdfTarget} className="bulk-page student-rules-page">
     <div className="bulk-shell bulk-rules-shell">
       <header className="bulk-header">
         <div><p className="bulk-eyebrow">OPERATIONS GUIDE</p><h1>Complete student mapping rules</h1><p className="bulk-subtitle">Admission mapping, email mapping, full name and class matching, and sanity checks.</p></div>
-        <Link to={returnTo} className="bulk-back">{fromMapping ? 'Back to mapping' : 'Back to bulk registration'} <span aria-hidden="true">&#8592;</span></Link>
+        <div className="student-rules-actions" data-pdf-exclude><Link to={returnTo} className="bulk-back"><span aria-hidden="true">&#8592;</span> {fromMapping ? 'Back to mapping' : 'Back to bulk registration'}</Link><PagePdfDownload targetRef={pdfTarget} filename="bulk-registration-rules.pdf" /></div>
       </header>
       <nav className="bulk-card student-rules-contents" aria-label="Rule sections">
         {sections.map((section, index) => <a key={section.title} href={`#mapping-rules-${index}`}>{section.title}</a>)}

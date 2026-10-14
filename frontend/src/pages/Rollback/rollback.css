@@ -15,7 +15,71 @@
 .rollback-dump-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .rollback-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; margin-top: 16px; padding: 20px; border-color: #cbdad8; }
 .rollback-action .bulk-section-title { margin: 0; }
+.rollback-requirement { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; border: 1px solid #e9c46a; border-radius: 8px; background: #fff9e8; padding: 9px 11px; color: #74520b; }
+.rollback-requirement svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 1px; color: #b77900; }
+.rollback-requirement p { margin: 0; color: inherit; font-size: 11px; line-height: 1.45; }
+.rollback-requirement strong { font-weight: 750; }
+.rollback-requirement code { border-radius: 4px; background: #f8e7b7; padding: 1px 4px; color: #624306; font-family: inherit; font-size: inherit; font-weight: 700; }
 .rollback-action-notice { grid-column: 1 / -1; margin: 0; border: 1px solid #b9dfd6; border-radius: 8px; background: #f1faf7; padding: 10px 12px; color: #176458; font-size: 12px; }
+.rollback-analysis { grid-column: 1 / -1; overflow: hidden; border: 1px solid #b9dcd5; border-radius: 12px; background: #fff; color: #29434c; }
+.rollback-analysis-header { display: flex; justify-content: space-between; gap: 16px; padding: 16px 18px; background: #f1faf7; border-bottom: 1px solid #d5ebe6; }
+.rollback-analysis-header strong { color: #174f47; font-size: 15px; }
+.rollback-analysis-header p { margin: 3px 0 0; color: #60757b; font-size: 12px; }
+.rollback-safe-badge { align-self: flex-start; border-radius: 999px; background: #d8f2eb; padding: 5px 9px; color: #086b5e; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.rollback-impact { display: grid; grid-template-columns: minmax(210px, .7fr) minmax(0, 2fr); gap: 18px; padding: 18px; }
+.rollback-impact-total { border-radius: 12px; background: linear-gradient(145deg, #087f72, #08695f); padding: 17px 18px; color: #fff; box-shadow: 0 8px 18px -12px #075b53; }
+.rollback-impact-total > span { font-size: 10px; font-weight: 750; text-transform: uppercase; letter-spacing: .05em; opacity: .82; }
+.rollback-impact-total strong { display: block; margin: 5px 0 2px; font-size: 30px; line-height: 1; }
+.rollback-impact-total p { margin: 6px 0 0; font-size: 10px; opacity: .8; }
+.rollback-impact-equation { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: center; gap: 10px; }
+.rollback-impact-equation > div { display: grid; align-content: center; min-height: 82px; border: 1px solid #dfe9e7; border-radius: 10px; background: #fbfdfc; padding: 12px; text-align: center; }
+.rollback-impact-equation strong { color: #173f48; font-size: 20px; }
+.rollback-impact-equation span { margin-top: 4px; color: #718187; font-size: 9px; }
+.rollback-impact-equation > b { color: #91a19e; font-size: 18px; }
+.rollback-impact-equation .is-result { border-color: #b9ddd5; background: #eef9f6; }
+.rollback-impact-equation .is-result strong { color: #087263; }
+.rollback-missing { margin: 0 18px 14px; border: 1px solid #ecd695; border-radius: 8px; background: #fffaf0; padding: 9px 11px; color: #73540a; font-size: 11px; }
+.rollback-missing summary, .rollback-change-table summary { cursor: pointer; font-weight: 750; }
+.rollback-missing p { overflow-wrap: anywhere; }
+.rollback-change-preview { border-top: 1px solid #e2ecea; padding: 14px 18px; }
+.rollback-preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.rollback-preview-toolbar h3 { margin: 0; color: #29434c; font-size: 13px; }
+.rollback-preview-toolbar p { margin: 3px 0 0; color: #718188; font-size: 10px; }
+.rollback-row-range { flex: 0 0 auto; border-radius: 999px; background: #edf5f3; padding: 6px 10px; color: #52716c; font-size: 10px; font-weight: 750; }
+.rollback-preview-pagination button { border: 0; border-radius: 6px; background: transparent; padding: 6px 9px; color: #566b72; font-size: 10px; font-weight: 700; cursor: pointer; }
+.rollback-rule-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid #dfe9e7; border-radius: 11px; background: #fbfdfc; }
+.rollback-rule-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-bottom: 1px solid #e5edeb; }
+.rollback-rule-item:nth-child(odd) { border-right: 1px solid #e5edeb; }
+.rollback-rule-item:last-child { grid-column: 1 / -1; border-bottom: 0; border-right: 0; }
+.rollback-rule-number { display: grid; place-items: center; width: 25px; height: 25px; flex: 0 0 auto; border-radius: 7px; background: #e4f3ef; color: #087263; font-size: 10px; font-weight: 850; }
+.rollback-rule-item strong { display: block; color: #29474e; font-size: 11px; }
+.rollback-rule-item p { display: flex; align-items: center; gap: 7px; margin: 3px 0 0; font-size: 10px; }
+.rollback-rule-item p span { color: #87969a; }
+.rollback-rule-item p b { color: #9aacaa; }
+.rollback-rule-item p em { color: #087263; font-style: normal; font-weight: 800; }
+.rollback-rule-item small { display: block; margin-top: 5px; color: #74858a; font-size: 9px; line-height: 1.4; }
+.rollback-commit-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid #e2ecea; background: #f9fbfb; padding: 14px 18px; }
+.rollback-commit-row strong { color: #29474e; font-size: 12px; }
+.rollback-commit-row p { margin: 3px 0 0; color: #63777d; font-size: 10px; }
+.rollback-confirm-dialog { margin: auto; width: min(500px, calc(100vw - 32px)); overflow: hidden; padding: 0; border: 1px solid #d8e3e1; border-radius: 16px; background: #fff; color: #213c43; box-shadow: 0 24px 70px rgb(15 42 48 / 28%); }
+.rollback-confirm-dialog::backdrop { background: rgb(12 30 35 / 62%); backdrop-filter: blur(3px); }
+.rollback-confirm-icon { display: grid; place-items: center; width: 42px; height: 42px; margin: 24px 24px 0; border-radius: 12px; background: #fff0d7; color: #a86100; font-size: 20px; font-weight: 900; }
+.rollback-confirm-copy { padding: 14px 24px 4px; }
+.rollback-confirm-eyebrow { margin: 0 0 4px !important; color: #a86100 !important; font-size: 9px !important; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }
+.rollback-confirm-copy h2 { margin: 0; color: #173d45; font-size: 21px; }
+.rollback-confirm-copy > p:last-child { margin: 8px 0 0; color: #64777d; font-size: 12px; line-height: 1.55; }
+.rollback-confirm-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 24px; }
+.rollback-confirm-summary > div { display: grid; gap: 3px; border: 1px solid #dfe9e7; border-radius: 10px; background: #f8fbfa; padding: 12px; }
+.rollback-confirm-summary strong { color: #087263; font-size: 19px; }
+.rollback-confirm-summary span { color: #6e8085; font-size: 10px; }
+.rollback-confirm-warning { display: grid; gap: 3px; margin: 0 24px; border-left: 3px solid #e1a32b; border-radius: 7px; background: #fff9ec; padding: 10px 12px; }
+.rollback-confirm-warning strong { color: #765007; font-size: 10px; }
+.rollback-confirm-warning span { color: #806a3d; font-size: 10px; line-height: 1.45; }
+.rollback-confirm-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; border-top: 1px solid #e7eeed; background: #f8faf9; padding: 14px 24px; }
+.rollback-confirm-actions button { min-height: 39px; border: 1px solid #cedbd8; border-radius: 8px; background: #fff; padding: 8px 16px; color: #425b61; font-size: 11px; font-weight: 750; cursor: pointer; }
+.rollback-confirm-actions .rollback-confirm-submit { border-color: #a62832; background: #a62832; color: #fff; }
+.rollback-confirm-actions button:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
+.rollback-confirm-actions button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 600px) {
   .rollback-page { padding: 16px 12px 36px; }
   .rollback-header, .rollback-grid > .bulk-card { padding: 18px 15px; }
@@ -30,4 +94,18 @@
   .rollback-action { grid-template-columns: 1fr; padding: 18px 15px; }
   .rollback-action .bulk-button { width: 100%; }
   .rollback-action-notice { grid-column: 1; }
+  .rollback-analysis { grid-column: 1; }
+  .rollback-impact { grid-template-columns: 1fr; padding: 12px; }
+  .rollback-impact-equation { grid-template-columns: 1fr; }
+  .rollback-impact-equation > b { transform: rotate(90deg); text-align: center; }
+  .rollback-preview-toolbar, .rollback-commit-row { align-items: stretch; flex-direction: column; }
+  .rollback-change-preview { padding: 12px; }
+  .rollback-row-range { align-self: flex-start; }
+  .rollback-rule-list { grid-template-columns: 1fr; }
+  .rollback-rule-item:nth-child(odd) { border-right: 0; }
+  .rollback-rule-item:last-child { grid-column: auto; }
+  .rollback-commit-row .bulk-button { width: 100%; }
+  .rollback-confirm-summary { grid-template-columns: 1fr; }
+  .rollback-confirm-actions { flex-direction: column-reverse; }
+  .rollback-confirm-actions button { width: 100%; }
 }

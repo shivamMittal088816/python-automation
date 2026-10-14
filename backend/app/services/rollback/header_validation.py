@@ -22,7 +22,6 @@ ROLLBACK_ALLOWED_HEADERS = (
     'user_subscribed',
     'user_name',
     'admission_number',
-    'house',
     'section_index',
     'year',
     'user_id',

@@ -3,6 +3,8 @@ import { ConfirmClearFile } from '../../components/common/ConfirmClearFile';
 import { rollbackApi } from '../../services/rollbackApi';
 import { RollbackInputPreview } from './RollbackInputPreview';
 import { RollbackDumpPreview } from './RollbackDumpPreview';
+import { ConfirmRollback } from './ConfirmRollback';
+import { RegistrationSanityCheck } from '../BulkRegistration/components/RegistrationSanityCheck';
 import '../BulkRegistration/bulk-registration.css';
 import './rollback.css';
 
@@ -14,8 +16,9 @@ export function RollbackPage() {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const [sanityNotice, setSanityNotice] = useState('');
+  const [sanityResult, setSanityResult] = useState(null);
   const [rollbackNotice, setRollbackNotice] = useState('');
+  const [rollbackPreview, setRollbackPreview] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -39,8 +42,9 @@ export function RollbackPage() {
     if (!/^[0-9]+$/.test(index) || busy) return;
     setBusy('school');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
+    setRollbackPreview(null);
     setSchool(null);
     try {
       const result = await rollbackApi.verifySchool(index);
@@ -64,8 +68,9 @@ export function RollbackPage() {
     }
     setBusy('file');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
+    setRollbackPreview(null);
     try {
       setFile(await rollbackApi.uploadFile(selected, sheet));
     } catch (requestError) {
@@ -84,8 +89,9 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('file');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
+    setRollbackPreview(null);
     try {
       setFile(await rollbackApi.selectSheet(event.target.value));
     } catch (requestError) {
@@ -138,8 +144,9 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('file');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
+    setRollbackPreview(null);
     try {
       await rollbackApi.clearFile();
       setFile(null);
@@ -154,8 +161,9 @@ export function RollbackPage() {
     if (busy) return;
     setBusy('school');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
+    setRollbackPreview(null);
     try {
       await rollbackApi.clearSchool();
       setSchoolIndex('');
@@ -168,20 +176,19 @@ export function RollbackPage() {
     }
   }
 
-  async function checkHeaders() {
+  async function checkInput() {
     const result = await rollbackApi.sanityCheck();
-    if (!result.valid) throw new Error(result.message);
+    setSanityResult(result);
     return result;
   }
 
   async function runSanityCheck() {
-    if (busy || !school || !file) return;
+    if (busy || !file) return;
     setBusy('sanity');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     try {
-      const result = await checkHeaders();
-      setSanityNotice(result.message);
+      await checkInput();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -193,17 +200,42 @@ export function RollbackPage() {
     if (busy || !school || !file) return;
     setBusy('rollback');
     setError('');
-    setSanityNotice('');
+    setSanityResult(null);
     setRollbackNotice('');
     try {
-      await checkHeaders();
-      setRollbackNotice('Rollback is not implemented yet. No database changes were made.');
+      const result = await checkInput();
+      if (!result.valid) throw new Error(result.message);
+      setRollbackPreview(await rollbackApi.previewChanges());
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setBusy('');
     }
   }
+
+  async function commitRollback() {
+    if (busy || !rollbackPreview) return;
+    setBusy('rollback');
+    setError('');
+    try {
+      const result = await rollbackApi.run(rollbackPreview.preview_token);
+      setRollbackNotice(result.message);
+      setRollbackPreview(null);
+    } catch (requestError) {
+      setError(requestError.message);
+      setRollbackPreview(null);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  const fallbackRules = [
+    ['Class', 'Current class', 'Current class − 1', 'Moves the student down by one stored class level.'],
+    ['Package', '14', '12', 'Changes the user from package 14 to package 12.'],
+    ['Account', 'Active', 'Inactive', 'Sets user_activated from 1 to 0, which marks the account as inactive.'],
+    ['Subscription', 'Subscribed', 'Unsubscribed', 'Sets user_subscribed from 1 to 0, which removes the subscribed status.'],
+    ['Subscription date', 'Current date', '01 Apr 2025', 'Replaces the existing subscription date with the rollback date.'],
+  ];
 
   return <main className="bulk-page rollback-page">
     <div className="bulk-shell rollback-shell">
@@ -230,7 +262,7 @@ export function RollbackPage() {
           <form className="bulk-inline-form" onSubmit={verifySchool}>
             <div className="bulk-field">
               <label htmlFor="rollback-school-index">School number</label>
-              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setDump(null); setError(''); setSanityNotice(''); setRollbackNotice(''); }} />
+              <input id="rollback-school-index" required pattern="[0-9]+" inputMode="numeric" placeholder="Enter school number" disabled={!!busy} value={schoolIndex} onChange={event => { setSchoolIndex(event.target.value); setSchool(null); setDump(null); setError(''); setSanityResult(null); setRollbackNotice(''); }} />
             </div>
             <div className="rollback-school-actions">
               <button className="bulk-button bulk-primary" disabled={!!busy || !/^[0-9]+$/.test(schoolIndex.trim())} type="submit">{busy === 'school' ? 'Verifying…' : 'Verify school'}</button>
@@ -277,22 +309,20 @@ export function RollbackPage() {
         </section>
       </div>
       <RollbackInputPreview file={file} busy={busy} onPage={showInputPage} />
-      <section className="bulk-card rollback-action" aria-labelledby="rollback-sanity-title">
-        <div className="bulk-section-title">
-          <span className="bulk-step">03</span>
-          <div>
-            <h2 id="rollback-sanity-title">Sanity check</h2>
-            <p>Confirm that every header is allowed and the required user_id header is present.</p>
-          </div>
-        </div>
-        <button
-          className="bulk-button bulk-secondary"
-          type="button"
-          disabled={!!busy || !school || !file}
-          onClick={runSanityCheck}
-        >{busy === 'sanity' ? 'Checking…' : 'Run sanity check'}</button>
-        {sanityNotice && <p className="rollback-action-notice" role="status">{sanityNotice}</p>}
-      </section>
+      <RegistrationSanityCheck
+        source={file}
+        busy={!!busy}
+        result={sanityResult}
+        onCheck={runSanityCheck}
+        footnote="Rollback checks supported headers and verifies that every record has a unique user_id."
+        notice={<div className="rollback-requirement" role="note" aria-label="Required file check">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 9v4M12 17h.01" />
+            <path d="M10.3 3.7 2.4 17.4A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.6L13.7 3.7a2 2 0 0 0-3.4 0Z" />
+          </svg>
+          <p><strong>Required for rollback:</strong> The <code>user_id</code> header must be present because it is the unique identifier for each record.</p>
+        </div>}
+      />
       <section className="bulk-card rollback-action" aria-labelledby="rollback-action-title">
         <div className="bulk-section-title">
           <span className="bulk-step">04</span>
@@ -306,7 +336,33 @@ export function RollbackPage() {
           type="button"
           disabled={!!busy || !school || !file}
           onClick={performRollback}
-        >Perform rollback</button>
+        >{busy === 'rollback' ? 'Analyzing…' : 'Analyze rollback changes'}</button>
+        {rollbackPreview && <div className="rollback-analysis" role="status">
+          <div className="rollback-analysis-header">
+            <div><strong>Change analysis</strong><p>No database changes have been committed.</p></div>
+            <span className="rollback-safe-badge">Preview only</span>
+          </div>
+          <div className="rollback-impact">
+            <div className="rollback-impact-total"><span>Users that will be updated</span><strong>{rollbackPreview.changed_count.toLocaleString()}</strong><p>Only users absent from the uploaded sheet.</p></div>
+            <div className="rollback-impact-equation" aria-label="Rollback user calculation">
+              <div><strong>{(rollbackPreview.fallback_count + rollbackPreview.supplied_matched).toLocaleString()}</strong><span>Eligible package-14 users</span></div>
+              <b>−</b>
+              <div><strong>{rollbackPreview.supplied_matched.toLocaleString()}</strong><span>Protected by sheet</span></div>
+              <b>=</b>
+              <div className="is-result"><strong>{rollbackPreview.fallback_count.toLocaleString()}</strong><span>Will be updated</span></div>
+            </div>
+          </div>
+          {!!rollbackPreview.missing_ids?.length && <details className="rollback-missing"><summary>Review missing supplied IDs</summary><p>{rollbackPreview.missing_ids.join(', ')}</p></details>}
+          <div className="rollback-change-preview">
+            <div className="rollback-preview-toolbar">
+              <div><h3>Changes applied to those users</h3><p>These five values are updated together.</p></div>
+            </div>
+            <div className="rollback-rule-list">{fallbackRules.map(([label, before, after, description], index) => <div className="rollback-rule-item" key={label}>
+              <span className="rollback-rule-number">{index + 1}</span><div><strong>{label}</strong><p><span>{before}</span><b aria-hidden="true">→</b><em>{after}</em></p><small>{description}</small></div>
+            </div>)}</div>
+          </div>
+          <div className="rollback-commit-row"><div><strong>Ready to apply?</strong><p>This updates {rollbackPreview.changed_count.toLocaleString()} database records. Sheet users remain unchanged.</p></div><ConfirmRollback affectedCount={rollbackPreview.changed_count} excludedCount={rollbackPreview.supplied_matched} disabled={!!busy} onConfirm={commitRollback} /></div>
+        </div>}
         {rollbackNotice && <p className="rollback-action-notice" role="status">{rollbackNotice}</p>}
       </section>
     </div>

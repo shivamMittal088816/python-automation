@@ -1,0 +1,8 @@
+.page-pdf-control { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.page-pdf-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; border: 1px solid #b9d8d0; border-radius: 8px; background: #fff; padding: 8px 13px; color: #146b5e; font-size: 12px; font-weight: 750; cursor: pointer; box-shadow: 0 2px 6px rgb(25 75 66 / 7%); }
+.page-pdf-button:hover { border-color: #76b2a4; background: #f1faf7; }
+.page-pdf-button:focus-visible { outline: 2px solid #087f72; outline-offset: 3px; }
+.page-pdf-button:disabled { opacity: .6; cursor: wait; }
+.page-pdf-button svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.page-pdf-control > span { color: #b42332; font-size: 11px; }
+@media (max-width: 640px) { .page-pdf-control, .page-pdf-button { width: 100%; } }
